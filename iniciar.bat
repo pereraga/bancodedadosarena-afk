@@ -6,5 +6,5 @@ echo   INICIANDO O TOTEM PLAY (VIDEO EM TEMPO REAL)
 echo ========================================================
 echo.
 cd /d "%~dp0"
-node server.js
+node server-local.js
 pause
