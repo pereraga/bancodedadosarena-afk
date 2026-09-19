@@ -284,10 +284,23 @@
     // 1. REGISTRAR TELA
     async function startRegistration() {
       const name = screenNameInput.value.trim() || 'Modelo Totem';
-      const dev = await window.totemCentral.registerScreenDevice(name);
-      screenDeviceId.textContent = dev.id;
+      let id = localStorage.getItem('totem_screen_device_id');
+      if (!id) {
+        id = 'totem-' + Math.random().toString(36).substring(2, 9);
+        localStorage.setItem('totem_screen_device_id', id);
+      }
+      screenDeviceId.textContent = id;
 
-      if (dev.status === 'approved') {
+      // Se já estava aprovado nesta máquina, destrava direto
+      if (localStorage.getItem('totem_is_approved') === 'true') {
+        unlockPlayer(name);
+        fetchActiveOrLatestVideo();
+      }
+
+      const dev = await window.totemCentral.registerScreenDevice(name);
+      if (dev && dev.id) screenDeviceId.textContent = dev.id;
+
+      if (dev && dev.status === 'approved') {
         unlockPlayer(dev.device_name || name);
         fetchActiveOrLatestVideo(dev.current_video_id);
       }
@@ -300,6 +313,7 @@
 
     // 2. DESBLOQUEAR AO SER AUTORIZADO
     function unlockPlayer(name) {
+      localStorage.setItem('totem_is_approved', 'true');
       if (waitScreen.classList.contains('hidden')) return;
       waitScreen.classList.add('hidden');
       deviceTitleBadge.textContent = `${name || 'Modelo Totem'} • Conectado à Totem Central`;
@@ -377,6 +391,7 @@
         unlockPlayer(screenNameInput.value);
         fetchActiveOrLatestVideo(device.currentVideoId);
       } else if (device.status === 'rejected') {
+        localStorage.removeItem('totem_is_approved');
         waitScreen.classList.remove('hidden');
         waitStatus.innerHTML = '<span class="text-rose-400 font-bold">Acesso recusado na Central</span>';
       }

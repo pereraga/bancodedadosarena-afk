@@ -148,20 +148,36 @@ class SupabaseEngine {
   }
 
   async fetchDevicesFromSupabase() {
-    if (!this.client) return;
-    const { data, error } = await this.client.from('devices').select('*');
-    if (!error && data) {
-      const mapped = data.map(d => ({
-        id: d.id,
-        deviceName: d.device_name,
-        ipAddress: d.ip_address,
-        status: d.status,
-        lastSeen: d.last_seen
-      }));
-      if (this.listeners.onDevicesUpdated) {
-        this.listeners.onDevicesUpdated(mapped);
-      }
+    let list = [];
+    if (this.client) {
+      try {
+        const { data, error } = await this.client.from('devices').select('*');
+        if (!error && data) {
+          list = data.map(d => ({
+            id: d.id,
+            deviceName: d.device_name,
+            ipAddress: d.ip_address,
+            status: d.status,
+            lastSeen: d.last_seen
+          }));
+        }
+      } catch (e) {}
     }
+
+    // Mesclar com dispositivos salvos localmente
+    try {
+      const localSaved = JSON.parse(localStorage.getItem('totem_bound_devices') || '[]');
+      localSaved.forEach(ld => {
+        if (!list.some(d => d.id === ld.id)) {
+          list.push(ld);
+        }
+      });
+    } catch (e) {}
+
+    if (this.listeners.onDevicesUpdated) {
+      this.listeners.onDevicesUpdated(list);
+    }
+    return list;
   }
 
   initLocalMode() {
@@ -264,24 +280,39 @@ class SupabaseEngine {
     if (!deviceId) throw new Error('Informe o ID do Totem');
     deviceId = deviceId.trim();
 
+    // 1. Salvar no localStorage para garantia de persistência local
+    try {
+      const bound = JSON.parse(localStorage.getItem('totem_bound_devices') || '[]');
+      const idx = bound.findIndex(d => d.id === deviceId);
+      const devObj = {
+        id: deviceId,
+        deviceName: deviceName || 'Modelo Totem',
+        status: 'approved',
+        lastSeen: new Date().toISOString()
+      };
+      if (idx >= 0) bound[idx] = devObj;
+      else bound.push(devObj);
+      localStorage.setItem('totem_bound_devices', JSON.stringify(bound));
+    } catch (e) {}
+
+    // 2. Salvar no Supabase (se a tabela estiver criada)
     if (this.client) {
       try {
-        const { data, error } = await this.client
+        await this.client
           .from('devices')
           .upsert({
             id: deviceId,
             device_name: deviceName || 'Modelo Totem',
             status: 'approved',
             last_seen: new Date().toISOString()
-          })
-          .select()
-          .single();
+          });
+      } catch (err) {
+        console.warn('Aviso ao salvar no Supabase:', err);
+      }
 
-        if (error) {
-          console.warn('Aviso ao salvar totem no Supabase:', error);
-        }
-
-        // 1. Notificar canal individual da tela
+      // 3. Emitir Realtime Broadcasts instantâneos para destravar a tela
+      try {
+        // Canal individual do Totem
         const screenChan = this.client.channel(`device-${deviceId}`);
         await screenChan.send({
           type: 'broadcast',
@@ -289,26 +320,23 @@ class SupabaseEngine {
           payload: { id: deviceId, status: 'approved', deviceName: deviceName || 'Modelo Totem' }
         });
 
-        // 2. Notificar canal global
+        // Canal global
         const globalChan = this.client.channel('totem-global-channel');
         await globalChan.send({
           type: 'broadcast',
           event: 'DEVICE_STATUS',
-          payload: { id: deviceId, status: 'approved' }
+          payload: { id: deviceId, status: 'approved', deviceName: deviceName || 'Modelo Totem' }
         });
 
-        // 3. Notificar canal compatível
+        // Canal broadcast
         const broadChan = this.client.channel('totem-broadcast');
         await broadChan.send({
           type: 'broadcast',
           event: 'DEVICE_AUTHORIZED',
-          payload: { id: deviceId, status: 'approved' }
+          payload: { id: deviceId, status: 'approved', deviceName: deviceName || 'Modelo Totem' }
         });
-
-        await this.fetchDevicesFromSupabase();
-        return data || { id: deviceId, status: 'approved' };
       } catch (err) {
-        console.warn('Erro ao autorizar via Supabase:', err);
+        console.warn('Aviso ao emitir Realtime Broadcast:', err);
       }
     }
 
@@ -320,13 +348,26 @@ class SupabaseEngine {
       });
     } catch (e) {}
 
-    return { id: deviceId, status: 'approved' };
+    await this.fetchDevicesFromSupabase();
+    return { id: deviceId, status: 'approved', deviceName };
   }
 
   // Autorizar ou recusar Totem (pelo App de Controle)
   async authorizeDevice(deviceId, approve = true) {
     deviceId = String(deviceId).trim();
     const newStatus = approve ? 'approved' : 'rejected';
+
+    // Atualizar no localStorage
+    try {
+      let bound = JSON.parse(localStorage.getItem('totem_bound_devices') || '[]');
+      if (!approve) {
+        bound = bound.filter(d => d.id !== deviceId);
+      } else {
+        const found = bound.find(d => d.id === deviceId);
+        if (found) found.status = 'approved';
+      }
+      localStorage.setItem('totem_bound_devices', JSON.stringify(bound));
+    } catch (e) {}
 
     if (this.client) {
       try {
@@ -335,7 +376,9 @@ class SupabaseEngine {
           status: newStatus,
           last_seen: new Date().toISOString()
         });
+      } catch (err) {}
 
+      try {
         // Disparar via Realtime Broadcast para todos os canais possíveis
         const screenChan = this.client.channel(`device-${deviceId}`);
         await screenChan.send({
@@ -357,23 +400,19 @@ class SupabaseEngine {
           event: 'DEVICE_AUTHORIZED',
           payload: { id: deviceId, status: newStatus }
         });
-
-        await this.fetchDevicesFromSupabase();
-      } catch (err) {
-        console.warn('Erro ao autorizar no Supabase:', err);
-      }
+      } catch (err) {}
     }
 
     try {
-      const res = await fetch('/api/devices/authorize', {
+      await fetch('/api/devices/authorize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ deviceId, approve })
       });
-      return await res.json();
-    } catch (e) {
-      return { id: deviceId, status: newStatus };
-    }
+    } catch (e) {}
+
+    await this.fetchDevicesFromSupabase();
+    return { id: deviceId, status: newStatus };
   }
 
   // UPLOAD DIRETO DE VÍDEO COM NOME PERSONALIZADO
