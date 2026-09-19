@@ -1,5 +1,5 @@
 // Service Worker oficial compatível com PWABuilder e Android WebAPK
-const CACHE_NAME = 'totem-central-v6';
+const CACHE_NAME = 'totem-central-v7';
 const OFFLINE_URL = '/screen';
 
 const ASSETS = [

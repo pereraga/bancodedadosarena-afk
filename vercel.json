@@ -1,4 +1,15 @@
 {
   "version": 2,
-  "cleanUrls": true
+  "cleanUrls": true,
+  "headers": [
+    {
+      "source": "/(screen|sw.js|totem-central.js|supabase-client.js|manifest-screen.json)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    }
+  ]
 }
