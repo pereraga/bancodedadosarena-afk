@@ -317,7 +317,7 @@
           <div class="flex items-center justify-between pb-3 border-b border-slate-800">
             <h3 class="text-sm font-bold text-white flex items-center space-x-2">
               <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
-              <span>Opção 2: Inserir Link Direto do Vídeo</span>
+              <span>Opção 2: Inserir Link (Google Drive, YouTube ou Direto)</span>
             </h3>
             <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
               Sem limite de tamanho
@@ -325,7 +325,7 @@
           </div>
 
           <p class="text-xs text-slate-400">
-            Ideal para vídeos pesados (acima de 200 MB) já hospedados no Google Drive, Cloudflare R2, AWS S3, Vimeo ou qualquer link direto .mp4.
+            Aceita links públicos de vídeos do <strong>Google Drive (qualquer tamanho, 100 MB, 500 MB+)</strong>, links do <strong>YouTube</strong>, Dropbox ou qualquer link direto .mp4.
           </p>
 
           <form id="linkVideoForm" class="space-y-4">
@@ -336,7 +336,7 @@
               <input
                 type="text"
                 id="linkVideoTitle"
-                placeholder="Ex: Vídeo de Alta Definição 4K"
+                placeholder="Ex: Comercial Totem 4K"
                 required
                 class="w-full px-4 py-3 rounded-xl bg-slate-800/90 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
@@ -344,12 +344,12 @@
 
             <div>
               <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                URL / Link Direto do Vídeo (.mp4, .webm) *
+                URL / Link do Vídeo (Drive, YouTube, .mp4) *
               </label>
               <input
                 type="url"
                 id="linkVideoUrl"
-                placeholder="https://exemplo.com/meu-video-gigante.mp4"
+                placeholder="https://drive.google.com/file/d/... ou https://youtu.be/..."
                 required
                 class="w-full px-4 py-3 rounded-xl bg-slate-800/90 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono text-xs"
               >
@@ -697,6 +697,18 @@
     // 2. RENDERIZAR GALERIA DE VÍDEOS SALVOS NO BANCO
     let currentVideos = [];
 
+    function getYouTubeId(url) {
+      if (!url) return null;
+      const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/))([\w-]{11})/);
+      return match ? match[1] : null;
+    }
+
+    function getDriveId(url) {
+      if (!url) return null;
+      const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      return match ? match[1] : null;
+    }
+
     function renderCatalog(videos) {
       currentVideos = videos || [];
 
@@ -710,20 +722,57 @@
       }
 
       catalogGrid.innerHTML = currentVideos.map(vid => {
+        const ytId = getYouTubeId(vid.url);
+        const driveId = getDriveId(vid.url);
+
+        let mediaPreviewHtml = '';
+        let badgeHtml = '';
+
+        if (ytId) {
+          mediaPreviewHtml = `
+            <img src="https://img.youtube.com/vi/${ytId}/hqdefault.jpg" class="w-full h-full object-cover" alt="${escapeHtml(vid.title)}" />
+            <div class="absolute inset-0 bg-black/30 flex items-center justify-center pointer-events-none">
+              <div class="w-10 h-10 rounded-full bg-red-600 text-white flex items-center justify-center shadow-lg">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z"/>
+                </svg>
+              </div>
+            </div>
+          `;
+          badgeHtml = `<span class="absolute top-2 right-2 px-2 py-0.5 rounded text-[10px] font-bold bg-red-600 text-white shadow backdrop-blur">YouTube</span>`;
+        } else if (driveId) {
+          mediaPreviewHtml = `
+            <img src="https://lh3.googleusercontent.com/d/${driveId}" class="w-full h-full object-cover" onerror="this.style.opacity='0.3'" alt="${escapeHtml(vid.title)}" />
+            <div class="absolute inset-0 bg-black/30 flex items-center justify-center pointer-events-none">
+              <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z"/>
+                </svg>
+              </div>
+            </div>
+          `;
+          badgeHtml = `<span class="absolute top-2 right-2 px-2 py-0.5 rounded text-[10px] font-bold bg-blue-600 text-white shadow backdrop-blur">Google Drive</span>`;
+        } else {
+          mediaPreviewHtml = `
+            <video src="${vid.url}" class="w-full h-full object-cover" muted preload="metadata"></video>
+            <div class="absolute inset-0 bg-black/40 flex items-center justify-center pointer-events-none">
+              <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
+                <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z"/>
+                </svg>
+              </div>
+            </div>
+          `;
+          badgeHtml = `<span class="absolute top-2 right-2 px-2 py-0.5 rounded text-[10px] font-bold bg-black/70 text-white backdrop-blur">
+            ${vid.fileSizeMb ? (String(vid.fileSizeMb).includes('MB') || String(vid.fileSizeMb).includes('GB') || String(vid.fileSizeMb).includes('Link') ? vid.fileSizeMb : vid.fileSizeMb + ' MB') : 'Vídeo'}
+          </span>`;
+        }
+
         return `
           <div class="bg-slate-900 border border-slate-800 hover:border-indigo-500/50 rounded-2xl overflow-hidden shadow-lg transition flex flex-col justify-between">
             <div class="aspect-video bg-black relative flex items-center justify-center overflow-hidden">
-              <video src="${vid.url}" class="w-full h-full object-cover" muted preload="metadata"></video>
-              <div class="absolute inset-0 bg-black/40 flex items-center justify-center pointer-events-none">
-                <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
-                  <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z"/>
-                  </svg>
-                </div>
-              </div>
-              <span class="absolute top-2 right-2 px-2 py-0.5 rounded text-[10px] font-bold bg-black/70 text-white backdrop-blur">
-                ${vid.fileSizeMb ? (String(vid.fileSizeMb).includes('MB') || String(vid.fileSizeMb).includes('GB') || String(vid.fileSizeMb).includes('Link') ? vid.fileSizeMb : vid.fileSizeMb + ' MB') : 'Vídeo'}
-              </span>
+              ${mediaPreviewHtml}
+              ${badgeHtml}
             </div>
 
             <div class="p-4 space-y-3 flex-1 flex flex-col justify-between">

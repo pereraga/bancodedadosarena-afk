@@ -431,11 +431,11 @@ class TotemCentralEngine {
 
     let cleanUrl = videoUrl.trim();
 
-    // Suporte automático para links do Google Drive
-    if (cleanUrl.includes('drive.google.com')) {
+    // Suporte automático para links do Google Drive (Streaming via API do Totem)
+    if (cleanUrl.includes('drive.google.com') || cleanUrl.includes('drive.usercontent.google.com')) {
       const gmatch = cleanUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || cleanUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
       if (gmatch && gmatch[1]) {
-        cleanUrl = `https://drive.google.com/uc?export=download&id=${gmatch[1]}`;
+        cleanUrl = `/api/stream?id=${gmatch[1]}`;
       }
     }
 
