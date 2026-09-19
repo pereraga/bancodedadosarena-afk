@@ -179,10 +179,10 @@
       allowfullscreen
     ></iframe>
 
-    <!-- Overlay de Carregamento (Toque para fechar / auto-dismiss) -->
-    <div id="loaderOverlay" class="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-20 transition-opacity duration-300 cursor-pointer select-none">
+    <!-- Overlay de Carregamento (Oculto por padrão, sem prender a tela) -->
+    <div id="loaderOverlay" class="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-20 transition-opacity duration-300 cursor-pointer select-none opacity-0 pointer-events-none hidden">
       <div class="animate-spin rounded-full h-14 w-14 border-t-4 border-b-4 border-blue-500 mb-3"></div>
-      <p id="loaderMsg" class="text-slate-300 text-sm font-medium">Conectando à Totem Central...</p>
+      <p id="loaderMsg" class="text-slate-300 text-sm font-medium">Carregando totem...</p>
     </div>
 
     <!-- Barra Oculta (sem controles visíveis na tela do totem) -->
@@ -358,52 +358,66 @@
       } catch (e) {}
     }
 
-    // 2. REGISTRAR TELA E INICIAR IMEDIATO SE JÁ FOI APROVADO
+    // 2. REGISTRAR TELA E INICIAR IMEDIATO (MODO KIOSK APK DIRETO)
     async function startRegistration() {
-      const name = screenNameInput.value.trim() || 'Modelo Totem';
+      const name = (screenNameInput && screenNameInput.value.trim()) || 'Modelo Totem';
       const id = getStoredDeviceId();
-      screenDeviceId.textContent = id;
+      if (screenDeviceId) screenDeviceId.textContent = id;
 
-      // Se já estava aprovado nesta máquina, destrava direto SEM PRECISAR PEDIR PERMISSÃO DE NOVO!
-      if (isDeviceApprovedLocally()) {
-        unlockPlayer(name, false);
-        fetchActiveOrLatestVideo();
-      }
+      // Destrava e inicia a reprodução do vídeo IMEDIATAMENTE (sem travar em carregando)
+      unlockPlayer(name, false);
+      fetchActiveOrLatestVideo();
 
-      const dev = await window.totemCentral.registerScreenDevice(name);
-      if (dev && dev.id) {
-        saveDeviceId(dev.id);
-        screenDeviceId.textContent = dev.id;
-      }
+      try {
+        const dev = await window.totemCentral.registerScreenDevice(name);
+        if (dev && dev.id) {
+          saveDeviceId(dev.id);
+          if (screenDeviceId) screenDeviceId.textContent = dev.id;
+        }
 
-      if (dev && dev.status === 'approved') {
-        setDeviceApprovedLocally(true);
-        unlockPlayer(dev.device_name || name, false);
-        fetchActiveOrLatestVideo(dev.current_video_id);
+        if (dev && dev.status === 'approved') {
+          setDeviceApprovedLocally(true);
+          unlockPlayer(dev.device_name || name, false);
+          if (dev.current_video_id) {
+            fetchActiveOrLatestVideo(dev.current_video_id);
+          }
+        }
+      } catch (err) {
+        console.warn('Registro em segundo plano:', err);
       }
     }
 
-    saveScreenNameBtn.addEventListener('click', () => {
-      startRegistration();
-      toast('Nome atualizado na Central!');
-    });
+    if (saveScreenNameBtn) {
+      saveScreenNameBtn.addEventListener('click', () => {
+        startRegistration();
+        toast('Nome atualizado na Central!');
+      });
+    }
 
-    // 3. DESBLOQUEAR AO SER AUTORIZADO
-    function unlockPlayer(name, showToast = true) {
+    // 3. DESBLOQUEAR AO SER AUTORIZADO (Blindado contra erros)
+    function unlockPlayer(name, showToast = false) {
       setDeviceApprovedLocally(true);
-      if (!waitScreen.classList.contains('hidden')) {
+      if (waitScreen && !waitScreen.classList.contains('hidden')) {
         waitScreen.classList.add('hidden');
       }
-      deviceTitleBadge.textContent = `${name || 'Modelo Totem'} • Conectado à Totem Central`;
+      if (deviceTitleBadge) {
+        deviceTitleBadge.textContent = `${name || 'Modelo Totem'} • Conectado à Totem Central`;
+      }
+      hideLoader();
       initWakeLock();
       if (showToast) {
         toast('✅ Totem autorizado pela Central!');
       }
     }
 
-    // Buscar vídeo ativo ou o mais recente da biblioteca
-    async function fetchActiveOrLatestVideo(preferredVideoId = null) {
-      if (!window.totemCentral || !window.totemCentral.client) return;
+    // Buscar vídeo ativo ou o mais recente da biblioteca (com retry automático se o Supabase estiver carregando)
+    async function fetchActiveOrLatestVideo(preferredVideoId = null, retries = 8) {
+      if (!window.totemCentral || !window.totemCentral.client) {
+        if (retries > 0) {
+          setTimeout(() => fetchActiveOrLatestVideo(preferredVideoId, retries - 1), 350);
+        }
+        return;
+      }
       try {
         if (preferredVideoId) {
           const { data: v } = await window.totemCentral.client
@@ -411,20 +425,20 @@
             .select('*')
             .eq('id', preferredVideoId)
             .maybeSingle();
-          if (v) {
+          if (v && v.video_url) {
             playVideo({ id: v.id, title: v.title, url: v.video_url });
             return;
           }
         }
 
-        // Se não tiver preferred, busca o vídeo mais recente
+        // Busca o vídeo mais recente cadastrado
         const { data: videos } = await window.totemCentral.client
           .from('videos')
           .select('*')
           .order('created_at', { ascending: false })
           .limit(1);
 
-        if (videos && videos.length > 0) {
+        if (videos && videos.length > 0 && videos[0].video_url) {
           playVideo({ id: videos[0].id, title: videos[0].title, url: videos[0].video_url });
         }
       } catch (err) {
@@ -454,9 +468,13 @@
 
     function hideLoader() {
       if (loaderTimer) clearTimeout(loaderTimer);
-      loaderOverlay.classList.add('opacity-0', 'pointer-events-none');
-      videoElem.classList.remove('opacity-0');
-      videoElem.classList.add('opacity-100');
+      if (loaderOverlay) {
+        loaderOverlay.classList.add('opacity-0', 'pointer-events-none', 'hidden');
+      }
+      if (videoElem) {
+        videoElem.classList.remove('opacity-0');
+        videoElem.classList.add('opacity-100');
+      }
       if (iframeElem && !iframeElem.classList.contains('hidden')) {
         iframeElem.classList.remove('opacity-0');
         iframeElem.classList.add('opacity-100');
@@ -465,10 +483,12 @@
 
     function showLoader(text) {
       if (loaderTimer) clearTimeout(loaderTimer);
-      loaderMsg.textContent = text || 'Carregando vídeo...';
-      loaderOverlay.classList.remove('opacity-0', 'pointer-events-none');
-      // Proteção de segurança: se o vídeo demorar mais de 2.5 segundos para responder, fechar o overlay!
-      loaderTimer = setTimeout(hideLoader, 2500);
+      if (loaderMsg) loaderMsg.textContent = text || 'Carregando vídeo...';
+      if (loaderOverlay) {
+        loaderOverlay.classList.remove('opacity-0', 'pointer-events-none', 'hidden');
+      }
+      // Proteção de segurança: fechar o overlay em no máximo 1.8 segundos
+      loaderTimer = setTimeout(hideLoader, 1800);
     }
 
     // Permitir tocar na tela a qualquer momento para fechar o overlay e liberar o áudio/vídeo

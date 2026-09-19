@@ -6,9 +6,9 @@
   "start_url": "https://totemarena.vercel.app/screen",
   "scope": "https://totemarena.vercel.app/",
   "display": "fullscreen",
-  "orientation": "landscape",
-  "background_color": "#020617",
-  "theme_color": "#020617",
+  "orientation": "any",
+  "background_color": "#000000",
+  "theme_color": "#000000",
   "icons": [
     {
       "src": "https://totemarena.vercel.app/icon-192.png",
