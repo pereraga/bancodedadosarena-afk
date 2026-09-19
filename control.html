@@ -240,7 +240,7 @@
       </div>
 
       <div class="max-w-xl mx-auto space-y-6">
-        <!-- OPÇÃO 1: UPLOAD DE ARQUIVO (ATÉ 5 GB) -->
+        <!-- OPÇÃO 1: UPLOAD DE ARQUIVO (ATÉ 200 MB) -->
         <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 sm:p-8 space-y-5 shadow-xl">
           <div class="flex items-center justify-between pb-3 border-b border-slate-800">
             <h3 class="text-sm font-bold text-white flex items-center space-x-2">
@@ -248,7 +248,7 @@
               <span>Opção 1: Enviar Arquivo de Vídeo</span>
             </h3>
             <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-              Até 5 GB
+              Até 200 MB
             </span>
           </div>
 
@@ -270,7 +270,7 @@
             <!-- Seletor de Arquivo de Vídeo -->
             <div>
               <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                Arquivo de Vídeo (MP4, WebM, MOV) - Suporta até 5 GB *
+                Arquivo de Vídeo (MP4, WebM, MOV) - Suporta até 200 MB *
               </label>
               <div class="border-2 border-dashed border-slate-700 hover:border-indigo-500 rounded-xl p-6 text-center cursor-pointer transition bg-slate-800/40" id="dropZone">
                 <input type="file" id="videoFileInput" accept="video/mp4,video/webm,video/quicktime" class="hidden" required>
@@ -281,9 +281,9 @@
                     </svg>
                   </div>
                   <div class="text-xs text-slate-300 font-medium" id="fileChosenText">
-                    Toque para escolher o vídeo no celular ou PC (Até 5 GB)
+                    Toque para escolher o vídeo no celular ou PC (Até 200 MB)
                   </div>
-                  <p class="text-[11px] text-slate-500">Aceita arquivos de qualquer tamanho até 5 GB (.mp4, .webm, .mov)</p>
+                  <p class="text-[11px] text-slate-500">Aceita arquivos de vídeo de até 200 MB (.mp4, .webm, .mov)</p>
                 </div>
               </div>
             </div>
@@ -312,7 +312,7 @@
           </form>
         </div>
 
-        <!-- OPÇÃO 2: INSERIR LINK DIRETO (SEM LIMITE / ATÉ 5 GB+) -->
+        <!-- OPÇÃO 2: INSERIR LINK DIRETO (SEM LIMITE DE TAMANHO) -->
         <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 sm:p-8 space-y-5 shadow-xl">
           <div class="flex items-center justify-between pb-3 border-b border-slate-800">
             <h3 class="text-sm font-bold text-white flex items-center space-x-2">
@@ -325,7 +325,7 @@
           </div>
 
           <p class="text-xs text-slate-400">
-            Ideal para vídeos pesados (1 GB a 5 GB+) já hospedados no Google Drive, Cloudflare R2, AWS S3, Vimeo ou qualquer link direto .mp4.
+            Ideal para vídeos pesados (acima de 200 MB) já hospedados no Google Drive, Cloudflare R2, AWS S3, Vimeo ou qualquer link direto .mp4.
           </p>
 
           <form id="linkVideoForm" class="space-y-4">
@@ -781,8 +781,8 @@
       notify('Vídeo excluído com sucesso.');
     };
 
-    // 3. UPLOAD DE ARQUIVOS COM BARRA DE PROGRESSO (ATÉ 5 GB)
-    const MAX_UPLOAD_BYTES = 5368709120; // 5 GB em bytes
+    // 3. UPLOAD DE ARQUIVOS COM BARRA DE PROGRESSO (ATÉ 200 MB)
+    const MAX_UPLOAD_BYTES = 209715200; // 200 MB em bytes
 
     dropZone.addEventListener('click', () => videoFileInput.click());
 
@@ -797,7 +797,7 @@
         if (file.size > MAX_UPLOAD_BYTES) {
           fileChosenText.innerHTML = `
             <span class="text-amber-400 font-bold">${escapeHtml(file.name)}</span> (${formattedSize})
-            <span class="block text-rose-400 text-xs font-semibold mt-1">⚠️ Este arquivo tem ${formattedSize}. O limite máximo para upload de arquivo direto é 5 GB. Envie um arquivo de até 5 GB ou use a Opção 2 (Link Direto).</span>
+            <span class="block text-rose-400 text-xs font-semibold mt-1">⚠️ Este arquivo tem ${formattedSize}. O limite máximo para upload direto de arquivos é 200 MB. Envie um arquivo de até 200 MB ou use a Opção 2 (Link Direto).</span>
           `;
         } else {
           fileChosenText.innerHTML = `<span class="text-indigo-400 font-bold">${escapeHtml(file.name)}</span> (${formattedSize})`;
@@ -819,8 +819,8 @@
       }
 
       if (file.size > MAX_UPLOAD_BYTES) {
-        const formattedSize = (file.size / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
-        alert(`⚠️ O vídeo selecionado possui ${formattedSize}.\n\nO limite máximo para upload direto de arquivos é de 5 GB.\n\nPara arquivos maiores, por favor utilize a Opção 2: "Inserir Link Direto do Vídeo".`);
+        const formattedSize = (file.size / (1024 * 1024)).toFixed(1) + ' MB';
+        alert(`⚠️ O vídeo selecionado possui ${formattedSize}.\n\nO limite máximo para upload direto de arquivos é de 200 MB.\n\nPara arquivos maiores, por favor utilize a Opção 2: "Inserir Link Direto do Vídeo".`);
         return;
       }
 
@@ -839,7 +839,7 @@
 
         notify(`✅ Vídeo "${title}" enviado com sucesso!`);
         uploadForm.reset();
-        fileChosenText.textContent = 'Toque para escolher o vídeo no celular ou PC (Até 5 GB)';
+        fileChosenText.textContent = 'Toque para escolher o vídeo no celular ou PC (Até 200 MB)';
         progressContainer.classList.add('hidden');
         progressBar.style.width = '0%';
 
@@ -854,7 +854,7 @@
       }
     });
 
-    // 4. INSERIR VÍDEO POR LINK DIRETO (SEM LIMITE / ATÉ 5 GB+)
+    // 4. INSERIR VÍDEO POR LINK DIRETO (SEM LIMITE DE TAMANHO)
     const linkVideoForm = document.getElementById('linkVideoForm');
     const linkVideoTitle = document.getElementById('linkVideoTitle');
     const linkVideoUrl = document.getElementById('linkVideoUrl');
@@ -892,9 +892,9 @@
     const copySqlSetupBtn = document.getElementById('copySqlSetupBtn');
     const copySqlBtnText = document.getElementById('copySqlBtnText');
 
-    const SQL_SETUP_SCRIPT = `-- CRIAR BUCKET 'videos' PUBLICO COM SUPORTE ATÉ 5 GB E TABELAS
-INSERT INTO storage.buckets (id, name, public, file_size_limit) VALUES ('videos', 'videos', true, 5368709120) ON CONFLICT (id) DO UPDATE SET public = true, file_size_limit = 5368709120;
-UPDATE storage.buckets SET file_size_limit = 5368709120 WHERE id = 'videos';
+    const SQL_SETUP_SCRIPT = `-- CRIAR BUCKET 'videos' PUBLICO COM SUPORTE ATÉ 200 MB E TABELAS
+INSERT INTO storage.buckets (id, name, public, file_size_limit) VALUES ('videos', 'videos', true, 209715200) ON CONFLICT (id) DO UPDATE SET public = true, file_size_limit = 209715200;
+UPDATE storage.buckets SET file_size_limit = 209715200 WHERE id = 'videos';
 DROP POLICY IF EXISTS "Permitir leitura publica no bucket videos" ON storage.objects;
 DROP POLICY IF EXISTS "Permitir upload publico no bucket videos" ON storage.objects;
 DROP POLICY IF EXISTS "Permitir delecao no bucket videos" ON storage.objects;

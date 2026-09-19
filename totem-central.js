@@ -368,7 +368,7 @@ class TotemCentralEngine {
     const storagePath = `uploads/${Date.now()}-${cleanTitle}.${ext}`;
 
     onProgress(25);
-    // 1. Upload do Arquivo para o Bucket 'videos' (Suporta até 5 GB)
+    // 1. Upload do Arquivo para o Bucket 'videos' (Suporta até 200 MB)
     const { error: uploadError } = await this.client.storage
       .from('videos')
       .upload(storagePath, file, {
@@ -378,10 +378,10 @@ class TotemCentralEngine {
 
     if (uploadError) {
       if (uploadError.message && (uploadError.message.includes('Bucket not found') || uploadError.message.includes('bucket_not_found'))) {
-        throw new Error('O bucket "videos" ainda não foi criado no Supabase. Abra o SQL Editor no painel do Supabase e execute o script para criar o bucket "videos" público com limite de 5 GB.');
+        throw new Error('O bucket "videos" ainda não foi criado no Supabase. Abra o SQL Editor no painel do Supabase e execute o script para criar o bucket "videos" público com limite de 200 MB.');
       }
       if (uploadError.message && (uploadError.message.includes('exceeded the maximum allowed size') || uploadError.message.includes('Payload too large'))) {
-        throw new Error(`O vídeo selecionado possui ${formattedSize} e o Supabase retornou limite de tamanho excedido. No SQL Editor do Supabase, execute: UPDATE storage.buckets SET file_size_limit = 5368709120 WHERE id = 'videos'; para liberar 5 GB. Se o seu projeto estiver na cota gratuita geral, use a opção "Inserir Link Direto do Vídeo".`);
+        throw new Error(`O vídeo selecionado possui ${formattedSize} e o Supabase retornou limite de tamanho excedido. No SQL Editor do Supabase, execute: UPDATE storage.buckets SET file_size_limit = 209715200 WHERE id = 'videos'; para liberar 200 MB. Se o seu arquivo for maior, use a opção "Inserir Link Direto do Vídeo".`);
       }
       throw new Error('Falha no upload para o Supabase Storage: ' + uploadError.message);
     }
@@ -423,7 +423,7 @@ class TotemCentralEngine {
     };
   }
 
-  // 4. INSERIR VÍDEO DIRETAMENTE POR LINK/URL (Até 5 GB ou Sem Limite)
+  // 4. INSERIR VÍDEO DIRETAMENTE POR LINK/URL (Sem Limite de Tamanho)
   async addVideoByUrl(videoTitle, videoUrl) {
     if (!videoTitle) throw new Error('Informe o nome do vídeo');
     if (!videoUrl) throw new Error('Informe o link direto do vídeo');

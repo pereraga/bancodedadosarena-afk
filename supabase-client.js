@@ -425,7 +425,7 @@ class SupabaseEngine {
       ? (file.size / (1024 * 1024 * 1024)).toFixed(2) + ' GB'
       : fileSizeMb + ' MB';
 
-    // 1. Se estiver conectado ao Supabase, faz upload no Supabase Storage (até 5 GB)
+    // 1. Se estiver conectado ao Supabase, faz upload no Supabase Storage (até 200 MB)
     if (this.client && this.isSupabaseConnected) {
       onProgress(10);
       const ext = file.name.split('.').pop() || 'mp4';
@@ -443,10 +443,10 @@ class SupabaseEngine {
 
       if (uploadError) {
         if (uploadError.message && (uploadError.message.includes('Bucket not found') || uploadError.message.includes('bucket_not_found'))) {
-          throw new Error('O bucket "videos" ainda não foi criado no Supabase. Abra o SQL Editor no painel do Supabase e execute o script para criar o bucket "videos" público com limite de 5 GB.');
+          throw new Error('O bucket "videos" ainda não foi criado no Supabase. Abra o SQL Editor no painel do Supabase e execute o script para criar o bucket "videos" público com limite de 200 MB.');
         }
         if (uploadError.message && (uploadError.message.includes('exceeded the maximum allowed size') || uploadError.message.includes('Payload too large'))) {
-          throw new Error(`O vídeo selecionado possui ${formattedSize} e o Supabase retornou limite de tamanho excedido. No SQL Editor do Supabase, execute: UPDATE storage.buckets SET file_size_limit = 5368709120 WHERE id = 'videos'; para liberar 5 GB. Se você estiver usando o plano gratuito do Supabase, utilize a opção "Inserir Link Direto do Vídeo".`);
+          throw new Error(`O vídeo selecionado possui ${formattedSize} e o Supabase retornou limite de tamanho excedido. No SQL Editor do Supabase, execute: UPDATE storage.buckets SET file_size_limit = 209715200 WHERE id = 'videos'; para liberar 200 MB. Se o seu arquivo for maior, utilize a opção "Inserir Link Direto do Vídeo".`);
         }
         throw new Error('Falha no upload do Supabase Storage: ' + uploadError.message);
       }
@@ -532,7 +532,7 @@ class SupabaseEngine {
     });
   }
 
-  // ADICIONAR VÍDEO DIRETAMENTE POR LINK/URL (Até 5 GB ou Sem Limite)
+  // ADICIONAR VÍDEO DIRETAMENTE POR LINK/URL (Sem Limite de Tamanho)
   async addVideoByUrl(videoTitle, videoUrl) {
     if (!videoTitle) throw new Error('Informe o nome do vídeo');
     if (!videoUrl) throw new Error('Informe o link direto do vídeo');

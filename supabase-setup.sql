@@ -4,15 +4,15 @@
 -- https://supabase.com/dashboard/project/qvnsahvdjhimlmtqrnif/sql
 -- =================================================================
 
--- 1. CRIAR BUCKET DE ARMAZENAMENTO PARA OS VÍDEOS ('videos' PÚBLICO COM SUPORTE ATÉ 5 GB)
--- 5 GB em bytes: 5 * 1024 * 1024 * 1024 = 5368709120 bytes
+-- 1. CRIAR BUCKET DE ARMAZENAMENTO PARA OS VÍDEOS ('videos' PÚBLICO COM SUPORTE ATÉ 200 MB)
+-- 200 MB em bytes: 200 * 1024 * 1024 = 209715200 bytes
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-VALUES ('videos', 'videos', true, 5368709120, null)
-ON CONFLICT (id) DO UPDATE SET public = true, file_size_limit = 5368709120;
+VALUES ('videos', 'videos', true, 209715200, null)
+ON CONFLICT (id) DO UPDATE SET public = true, file_size_limit = 209715200;
 
--- Garantir que o limite seja 5 GB mesmo se o bucket já existia
+-- Garantir que o limite seja 200 MB mesmo se o bucket já existia
 UPDATE storage.buckets
-SET file_size_limit = 5368709120
+SET file_size_limit = 209715200
 WHERE id = 'videos';
 
 -- Remover políticas antigas para evitar duplicações

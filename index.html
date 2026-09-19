@@ -321,7 +321,7 @@
         </div>
 
         <div class="space-y-6 max-w-xl mx-auto">
-          <!-- OPÇÃO 1: UPLOAD DE ARQUIVO (ATÉ 5 GB) -->
+          <!-- OPÇÃO 1: UPLOAD DE ARQUIVO (ATÉ 200 MB) -->
           <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-5">
             <div class="flex items-center justify-between pb-3 border-b border-slate-800">
               <h4 class="text-sm font-bold text-white flex items-center space-x-2">
@@ -329,7 +329,7 @@
                 <span>Opção 1: Enviar Arquivo de Vídeo</span>
               </h4>
               <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                Até 5 GB
+                Até 200 MB
               </span>
             </div>
 
@@ -349,7 +349,7 @@
 
               <div>
                 <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                  Arquivo de Vídeo (.mp4, .webm, .mov) - Suporta até 5 GB *
+                  Arquivo de Vídeo (.mp4, .webm, .mov) - Suporta até 200 MB *
                 </label>
                 <div id="dropZone" class="border-2 border-dashed border-slate-700 hover:border-indigo-500 rounded-2xl p-6 text-center cursor-pointer transition bg-slate-950/60">
                   <input type="file" id="videoFileInput" accept="video/mp4,video/webm,video/quicktime" class="hidden" required>
@@ -360,9 +360,9 @@
                       </svg>
                     </div>
                     <span id="filePickedText" class="text-xs text-slate-300 font-medium">
-                      Toque para escolher o vídeo no celular ou PC (Até 5 GB)
+                      Toque para escolher o vídeo no celular ou PC (Até 200 MB)
                     </span>
-                    <p class="text-[11px] text-slate-500">Aceita arquivos de qualquer tamanho até 5 GB (.mp4, .webm, .mov)</p>
+                    <p class="text-[11px] text-slate-500">Aceita arquivos de vídeo de até 200 MB (.mp4, .webm, .mov)</p>
                   </div>
                 </div>
               </div>
@@ -391,7 +391,7 @@
             </form>
           </div>
 
-          <!-- OPÇÃO 2: INSERIR LINK DIRETO (SEM LIMITE / ATÉ 5 GB+) -->
+          <!-- OPÇÃO 2: INSERIR LINK DIRETO (SEM LIMITE DE TAMANHO) -->
           <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-5">
             <div class="flex items-center justify-between pb-3 border-b border-slate-800">
               <h4 class="text-sm font-bold text-white flex items-center space-x-2">
@@ -404,7 +404,7 @@
             </div>
 
             <p class="text-xs text-slate-400">
-              Vídeos pesados (1 GB a 5 GB+) hospedados em links diretos (Google Drive, Cloudflare R2, AWS S3, Bunny, etc.).
+              Vídeos pesados (acima de 200 MB) hospedados em links diretos (Google Drive, Cloudflare R2, AWS S3, Bunny, etc.).
             </p>
 
             <form id="indexLinkVideoForm" class="space-y-4">
@@ -835,8 +835,8 @@
       renderTotems(devices);
     };
 
-    // 5. UPLOAD DE VÍDEOS COM NOME NO SUPABASE STORAGE (ATÉ 5 GB)
-    const MAX_INDEX_UPLOAD_BYTES = 5368709120; // 5 GB
+    // 5. UPLOAD DE VÍDEOS COM NOME NO SUPABASE STORAGE (ATÉ 200 MB)
+    const MAX_INDEX_UPLOAD_BYTES = 209715200; // 200 MB
 
     dropZone.addEventListener('click', () => videoFileInput.click());
 
@@ -851,7 +851,7 @@
         if (file.size > MAX_INDEX_UPLOAD_BYTES) {
           filePickedText.innerHTML = `
             <span class="text-amber-400 font-bold">${file.name}</span> (${formattedSize})
-            <span class="block text-rose-400 text-xs font-semibold mt-1">⚠️ Este arquivo tem ${formattedSize}. O limite para envio direto é 5 GB. Envie um arquivo menor ou use a Opção 2 (Link Direto).</span>
+            <span class="block text-rose-400 text-xs font-semibold mt-1">⚠️ Este arquivo tem ${formattedSize}. O limite para envio direto é 200 MB. Envie um arquivo menor ou use a Opção 2 (Link Direto).</span>
           `;
         } else {
           filePickedText.innerHTML = `<span class="text-indigo-400 font-bold">${file.name}</span> (${formattedSize})`;
@@ -873,8 +873,8 @@
       }
 
       if (file.size > MAX_INDEX_UPLOAD_BYTES) {
-        const formattedSize = (file.size / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
-        alert(`⚠️ O vídeo possui ${formattedSize}.\n\nO limite máximo para upload direto de arquivos é de 5 GB.\n\nPara arquivos maiores, por favor utilize a Opção 2: "Inserir Link Direto do Vídeo".`);
+        const formattedSize = (file.size / (1024 * 1024)).toFixed(1) + ' MB';
+        alert(`⚠️ O vídeo possui ${formattedSize}.\n\nO limite máximo para upload direto de arquivos é de 200 MB.\n\nPara arquivos maiores, por favor utilize a Opção 2: "Inserir Link Direto do Vídeo".`);
         return;
       }
 
@@ -891,7 +891,7 @@
 
         notify(`✅ Vídeo "${title}" salvo com sucesso no Supabase!`);
         uploadForm.reset();
-        filePickedText.textContent = 'Toque para escolher o vídeo no celular ou PC (Até 5 GB)';
+        filePickedText.textContent = 'Toque para escolher o vídeo no celular ou PC (Até 200 MB)';
         progressBox.classList.add('hidden');
         progressBar.style.width = '0%';
         setTab('gallery');
