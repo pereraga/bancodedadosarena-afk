@@ -1,26 +1,4 @@
 {
   "version": 2,
-  "cleanUrls": true,
-  "trailingSlash": false,
-  "routes": [
-    {
-      "src": "/screen",
-      "dest": "/screen.html"
-    },
-    {
-      "src": "/control",
-      "dest": "/control.html"
-    },
-    {
-      "src": "/dashboard",
-      "dest": "/index.html"
-    },
-    {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
-  ]
+  "cleanUrls": true
 }
