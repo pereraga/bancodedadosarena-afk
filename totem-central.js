@@ -181,18 +181,19 @@ class TotemCentralEngine {
         const isApprovedLocally = localStorage.getItem('totem_is_approved') === 'true';
 
         if (existing) {
-          status = existing.status || (isApprovedLocally ? 'approved' : 'pending');
+          status = existing.status || 'approved';
           currentVideoId = existing.current_video_id;
           await this.client.from('devices').update({
             device_name: deviceName,
             last_seen: new Date().toISOString()
           }).eq('id', deviceId);
         } else {
-          status = isApprovedLocally ? 'approved' : 'pending';
+          // Dispositivo novo ou atualizado: aprovado permanente por padrão!
+          status = 'approved';
           await this.client.from('devices').insert({
             id: deviceId,
             device_name: deviceName,
-            status: status,
+            status: 'approved',
             last_seen: new Date().toISOString()
           });
         }

@@ -337,21 +337,19 @@
 
     function isDeviceApprovedLocally() {
       try {
-        if (localStorage.getItem('totem_is_approved') === 'true') return true;
+        if (localStorage.getItem('totem_access_rejected') === 'true') return false;
       } catch (e) {}
-      try {
-        const match = document.cookie.match(/(?:^|;\s*)totem_is_approved=([^;]+)/);
-        if (match && match[1] === 'true') return true;
-      } catch (e) {}
-      return false;
+      return true; // Permanente por padrão: sempre aprovado a menos que recusado no painel!
     }
 
     function setDeviceApprovedLocally(approved) {
       try {
         if (approved) {
+          localStorage.removeItem('totem_access_rejected');
           localStorage.setItem('totem_is_approved', 'true');
           document.cookie = 'totem_is_approved=true; path=/; max-age=315360000; SameSite=Lax';
         } else {
+          localStorage.setItem('totem_access_rejected', 'true');
           localStorage.removeItem('totem_is_approved');
           document.cookie = 'totem_is_approved=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
         }
@@ -659,21 +657,13 @@
               fetchActiveOrLatestVideo(data.current_video_id);
             }
           } else if (data && (data.status === 'rejected' || data.status === 'unlinked')) {
-            // Foi desvinculado explicitamente pelo usuário no painel
+            // Acesso recusado ou bloqueado explicitamente no painel
             setDeviceApprovedLocally(false);
             try { videoElem.pause(); } catch (e) {}
             if (iframeElem) iframeElem.src = 'about:blank';
             currentUrl = null;
             waitScreen.classList.remove('hidden');
-            waitStatus.innerHTML = '<span class="text-rose-400 font-bold">Totem desvinculado no Painel</span>';
-          } else if (!data && isDeviceApprovedLocally()) {
-            // O registro foi apagado do banco de dados (desvinculado)
-            setDeviceApprovedLocally(false);
-            try { videoElem.pause(); } catch (e) {}
-            if (iframeElem) iframeElem.src = 'about:blank';
-            currentUrl = null;
-            waitScreen.classList.remove('hidden');
-            waitStatus.innerHTML = '<span class="text-rose-400 font-bold">Totem desvinculado</span>';
+            waitStatus.innerHTML = '<span class="text-rose-400 font-bold">Acesso ao vídeo recusado no Painel</span>';
           }
         }
       } catch (e) {}

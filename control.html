@@ -618,17 +618,17 @@
 
         if (isApproved) {
           badgeClass = 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
-          badgeText = 'AUTORIZADO & CONECTADO';
+          badgeText = 'AUTORIZADO PERMANENTE';
           borderClass = 'border-emerald-500/40 bg-slate-900';
           iconBg = 'bg-emerald-500/20 text-emerald-400';
         } else if (isPending) {
           badgeClass = 'bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse';
-          badgeText = 'PENDENTE DE AUTORIZAÇÃO';
+          badgeText = 'AGUARDANDO CONEXÃO';
           borderClass = 'border-amber-500/50 bg-amber-950/20';
           iconBg = 'bg-amber-500/20 text-amber-400';
         } else {
           badgeClass = 'bg-rose-500/20 text-rose-300 border border-rose-500/30';
-          badgeText = 'DESVINCULADO';
+          badgeText = 'ACESSO RECUSADO / BLOQUEADO';
           borderClass = 'border-rose-500/30 bg-slate-900/60 opacity-80';
           iconBg = 'bg-rose-500/20 text-rose-400';
         }
@@ -658,27 +658,27 @@
             <div class="flex items-center space-x-2 w-full sm:w-auto justify-end flex-wrap gap-y-2">
               ${isPending ? `
                 <button onclick="authorize('${dev.id}', true)" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition">
-                  Autorizar Acesso
+                  Permitir Acesso
                 </button>
-                <button onclick="deleteDevice('${dev.id}')" class="px-3.5 py-2 rounded-xl bg-slate-800 text-slate-400 hover:text-rose-400 text-xs transition">
+                <button onclick="rejectAccess('${dev.id}')" class="px-3.5 py-2 rounded-xl bg-slate-800 text-slate-400 hover:text-rose-400 text-xs transition">
                   Recusar
                 </button>
               ` : isApproved ? `
-                <button onclick="transmitCurrentToDev('${dev.id}')" class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs flex items-center space-x-1.5 transition">
+                <button onclick="transmitCurrentToDev('${dev.id}')" class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs flex items-center space-x-1.5 transition shadow-md shadow-indigo-600/20">
                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
                   </svg>
                   <span>Transmitir Vídeo</span>
                 </button>
-                <button onclick="deleteDevice('${dev.id}')" class="px-3 py-2 text-xs text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition" title="Desvincular e remover Totem">
-                  Desvincular
+                <button onclick="rejectAccess('${dev.id}')" class="px-3 py-2 text-xs text-rose-400 hover:bg-rose-500/10 rounded-xl transition font-medium" title="Recusar acesso e bloquear tela do Totem">
+                  Recusar Acesso
                 </button>
               ` : `
-                <button onclick="authorize('${dev.id}', true)" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition">
-                  Reautorizar
+                <button onclick="authorize('${dev.id}', true)" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition">
+                  Permitir Acesso
                 </button>
-                <button onclick="deleteDevice('${dev.id}')" class="px-3 py-2 text-xs text-rose-400 hover:bg-rose-500/10 rounded-xl transition">
-                  Excluir
+                <button onclick="deleteDevice('${dev.id}')" class="px-3 py-2 text-xs text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition">
+                  Remover
                 </button>
               `}
             </div>
@@ -708,14 +708,20 @@
     window.authorize = async function(deviceId, approve) {
       await window.supabaseEngine.authorizeDevice(deviceId, approve);
       pendingDeviceAlert.classList.add('hidden');
-      notify(approve ? '✅ Dispositivo autorizado com sucesso e mantido permanentemente!' : 'Dispositivo removido.');
+      notify(approve ? '✅ Dispositivo autorizado e mantido permanentemente!' : '⛔ Acesso do Totem recusado. Tela bloqueada.');
+    };
+
+    window.rejectAccess = async function(deviceId) {
+      if (!confirm('Deseja recusar o acesso deste Totem? A tela será bloqueada imediatamente.')) return;
+      await window.supabaseEngine.authorizeDevice(deviceId, false);
+      notify('⛔ Acesso ao Totem recusado. A tela foi bloqueada.');
     };
 
     window.deleteDevice = async function(deviceId) {
-      if (!confirm('Deseja realmente desvincular este Totem? A tela voltará a pedir autorização se for reaberta.')) return;
+      if (!confirm('Deseja remover este Totem da lista?')) return;
       await window.supabaseEngine.deleteDevice(deviceId);
       pendingDeviceAlert.classList.add('hidden');
-      notify('Totem desvinculado e removido com sucesso.');
+      notify('Totem removido com sucesso.');
     };
 
     // Notificação imediata de novo dispositivo pendente
