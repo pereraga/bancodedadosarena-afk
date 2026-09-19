@@ -240,28 +240,32 @@
       </div>
 
       <div class="max-w-xl mx-auto space-y-6">
-        <!-- OPÇÃO 1: UPLOAD DE ARQUIVO (ATÉ 200 MB) -->
+        <!-- OPÇÃO 1: UPLOAD DE ARQUIVO (ATÉ 50 MB NO PLANO GRÁTIS) -->
         <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 sm:p-8 space-y-5 shadow-xl">
           <div class="flex items-center justify-between pb-3 border-b border-slate-800">
             <h3 class="text-sm font-bold text-white flex items-center space-x-2">
               <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
-              <span>Opção 1: Enviar Arquivo de Vídeo</span>
+              <span>Opção 1: Upload Direto para o Supabase Storage</span>
             </h3>
             <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-              Até 200 MB
+              Até 50 MB (Plano Grátis)
             </span>
           </div>
+
+          <p class="text-xs text-slate-400">
+            O arquivo é enviado diretamente para o <strong>Supabase Storage</strong> e fica disponível na galeria para tocar na tela do cliente. <em>(Para vídeos maiores que 50 MB como 98 MB+, use a Opção 2 abaixo).</em>
+          </p>
 
           <form id="uploadForm" class="space-y-5">
             <!-- Campo: Nome do Vídeo -->
             <div>
               <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                Nome do Vídeo (Para você identificar) *
+                Nome do Vídeo (Para identificação) *
               </label>
               <input
                 type="text"
                 id="videoTitleInput"
-                placeholder="Ex: Comercial Vitrine 2026 / Promoção 01"
+                placeholder="Ex: Comercial Vitrine / Promoção da Semana"
                 required
                 class="w-full px-4 py-3 rounded-xl bg-slate-800/90 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
@@ -270,7 +274,7 @@
             <!-- Seletor de Arquivo de Vídeo -->
             <div>
               <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                Arquivo de Vídeo (MP4, WebM, MOV) - Suporta até 200 MB *
+                Arquivo de Vídeo (.mp4, .webm, .mov) *
               </label>
               <div class="border-2 border-dashed border-slate-700 hover:border-indigo-500 rounded-xl p-6 text-center cursor-pointer transition bg-slate-800/40" id="dropZone">
                 <input type="file" id="videoFileInput" accept="video/mp4,video/webm,video/quicktime" class="hidden" required>
@@ -281,9 +285,9 @@
                     </svg>
                   </div>
                   <div class="text-xs text-slate-300 font-medium" id="fileChosenText">
-                    Toque para escolher o vídeo no celular ou PC (Até 200 MB)
+                    Toque para escolher o vídeo no celular ou PC (Até 50 MB)
                   </div>
-                  <p class="text-[11px] text-slate-500">Aceita arquivos de vídeo de até 200 MB (.mp4, .webm, .mov)</p>
+                  <p class="text-[11px] text-slate-500">Envio direto ao Supabase Storage (.mp4, .webm, .mov)</p>
                 </div>
               </div>
             </div>
