@@ -30,7 +30,7 @@ class TotemCentralEngine {
     }
     return {
       url: 'https://qvnsahvdjhimlmtqrnif.supabase.co',
-      anonKey: ''
+      anonKey: 'sb_publishable_vvqh9vB0Dr0EqR9JGhy4kA_XnJ-9h0z'
     };
   }
 
