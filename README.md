@@ -1,6 +1,8 @@
-# Totem Play - Sistema de Exibição de Vídeo em Tempo Real
+# Totem Central - Sistema de Exibição de Vídeo em Tempo Real
 
-Aplicativo para celular (APK / PWA) que reproduz vídeos continuamente (modo totem/kiosk), sincronizado em tempo real com um banco de dados na nuvem (Firebase) e servidor local. Você pode trocar o vídeo remotamente a qualquer momento pelo computador ou por outro celular, e o celular de exibição troca na hora sem você tocar nele.
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fpereraga%2Fbancodedadosarena-afk)
+
+Aplicativo para celular (APK / PWA) e Central na nuvem da Vercel que reproduz vídeos continuamente (modo totem/kiosk), sincronizado em tempo real com o banco de dados Supabase e controle remoto.
 
 ---
 
