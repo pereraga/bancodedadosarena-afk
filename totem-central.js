@@ -357,13 +357,18 @@ class TotemCentralEngine {
     if (!file) throw new Error('Selecione um arquivo de vídeo.');
     if (!videoTitle) throw new Error('Informe um nome para o vídeo.');
 
+    const fileSizeMb = (file.size / (1024 * 1024)).toFixed(2);
+    const formattedSize = file.size >= 1024 * 1024 * 1024 
+      ? (file.size / (1024 * 1024 * 1024)).toFixed(2) + ' GB'
+      : fileSizeMb + ' MB';
+
     onProgress(10);
     const ext = file.name.split('.').pop() || 'mp4';
     const cleanTitle = videoTitle.toLowerCase().replace(/[^a-z0-9]/g, '-');
     const storagePath = `uploads/${Date.now()}-${cleanTitle}.${ext}`;
 
     onProgress(25);
-    // 1. Upload do Arquivo para o Bucket 'videos'
+    // 1. Upload do Arquivo para o Bucket 'videos' (Suporta até 5 GB)
     const { error: uploadError } = await this.client.storage
       .from('videos')
       .upload(storagePath, file, {
@@ -373,10 +378,10 @@ class TotemCentralEngine {
 
     if (uploadError) {
       if (uploadError.message && (uploadError.message.includes('Bucket not found') || uploadError.message.includes('bucket_not_found'))) {
-        throw new Error('O bucket "videos" ainda não foi criado no Supabase. Abra o SQL Editor no painel do Supabase e execute o script para criar o bucket "videos" público, ou crie o bucket "videos" na aba Storage.');
+        throw new Error('O bucket "videos" ainda não foi criado no Supabase. Abra o SQL Editor no painel do Supabase e execute o script para criar o bucket "videos" público com limite de 5 GB.');
       }
       if (uploadError.message && (uploadError.message.includes('exceeded the maximum allowed size') || uploadError.message.includes('Payload too large'))) {
-        throw new Error(`O vídeo selecionado possui ${fileSizeMb} MB e ultrapassou o limite máximo do Supabase (máx. 50 MB no plano gratuito). Reduza o vídeo ou remova o limite de tamanho nas configurações do bucket 'videos'.`);
+        throw new Error(`O vídeo selecionado possui ${formattedSize} e o Supabase retornou limite de tamanho excedido. No SQL Editor do Supabase, execute: UPDATE storage.buckets SET file_size_limit = 5368709120 WHERE id = 'videos'; para liberar 5 GB. Se o seu projeto estiver na cota gratuita geral, use a opção "Inserir Link Direto do Vídeo".`);
       }
       throw new Error('Falha no upload para o Supabase Storage: ' + uploadError.message);
     }
@@ -388,7 +393,6 @@ class TotemCentralEngine {
       .getPublicUrl(storagePath);
 
     const videoUrl = urlData.publicUrl;
-    const fileSizeMb = (file.size / (1024 * 1024)).toFixed(2);
 
     onProgress(85);
     // 3. Salvar metadados na tabela 'videos' com o Nome e o Usuário
@@ -415,7 +419,40 @@ class TotemCentralEngine {
       id: dbData ? dbData.id : 'vid-' + Date.now(),
       title: videoTitle,
       url: videoUrl,
-      fileSizeMb
+      fileSizeMb: formattedSize
+    };
+  }
+
+  // 4. INSERIR VÍDEO DIRETAMENTE POR LINK/URL (Até 5 GB ou Sem Limite)
+  async addVideoByUrl(videoTitle, videoUrl) {
+    if (!videoTitle) throw new Error('Informe o nome do vídeo');
+    if (!videoUrl) throw new Error('Informe o link direto do vídeo');
+    if (!this.client) throw new Error('Supabase não inicializado');
+
+    const cleanUrl = videoUrl.trim();
+    const { data: dbData, error: dbError } = await this.client
+      .from('videos')
+      .insert({
+        title: videoTitle.trim(),
+        storage_path: 'external-url',
+        video_url: cleanUrl,
+        file_size_mb: null,
+        user_id: this.currentUser ? this.currentUser.id : null
+      })
+      .select()
+      .single();
+
+    if (dbError) {
+      throw new Error('Erro ao salvar vídeo: ' + dbError.message);
+    }
+
+    await this.refreshCatalog();
+
+    return {
+      id: dbData ? dbData.id : 'vid-' + Date.now(),
+      title: videoTitle,
+      url: cleanUrl,
+      fileSizeMb: 'Link Direto'
     };
   }
 

@@ -320,63 +320,132 @@
           <p class="text-xs text-slate-400">O arquivo de vídeo será guardado na nuvem e ficará disponível para tocar em qualquer totem.</p>
         </div>
 
-        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-xl mx-auto space-y-5">
-          <form id="uploadForm" class="space-y-5">
-            <div>
-              <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                Nome do Vídeo (Para identificação) *
-              </label>
-              <input
-                type="text"
-                id="videoTitleInput"
-                placeholder="Ex: Comercial Vitrine / Promoção da Semana"
-                required
-                class="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
+        <div class="space-y-6 max-w-xl mx-auto">
+          <!-- OPÇÃO 1: UPLOAD DE ARQUIVO (ATÉ 5 GB) -->
+          <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-5">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+              <h4 class="text-sm font-bold text-white flex items-center space-x-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+                <span>Opção 1: Enviar Arquivo de Vídeo</span>
+              </h4>
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                Até 5 GB
+              </span>
             </div>
 
-            <div>
-              <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                Arquivo de Vídeo (.mp4, .webm, .mov) *
-              </label>
-              <div id="dropZone" class="border-2 border-dashed border-slate-700 hover:border-indigo-500 rounded-2xl p-6 text-center cursor-pointer transition bg-slate-950/60">
-                <input type="file" id="videoFileInput" accept="video/mp4,video/webm,video/quicktime" class="hidden" required>
-                <div class="space-y-2 flex flex-col items-center">
-                  <div class="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-                    </svg>
+            <form id="uploadForm" class="space-y-5">
+              <div>
+                <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                  Nome do Vídeo (Para identificação) *
+                </label>
+                <input
+                  type="text"
+                  id="videoTitleInput"
+                  placeholder="Ex: Comercial Vitrine / Promoção da Semana"
+                  required
+                  class="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                  Arquivo de Vídeo (.mp4, .webm, .mov) - Suporta até 5 GB *
+                </label>
+                <div id="dropZone" class="border-2 border-dashed border-slate-700 hover:border-indigo-500 rounded-2xl p-6 text-center cursor-pointer transition bg-slate-950/60">
+                  <input type="file" id="videoFileInput" accept="video/mp4,video/webm,video/quicktime" class="hidden" required>
+                  <div class="space-y-2 flex flex-col items-center">
+                    <div class="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
+                      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                      </svg>
+                    </div>
+                    <span id="filePickedText" class="text-xs text-slate-300 font-medium">
+                      Toque para escolher o vídeo no celular ou PC (Até 5 GB)
+                    </span>
+                    <p class="text-[11px] text-slate-500">Aceita arquivos de qualquer tamanho até 5 GB (.mp4, .webm, .mov)</p>
                   </div>
-                  <span id="filePickedText" class="text-xs text-slate-300 font-medium">
-                    Toque para escolher o vídeo no celular ou computador
-                  </span>
-                  <p class="text-[11px] text-slate-500">Formatos aceitos: MP4, WebM ou MOV</p>
                 </div>
               </div>
+
+              <!-- Progresso -->
+              <div id="progressBox" class="space-y-2 hidden">
+                <div class="flex justify-between text-xs text-slate-300">
+                  <span id="progressText">Enviando para o Supabase Storage...</span>
+                  <span id="progressPercent" class="font-bold text-indigo-400">0%</span>
+                </div>
+                <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                  <div id="progressBar" class="bg-gradient-to-r from-indigo-500 to-purple-500 h-full w-0 transition-all duration-200"></div>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                id="uploadSubmitBtn"
+                class="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-[0.99] text-white font-bold text-sm shadow-lg shadow-indigo-600/25 transition flex items-center justify-center space-x-2"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                </svg>
+                <span>Fazer Upload no Supabase</span>
+              </button>
+            </form>
+          </div>
+
+          <!-- OPÇÃO 2: INSERIR LINK DIRETO (SEM LIMITE / ATÉ 5 GB+) -->
+          <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-5">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+              <h4 class="text-sm font-bold text-white flex items-center space-x-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                <span>Opção 2: Inserir Link Direto do Vídeo</span>
+              </h4>
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                Sem limite de tamanho
+              </span>
             </div>
 
-            <!-- Progresso -->
-            <div id="progressBox" class="space-y-2 hidden">
-              <div class="flex justify-between text-xs text-slate-300">
-                <span id="progressText">Enviando para o Supabase Storage...</span>
-                <span id="progressPercent" class="font-bold text-indigo-400">0%</span>
-              </div>
-              <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
-                <div id="progressBar" class="bg-gradient-to-r from-indigo-500 to-purple-500 h-full w-0 transition-all duration-200"></div>
-              </div>
-            </div>
+            <p class="text-xs text-slate-400">
+              Vídeos pesados (1 GB a 5 GB+) hospedados em links diretos (Google Drive, Cloudflare R2, AWS S3, Bunny, etc.).
+            </p>
 
-            <button
-              type="submit"
-              id="uploadSubmitBtn"
-              class="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-[0.99] text-white font-bold text-sm shadow-lg shadow-indigo-600/25 transition flex items-center justify-center space-x-2"
-            >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-              </svg>
-              <span>Fazer Upload no Supabase</span>
-            </button>
-          </form>
+            <form id="indexLinkVideoForm" class="space-y-4">
+              <div>
+                <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                  Nome do Vídeo *
+                </label>
+                <input
+                  type="text"
+                  id="indexLinkTitle"
+                  placeholder="Ex: Vídeo Alta Definição 4K"
+                  required
+                  class="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                  URL / Link Direto (.mp4, .webm) *
+                </label>
+                <input
+                  type="url"
+                  id="indexLinkUrl"
+                  placeholder="https://exemplo.com/meu-video.mp4"
+                  required
+                  class="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono text-xs"
+                >
+              </div>
+
+              <button
+                type="submit"
+                id="indexLinkSubmitBtn"
+                class="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white font-bold text-sm shadow-lg shadow-emerald-600/25 transition flex items-center justify-center space-x-2"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                </svg>
+                <span>Adicionar Vídeo por Link</span>
+              </button>
+            </form>
+          </div>
         </div>
       </div>
 
@@ -766,20 +835,26 @@
       renderTotems(devices);
     };
 
-    // 5. UPLOAD DE VÍDEOS COM NOME NO SUPABASE STORAGE
+    // 5. UPLOAD DE VÍDEOS COM NOME NO SUPABASE STORAGE (ATÉ 5 GB)
+    const MAX_INDEX_UPLOAD_BYTES = 5368709120; // 5 GB
+
     dropZone.addEventListener('click', () => videoFileInput.click());
 
     videoFileInput.addEventListener('change', () => {
       if (videoFileInput.files.length > 0) {
         const file = videoFileInput.files[0];
         const sizeMb = file.size / (1024 * 1024);
-        if (sizeMb > 50) {
+        const formattedSize = file.size >= 1024 * 1024 * 1024
+          ? (file.size / (1024 * 1024 * 1024)).toFixed(2) + ' GB'
+          : sizeMb.toFixed(1) + ' MB';
+
+        if (file.size > MAX_INDEX_UPLOAD_BYTES) {
           filePickedText.innerHTML = `
-            <span class="text-amber-400 font-bold">${file.name}</span> (${sizeMb.toFixed(1)} MB)
-            <span class="block text-rose-400 text-xs font-semibold mt-1">⚠️ Este arquivo tem ${sizeMb.toFixed(1)} MB. O limite do Supabase (grátis) é 50 MB. Compacte ou envie um vídeo de até 50 MB.</span>
+            <span class="text-amber-400 font-bold">${file.name}</span> (${formattedSize})
+            <span class="block text-rose-400 text-xs font-semibold mt-1">⚠️ Este arquivo tem ${formattedSize}. O limite para envio direto é 5 GB. Envie um arquivo menor ou use a Opção 2 (Link Direto).</span>
           `;
         } else {
-          filePickedText.innerHTML = `<span class="text-indigo-400 font-bold">${file.name}</span> (${sizeMb.toFixed(1)} MB)`;
+          filePickedText.innerHTML = `<span class="text-indigo-400 font-bold">${file.name}</span> (${formattedSize})`;
         }
         if (!videoTitleInput.value) {
           videoTitleInput.value = file.name.replace(/\.[^/.]+$/, "");
@@ -797,8 +872,9 @@
         return;
       }
 
-      if (file.size > 52428800) {
-        alert(`⚠️ O vídeo possui ${(file.size / (1024*1024)).toFixed(1)} MB.\n\nO Supabase limita o upload a no máximo 50 MB por arquivo no plano gratuito.\n\nPor favor, use um vídeo compactado (1080p ou 720p de até 50 MB) para fazer o upload com sucesso.`);
+      if (file.size > MAX_INDEX_UPLOAD_BYTES) {
+        const formattedSize = (file.size / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+        alert(`⚠️ O vídeo possui ${formattedSize}.\n\nO limite máximo para upload direto de arquivos é de 5 GB.\n\nPara arquivos maiores, por favor utilize a Opção 2: "Inserir Link Direto do Vídeo".`);
         return;
       }
 
@@ -815,17 +891,51 @@
 
         notify(`✅ Vídeo "${title}" salvo com sucesso no Supabase!`);
         uploadForm.reset();
-        filePickedText.textContent = 'Toque para escolher o vídeo no celular ou computador';
+        filePickedText.textContent = 'Toque para escolher o vídeo no celular ou PC (Até 5 GB)';
         progressBox.classList.add('hidden');
         progressBar.style.width = '0%';
         setTab('gallery');
       } catch (err) {
-        alert('Erro ao enviar vídeo: ' + err.message);
+        alert('Erro ao enviar vídeo:\n\n' + err.message);
       } finally {
         uploadSubmitBtn.disabled = false;
         uploadSubmitBtn.classList.remove('opacity-50');
       }
     });
+
+    // 5.1. INSERIR VÍDEO POR LINK DIRETO NO INDEX
+    const indexLinkVideoForm = document.getElementById('indexLinkVideoForm');
+    const indexLinkTitle = document.getElementById('indexLinkTitle');
+    const indexLinkUrl = document.getElementById('indexLinkUrl');
+    const indexLinkSubmitBtn = document.getElementById('indexLinkSubmitBtn');
+
+    if (indexLinkVideoForm) {
+      indexLinkVideoForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const title = indexLinkTitle.value.trim();
+        const url = indexLinkUrl.value.trim();
+
+        if (!title || !url) {
+          alert('Por favor, preencha o nome e o link do vídeo.');
+          return;
+        }
+
+        indexLinkSubmitBtn.disabled = true;
+        indexLinkSubmitBtn.classList.add('opacity-50');
+
+        try {
+          await window.totemCentral.addVideoByUrl(title, url);
+          notify(`✅ Vídeo "${title}" adicionado com sucesso pelo link!`);
+          indexLinkVideoForm.reset();
+          setTab('gallery');
+        } catch (err) {
+          alert('Erro ao adicionar vídeo por link: ' + err.message);
+        } finally {
+          indexLinkSubmitBtn.disabled = false;
+          indexLinkSubmitBtn.classList.remove('opacity-50');
+        }
+      });
+    }
 
     // 6. RENDERIZAR GALERIA & TRANSMISSÃO EM TEMPO REAL
     let cachedVideos = [];

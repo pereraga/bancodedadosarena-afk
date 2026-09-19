@@ -421,8 +421,11 @@ class SupabaseEngine {
     if (!videoTitle) throw new Error('Informe o nome do vídeo');
 
     const fileSizeMb = (file.size / (1024 * 1024)).toFixed(2);
+    const formattedSize = file.size >= 1024 * 1024 * 1024
+      ? (file.size / (1024 * 1024 * 1024)).toFixed(2) + ' GB'
+      : fileSizeMb + ' MB';
 
-    // 1. Se estiver conectado ao Supabase, faz upload no Supabase Storage!
+    // 1. Se estiver conectado ao Supabase, faz upload no Supabase Storage (até 5 GB)
     if (this.client && this.isSupabaseConnected) {
       onProgress(10);
       const ext = file.name.split('.').pop() || 'mp4';
@@ -440,10 +443,10 @@ class SupabaseEngine {
 
       if (uploadError) {
         if (uploadError.message && (uploadError.message.includes('Bucket not found') || uploadError.message.includes('bucket_not_found'))) {
-          throw new Error('O bucket "videos" ainda não foi criado no Supabase. Abra o SQL Editor no painel do Supabase e execute o script para criar o bucket "videos" público, ou crie o bucket "videos" na aba Storage.');
+          throw new Error('O bucket "videos" ainda não foi criado no Supabase. Abra o SQL Editor no painel do Supabase e execute o script para criar o bucket "videos" público com limite de 5 GB.');
         }
         if (uploadError.message && (uploadError.message.includes('exceeded the maximum allowed size') || uploadError.message.includes('Payload too large'))) {
-          throw new Error(`O vídeo selecionado possui ${fileSizeMb} MB e ultrapassou o limite máximo do Supabase (máx. 50 MB no plano gratuito). Reduza o vídeo ou remova o limite de tamanho nas configurações do bucket 'videos'.`);
+          throw new Error(`O vídeo selecionado possui ${formattedSize} e o Supabase retornou limite de tamanho excedido. No SQL Editor do Supabase, execute: UPDATE storage.buckets SET file_size_limit = 5368709120 WHERE id = 'videos'; para liberar 5 GB. Se você estiver usando o plano gratuito do Supabase, utilize a opção "Inserir Link Direto do Vídeo".`);
         }
         throw new Error('Falha no upload do Supabase Storage: ' + uploadError.message);
       }
@@ -474,24 +477,28 @@ class SupabaseEngine {
       }
 
       // Sincronizar com o backend local também
-      await fetch('/api/videos/register-supabase', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: dbVideo ? dbVideo.id : 'supa-' + Date.now(),
-          title: videoTitle,
-          videoUrl,
-          fileSizeMb,
-          storagePath
-        })
-      });
+      try {
+        await fetch('/api/videos/register-supabase', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: dbVideo ? dbVideo.id : 'supa-' + Date.now(),
+            title: videoTitle,
+            videoUrl,
+            fileSizeMb: formattedSize,
+            storagePath
+          })
+        });
+      } catch (e) {}
 
       onProgress(100);
+      await this.fetchVideosFromSupabase();
+
       return {
         id: dbVideo ? dbVideo.id : 'vid-' + Date.now(),
         title: videoTitle,
         url: videoUrl,
-        fileSizeMb
+        fileSizeMb: formattedSize
       };
     }
 
@@ -523,6 +530,71 @@ class SupabaseEngine {
       xhr.onerror = () => reject(new Error('Erro de conexão no upload'));
       xhr.send(formData);
     });
+  }
+
+  // ADICIONAR VÍDEO DIRETAMENTE POR LINK/URL (Até 5 GB ou Sem Limite)
+  async addVideoByUrl(videoTitle, videoUrl) {
+    if (!videoTitle) throw new Error('Informe o nome do vídeo');
+    if (!videoUrl) throw new Error('Informe o link direto do vídeo');
+
+    const cleanUrl = videoUrl.trim();
+    const cleanTitle = videoTitle.trim();
+
+    if (this.client && this.isSupabaseConnected) {
+      const { data: dbVideo, error: dbError } = await this.client
+        .from('videos')
+        .insert({
+          title: cleanTitle,
+          storage_path: 'external-url',
+          video_url: cleanUrl,
+          file_size_mb: null
+        })
+        .select()
+        .single();
+
+      if (dbError) {
+        throw new Error('Erro ao salvar vídeo no Supabase: ' + dbError.message);
+      }
+
+      try {
+        await fetch('/api/videos/register-supabase', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: dbVideo ? dbVideo.id : 'supa-' + Date.now(),
+            title: cleanTitle,
+            videoUrl: cleanUrl,
+            fileSizeMb: 'Link Direto',
+            storagePath: 'external-url'
+          })
+        });
+      } catch (e) {}
+
+      await this.fetchVideosFromSupabase();
+
+      return {
+        id: dbVideo ? dbVideo.id : 'vid-' + Date.now(),
+        title: cleanTitle,
+        url: cleanUrl,
+        fileSizeMb: 'Link Direto'
+      };
+    } else {
+      // Modo local
+      const res = await fetch('/api/videos/register-supabase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: 'local-' + Date.now(),
+          title: cleanTitle,
+          videoUrl: cleanUrl,
+          fileSizeMb: 'Link Direto',
+          storagePath: 'external-url'
+        })
+      });
+      const data = await res.json();
+      await this.fetchVideosFromSupabase();
+      return data;
+    }
   }
 
   // TRANSMITIR VÍDEO EM TEMPO REAL
