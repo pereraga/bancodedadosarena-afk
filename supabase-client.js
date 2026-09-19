@@ -442,6 +442,9 @@ class SupabaseEngine {
         if (uploadError.message && (uploadError.message.includes('Bucket not found') || uploadError.message.includes('bucket_not_found'))) {
           throw new Error('O bucket "videos" ainda não foi criado no Supabase. Abra o SQL Editor no painel do Supabase e execute o script para criar o bucket "videos" público, ou crie o bucket "videos" na aba Storage.');
         }
+        if (uploadError.message && (uploadError.message.includes('exceeded the maximum allowed size') || uploadError.message.includes('Payload too large'))) {
+          throw new Error(`O vídeo selecionado possui ${fileSizeMb} MB e ultrapassou o limite máximo do Supabase (máx. 50 MB no plano gratuito). Reduza o vídeo ou remova o limite de tamanho nas configurações do bucket 'videos'.`);
+        }
         throw new Error('Falha no upload do Supabase Storage: ' + uploadError.message);
       }
 

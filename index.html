@@ -772,7 +772,15 @@
     videoFileInput.addEventListener('change', () => {
       if (videoFileInput.files.length > 0) {
         const file = videoFileInput.files[0];
-        filePickedText.innerHTML = `<span class="text-indigo-400 font-bold">${file.name}</span> (${(file.size / (1024*1024)).toFixed(1)} MB)`;
+        const sizeMb = file.size / (1024 * 1024);
+        if (sizeMb > 50) {
+          filePickedText.innerHTML = `
+            <span class="text-amber-400 font-bold">${file.name}</span> (${sizeMb.toFixed(1)} MB)
+            <span class="block text-rose-400 text-xs font-semibold mt-1">⚠️ Este arquivo tem ${sizeMb.toFixed(1)} MB. O limite do Supabase (grátis) é 50 MB. Compacte ou envie um vídeo de até 50 MB.</span>
+          `;
+        } else {
+          filePickedText.innerHTML = `<span class="text-indigo-400 font-bold">${file.name}</span> (${sizeMb.toFixed(1)} MB)`;
+        }
         if (!videoTitleInput.value) {
           videoTitleInput.value = file.name.replace(/\.[^/.]+$/, "");
         }
@@ -786,6 +794,11 @@
 
       if (!file) {
         alert('Selecione um arquivo de vídeo.');
+        return;
+      }
+
+      if (file.size > 52428800) {
+        alert(`⚠️ O vídeo possui ${(file.size / (1024*1024)).toFixed(1)} MB.\n\nO Supabase limita o upload a no máximo 50 MB por arquivo no plano gratuito.\n\nPor favor, use um vídeo compactado (1080p ou 720p de até 50 MB) para fazer o upload com sucesso.`);
         return;
       }
 
