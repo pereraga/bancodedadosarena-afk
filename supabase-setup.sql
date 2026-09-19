@@ -1,23 +1,33 @@
 -- =================================================================
--- SCRIPT COMPLETO DO SUPABASE PARA A TOTEM CENTRAL
--- Execute no SQL Editor do seu projeto Supabase (console.supabase.com)
+-- SCRIPT COMPLETO E AUTOMÁTICO DO SUPABASE PARA A TOTEM CENTRAL
+-- Execute no SQL Editor do seu projeto Supabase:
+-- https://supabase.com/dashboard/project/qvnsahvdjhimlmtqrnif/sql
 -- =================================================================
 
--- 1. BUCKET DE ARMAZENAMENTO PARA OS VÍDEOS
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('videos', 'videos', true)
-ON CONFLICT (id) DO NOTHING;
+-- 1. CRIAR BUCKET DE ARMAZENAMENTO PARA OS VÍDEOS ('videos' PÚBLICO)
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('videos', 'videos', true, null, null)
+ON CONFLICT (id) DO UPDATE SET public = true;
 
--- Políticas de acesso ao bucket
-CREATE POLICY "Leitura pública de vídeos para os Totens"
+-- Remover políticas antigas para evitar duplicações
+DROP POLICY IF EXISTS "Leitura pública de vídeos para os Totens" ON storage.objects;
+DROP POLICY IF EXISTS "Permitir upload de vídeos pelos usuários cadastrados" ON storage.objects;
+DROP POLICY IF EXISTS "Permitir exclusão de vídeos pelos usuários" ON storage.objects;
+DROP POLICY IF EXISTS "Acesso total publico ao bucket videos" ON storage.objects;
+DROP POLICY IF EXISTS "Permitir upload publico no bucket videos" ON storage.objects;
+DROP POLICY IF EXISTS "Permitir leitura publica no bucket videos" ON storage.objects;
+DROP POLICY IF EXISTS "Permitir delecao no bucket videos" ON storage.objects;
+
+-- Políticas de acesso completas ao bucket 'videos' (leitura, upload e exclusão)
+CREATE POLICY "Permitir leitura publica no bucket videos"
 ON storage.objects FOR SELECT
 USING (bucket_id = 'videos');
 
-CREATE POLICY "Permitir upload de vídeos pelos usuários cadastrados"
+CREATE POLICY "Permitir upload publico no bucket videos"
 ON storage.objects FOR INSERT
 WITH CHECK (bucket_id = 'videos');
 
-CREATE POLICY "Permitir exclusão de vídeos pelos usuários"
+CREATE POLICY "Permitir delecao no bucket videos"
 ON storage.objects FOR DELETE
 USING (bucket_id = 'videos');
 
@@ -26,9 +36,9 @@ CREATE TABLE IF NOT EXISTS public.devices (
     id TEXT PRIMARY KEY,
     device_name TEXT NOT NULL DEFAULT 'Modelo Totem',
     pair_code TEXT,
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    user_id UUID,
     ip_address TEXT,
-    status TEXT NOT NULL DEFAULT 'pending', -- 'pending' (querendo conectar), 'approved' (autorizado), 'rejected'
+    status TEXT NOT NULL DEFAULT 'pending', -- 'pending', 'approved', 'rejected'
     current_video_id UUID,
     last_seen TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
@@ -37,7 +47,7 @@ CREATE TABLE IF NOT EXISTS public.devices (
 -- 3. TABELA DE VÍDEOS COM NOME PERSONALIZADO
 CREATE TABLE IF NOT EXISTS public.videos (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    user_id UUID,
     title TEXT NOT NULL,
     storage_path TEXT NOT NULL,
     video_url TEXT NOT NULL,
@@ -49,7 +59,9 @@ CREATE TABLE IF NOT EXISTS public.videos (
 ALTER TABLE public.devices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.videos ENABLE ROW LEVEL SECURITY;
 
--- Políticas flexíveis para permitir pareamento e leitura da tela pública com segurança
+DROP POLICY IF EXISTS "Acesso aos dispositivos" ON public.devices;
+DROP POLICY IF EXISTS "Acesso aos vídeos" ON public.videos;
+
 CREATE POLICY "Acesso aos dispositivos" 
 ON public.devices FOR ALL 
 USING (true) 
@@ -60,6 +72,20 @@ ON public.videos FOR ALL
 USING (true) 
 WITH CHECK (true);
 
--- 5. ATIVAR SUPABASE REALTIME (Para transmissão e troca instantânea sem recarregar tela)
-ALTER PUBLICATION supabase_realtime ADD TABLE public.devices;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.videos;
+-- 5. ATIVAR SUPABASE REALTIME (Transmissão imediata em tempo real)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'devices'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.devices;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'videos'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.videos;
+  END IF;
+END $$;

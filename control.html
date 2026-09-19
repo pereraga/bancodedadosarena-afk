@@ -198,6 +198,47 @@
         <p class="text-xs text-slate-400">Selecione o arquivo do celular, defina um nome para identificá-lo e envie direto para o banco de dados.</p>
       </div>
 
+      <!-- AVISO DE CONFIGURAÇÃO DO BUCKET DO SUPABASE -->
+      <div id="bucketNotice" class="bg-gradient-to-r from-amber-950/40 via-slate-900 to-slate-900 border border-amber-500/30 rounded-2xl p-4 sm:p-5 text-amber-200 text-xs space-y-3 max-w-xl mx-auto shadow-lg">
+        <div class="flex items-start space-x-3">
+          <div class="p-2 rounded-xl bg-amber-500/20 text-amber-400 shrink-0">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </div>
+          <div class="space-y-1">
+            <h4 class="font-bold text-white text-sm">Configuração do Armazenamento de Vídeos</h4>
+            <p class="text-slate-300 text-[11px] leading-relaxed">
+              Se for a primeira vez fazendo upload, o Supabase precisa do bucket <strong>"videos"</strong> ativo. Clique em <strong>Copiar Script SQL</strong> e execute no <strong>SQL Editor</strong> do seu Supabase para ativar em 5 segundos.
+            </p>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-amber-500/20">
+          <a
+            href="https://supabase.com/dashboard/project/qvnsahvdjhimlmtqrnif/sql/new"
+            target="_blank"
+            class="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center space-x-1.5 transition shadow"
+          >
+            <span>Abrir SQL Editor no Supabase</span>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+            </svg>
+          </a>
+
+          <button
+            type="button"
+            id="copySqlSetupBtn"
+            class="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs border border-slate-700 flex items-center space-x-1.5 transition"
+          >
+            <svg class="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+            </svg>
+            <span id="copySqlBtnText">Copiar Código SQL</span>
+          </button>
+        </div>
+      </div>
+
       <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 sm:p-8 max-w-xl mx-auto space-y-5 shadow-xl">
         <form id="uploadForm" class="space-y-5">
           <!-- Campo: Nome do Vídeo -->
@@ -723,6 +764,56 @@
         startUploadBtn.classList.remove('opacity-50');
       }
     });
+
+    // Copiar Script SQL do Supabase
+    const copySqlSetupBtn = document.getElementById('copySqlSetupBtn');
+    const copySqlBtnText = document.getElementById('copySqlBtnText');
+
+    const SQL_SETUP_SCRIPT = `-- CRIAR BUCKET 'videos' PUBLICO E TABELAS
+INSERT INTO storage.buckets (id, name, public) VALUES ('videos', 'videos', true) ON CONFLICT (id) DO UPDATE SET public = true;
+DROP POLICY IF EXISTS "Permitir leitura publica no bucket videos" ON storage.objects;
+DROP POLICY IF EXISTS "Permitir upload publico no bucket videos" ON storage.objects;
+DROP POLICY IF EXISTS "Permitir delecao no bucket videos" ON storage.objects;
+CREATE POLICY "Permitir leitura publica no bucket videos" ON storage.objects FOR SELECT USING (bucket_id = 'videos');
+CREATE POLICY "Permitir upload publico no bucket videos" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'videos');
+CREATE POLICY "Permitir delecao no bucket videos" ON storage.objects FOR DELETE USING (bucket_id = 'videos');
+CREATE TABLE IF NOT EXISTS public.devices (id TEXT PRIMARY KEY, device_name TEXT NOT NULL DEFAULT 'Modelo Totem', pair_code TEXT, user_id UUID, ip_address TEXT, status TEXT NOT NULL DEFAULT 'pending', current_video_id UUID, last_seen TIMESTAMPTZ DEFAULT now(), created_at TIMESTAMPTZ DEFAULT now());
+CREATE TABLE IF NOT EXISTS public.videos (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID, title TEXT NOT NULL, storage_path TEXT NOT NULL, video_url TEXT NOT NULL, file_size_mb NUMERIC(10, 2), created_at TIMESTAMPTZ DEFAULT now());
+ALTER TABLE public.devices ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.videos ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Acesso aos dispositivos" ON public.devices;
+DROP POLICY IF EXISTS "Acesso aos vídeos" ON public.videos;
+CREATE POLICY "Acesso aos dispositivos" ON public.devices FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Acesso aos vídeos" ON public.videos FOR ALL USING (true) WITH CHECK (true);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'devices') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.devices;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'videos') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.videos;
+  END IF;
+END $$;`;
+
+    if (copySqlSetupBtn) {
+      copySqlSetupBtn.addEventListener('click', () => {
+        const doCopy = () => {
+          copySqlBtnText.textContent = 'Código Copiado!';
+          notify('✅ Script SQL copiado! Cole no SQL Editor do Supabase.');
+          setTimeout(() => { copySqlBtnText.textContent = 'Copiar Código SQL'; }, 2500);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(SQL_SETUP_SCRIPT).then(doCopy).catch(() => {
+            const ta = document.createElement('textarea');
+            ta.value = SQL_SETUP_SCRIPT;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            doCopy();
+          });
+        }
+      });
+    }
 
     // 4. MODAL SUPABASE
     openSupabaseModalBtn.addEventListener('click', () => {

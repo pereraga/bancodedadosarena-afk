@@ -439,6 +439,9 @@ class SupabaseEngine {
         });
 
       if (uploadError) {
+        if (uploadError.message && (uploadError.message.includes('Bucket not found') || uploadError.message.includes('bucket_not_found'))) {
+          throw new Error('O bucket "videos" ainda não foi criado no Supabase. Abra o SQL Editor no painel do Supabase e execute o script para criar o bucket "videos" público, ou crie o bucket "videos" na aba Storage.');
+        }
         throw new Error('Falha no upload do Supabase Storage: ' + uploadError.message);
       }
 
