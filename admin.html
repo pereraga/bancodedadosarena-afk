@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full bg-slate-950 text-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#020617">
+  <title>Painel de Controle - Totem Play</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Firebase SDK Compat -->
+  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore-compat.js"></script>
+</head>
+<body class="min-h-full flex flex-col font-sans antialiased bg-slate-950">
+
+  <!-- Cabeçalho Principal -->
+  <header class="border-b border-slate-800 bg-slate-900/60 backdrop-blur sticky top-0 z-30">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold text-white leading-tight">Totem Play • Controle Remoto</h1>
+          <p id="connectionStatusText" class="text-xs text-slate-400 flex items-center space-x-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse"></span>
+            <span>Conectado em tempo real</span>
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-2 sm:space-x-3">
+        <!-- Botão Abrir Modo Display / Player -->
+        <a href="player.html" target="_blank" class="px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium transition flex items-center space-x-2 border border-slate-700">
+          <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+          </svg>
+          <span class="hidden sm:inline">Abrir Player APK</span>
+        </a>
+
+        <!-- Botão Configurações Firebase -->
+        <button id="openConfigBtn" class="px-3.5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition flex items-center space-x-2 shadow-sm">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+          <span class="hidden sm:inline">Banco na Nuvem</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Conteúdo Principal -->
+  <main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 space-y-8">
+
+    <!-- Card: Vídeo Ativo no Momento (Em Exibição ao Vivo) -->
+    <section class="bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/40 rounded-2xl border border-indigo-500/30 p-5 sm:p-6 shadow-xl relative overflow-hidden">
+      <div class="absolute -right-10 -bottom-10 w-48 h-48 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div class="space-y-2 flex-1">
+          <div class="flex items-center space-x-2">
+            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center space-x-1.5">
+              <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+              <span>No Ar Agora (Ao Vivo)</span>
+            </span>
+            <span id="activeUpdatedBadge" class="text-xs text-slate-400">Atualizado recentemente</span>
+          </div>
+
+          <h2 id="activeVideoTitle" class="text-xl sm:text-2xl font-black text-white">Carregando vídeo ativo...</h2>
+          <p id="activeVideoUrl" class="text-xs text-slate-400 font-mono break-all max-w-2xl truncate">---</p>
+        </div>
+
+        <!-- Preview miniatura do vídeo ativo -->
+        <div class="w-full md:w-56 h-32 bg-black rounded-xl overflow-hidden border border-slate-800 shadow-inner relative flex items-center justify-center shrink-0">
+          <video id="adminPreviewVideo" class="w-full h-full object-cover" autoplay loop muted playsinline></video>
+          <div class="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/60 to-transparent"></div>
+          <span class="absolute bottom-2 left-2 text-[10px] font-semibold text-white/90 bg-black/70 px-2 py-0.5 rounded backdrop-blur">
+            Preview do Celular
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Grade: Adicionar Novo Vídeo + Catálogo de Vídeos -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+      <!-- Coluna da Esquerda: Formulário de Adição Rápida -->
+      <section class="lg:col-span-1 bg-slate-900/80 rounded-2xl border border-slate-800 p-6 space-y-5 h-fit">
+        <div>
+          <h3 class="text-base font-bold text-white flex items-center space-x-2">
+            <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span>Novo Vídeo</span>
+          </h3>
+          <p class="text-xs text-slate-400 mt-1">Insira um link direto de vídeo MP4, WebM ou arquivo na nuvem.</p>
+        </div>
+
+        <form id="addVideoForm" class="space-y-4">
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1.5">Título / Identificação</label>
+            <input
+              type="text"
+              id="newVideoTitle"
+              placeholder="Ex: Comercial Loja 2026"
+              required
+              class="w-full px-3.5 py-2.5 rounded-lg bg-slate-800/80 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1.5">Link Direto do Vídeo (URL MP4 / WebM)</label>
+            <input
+              type="url"
+              id="newVideoUrl"
+              placeholder="https://exemplo.com/meu-video.mp4"
+              required
+              class="w-full px-3.5 py-2.5 rounded-lg bg-slate-800/80 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs"
+            >
+          </div>
+
+          <div class="pt-2 flex flex-col space-y-2">
+            <button
+              type="submit"
+              class="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 active:scale-[0.99] text-white font-medium text-sm transition shadow-lg shadow-blue-600/20 flex items-center justify-center space-x-2"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+              </svg>
+              <span>Salvar no Banco</span>
+            </button>
+
+            <button
+              type="button"
+              id="quickPlayBtn"
+              class="w-full py-2 rounded-lg bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/30 text-xs font-medium transition flex items-center justify-center space-x-1.5"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+              </svg>
+              <span>Transmitir Direto Agora</span>
+            </button>
+          </div>
+        </form>
+
+        <div class="border-t border-slate-800 pt-4">
+          <h4 class="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">💡 Dica de Mídia</h4>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Você pode hospedar seus vídeos no <strong>Firebase Storage</strong>, <strong>Google Cloud</strong>, <strong>Dropbox</strong> (com <code>?raw=1</code>), <strong>Cloudinary</strong> ou qualquer servidor com link direto terminado em <code>.mp4</code>.
+          </p>
+        </div>
+      </section>
+
+      <!-- Coluna da Direita: Biblioteca de Vídeos Salvos -->
+      <section class="lg:col-span-2 bg-slate-900/80 rounded-2xl border border-slate-800 p-6 space-y-5">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-base font-bold text-white flex items-center space-x-2">
+              <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+              </svg>
+              <span>Biblioteca de Vídeos Cadastrados</span>
+            </h3>
+            <p class="text-xs text-slate-400 mt-0.5">Clique em "Transmitir Agora" para trocar o que está passando no celular instantaneamente.</p>
+          </div>
+          <span id="catalogCountBadge" class="text-xs bg-slate-800 text-slate-300 px-2.5 py-1 rounded-full border border-slate-700">0 vídeos</span>
+        </div>
+
+        <!-- Lista de Vídeos -->
+        <div id="videoListContainer" class="space-y-3">
+          <!-- Renderizado dinamicamente pelo JavaScript -->
+          <div class="text-center py-12 text-slate-500 text-sm">
+            Carregando catálogo de vídeos...
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+  </main>
+
+  <!-- Modal de Configuração do Firebase -->
+  <div id="configModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-xl w-full p-6 space-y-5 shadow-2xl relative">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+        <h3 class="text-lg font-bold text-white flex items-center space-x-2">
+          <span class="w-3 h-3 rounded-full bg-amber-400"></span>
+          <span>Configuração do Banco de Dados (Firebase)</span>
+        </h3>
+        <button id="closeConfigBtn" class="text-slate-400 hover:text-white p-1 rounded-lg">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="space-y-4 text-xs text-slate-300">
+        <p>
+          Para que você possa trocar o vídeo do celular de qualquer lugar do mundo (mesmo fora do seu Wi-Fi), conecte seu projeto do <strong>Google Firebase Firestore</strong> (gratuito).
+        </p>
+
+        <div>
+          <label class="block font-medium text-slate-200 mb-1">Cole aqui o objeto de configuração do Firebase (JSON):</label>
+          <textarea
+            id="firebaseConfigInput"
+            rows="7"
+            class="w-full p-3 rounded-lg bg-slate-950 border border-slate-700 text-slate-200 font-mono text-[11px] focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder='{
+  "apiKey": "AIzaSy...",
+  "authDomain": "seu-projeto.firebaseapp.com",
+  "projectId": "seu-projeto",
+  "storageBucket": "seu-projeto.appspot.com",
+  "messagingSenderId": "123456789",
+  "appId": "1:123456789:web:abcdef"
+}'></textarea>
+        </div>
+
+        <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1">
+          <p class="font-semibold text-slate-200">Como obter no Firebase (1 minuto):</p>
+          <ol class="list-decimal list-inside space-y-0.5 text-slate-400">
+            <li>Acesse <a href="https://console.firebase.google.com" target="_blank" class="text-blue-400 underline">console.firebase.google.com</a>.</li>
+            <li>Crie um projeto grátis e ative o <strong>Cloud Firestore</strong> em modo de teste.</li>
+            <li>Em Configurações do Projeto > Geral > Seus aplicativos, crie um app Web e copie o <code>firebaseConfig</code>.</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between border-t border-slate-800 pt-4">
+        <button id="clearConfigBtn" class="text-xs text-rose-400 hover:text-rose-300 underline">
+          Restaurar Modo Local
+        </button>
+
+        <div class="flex space-x-2">
+          <button id="cancelConfigBtn" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium">
+            Cancelar
+          </button>
+          <button id="saveConfigBtn" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium shadow-md shadow-blue-600/20">
+            Salvar e Conectar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Flutuante -->
+  <div id="adminToast" class="fixed bottom-6 right-6 bg-blue-600 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center space-x-2.5 z-50 transition-all duration-300 opacity-0 translate-y-4 pointer-events-none">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+    </svg>
+    <span id="adminToastMsg" class="text-sm font-medium">Operação realizada com sucesso!</span>
+  </div>
+
+  <!-- Scripts -->
+  <script src="sync-engine.js"></script>
+  <script>
+    const activeVideoTitle = document.getElementById('activeVideoTitle');
+    const activeVideoUrl = document.getElementById('activeVideoUrl');
+    const activeUpdatedBadge = document.getElementById('activeUpdatedBadge');
+    const adminPreviewVideo = document.getElementById('adminPreviewVideo');
+    const connectionStatusText = document.getElementById('connectionStatusText');
+    const videoListContainer = document.getElementById('videoListContainer');
+    const catalogCountBadge = document.getElementById('catalogCountBadge');
+    const addVideoForm = document.getElementById('addVideoForm');
+    const newVideoTitle = document.getElementById('newVideoTitle');
+    const newVideoUrl = document.getElementById('newVideoUrl');
+    const quickPlayBtn = document.getElementById('quickPlayBtn');
+    
+    // Config Modal Elements
+    const openConfigBtn = document.getElementById('openConfigBtn');
+    const closeConfigBtn = document.getElementById('closeConfigBtn');
+    const cancelConfigBtn = document.getElementById('cancelConfigBtn');
+    const saveConfigBtn = document.getElementById('saveConfigBtn');
+    const clearConfigBtn = document.getElementById('clearConfigBtn');
+    const configModal = document.getElementById('configModal');
+    const firebaseConfigInput = document.getElementById('firebaseConfigInput');
+
+    // Toast
+    const adminToast = document.getElementById('adminToast');
+    const adminToastMsg = document.getElementById('adminToastMsg');
+
+    function notify(message) {
+      adminToastMsg.textContent = message;
+      adminToast.classList.remove('opacity-0', 'translate-y-4');
+      adminToast.classList.add('opacity-100', 'translate-y-0');
+      setTimeout(() => {
+        adminToast.classList.remove('opacity-100', 'translate-y-0');
+        adminToast.classList.add('opacity-0', 'translate-y-4');
+      }, 3500);
+    }
+
+    // 1. Renderizar Vídeo Ativo
+    function updateActiveVideoUI(video) {
+      if (!video) return;
+      activeVideoTitle.textContent = video.title || 'Vídeo sem título';
+      activeVideoUrl.textContent = video.url;
+      if (video.updatedAt) {
+        const date = new Date(video.updatedAt);
+        activeUpdatedBadge.textContent = `Trocou às ${date.toLocaleTimeString()}`;
+      }
+      if (adminPreviewVideo.src !== video.url) {
+        adminPreviewVideo.src = video.url;
+        adminPreviewVideo.play().catch(() => {});
+      }
+      renderCatalog(window.syncEngine.videos);
+    }
+
+    // 2. Renderizar Catálogo
+    function renderCatalog(videos) {
+      if (!videos || videos.length === 0) {
+        videoListContainer.innerHTML = `
+          <div class="text-center py-12 text-slate-500 text-sm">
+            Nenhum vídeo cadastrado no momento. Adicione um no formulário ao lado!
+          </div>
+        `;
+        catalogCountBadge.textContent = '0 vídeos';
+        return;
+      }
+
+      catalogCountBadge.textContent = `${videos.length} vídeo${videos.length > 1 ? 's' : ''}`;
+
+      const activeId = window.syncEngine.currentVideo ? window.syncEngine.currentVideo.id : null;
+      const activeUrl = window.syncEngine.currentVideo ? window.syncEngine.currentVideo.url : null;
+
+      videoListContainer.innerHTML = videos.map(vid => {
+        const isCurrent = (vid.id && vid.id === activeId) || (vid.url === activeUrl);
+
+        return `
+          <div class="p-4 rounded-xl border transition flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
+            isCurrent
+              ? 'bg-indigo-950/40 border-indigo-500/50 shadow-md shadow-indigo-950/30'
+              : 'bg-slate-900 border-slate-800 hover:border-slate-700'
+          }">
+            <div class="flex items-start space-x-3 flex-1 min-w-0">
+              <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                isCurrent ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400'
+              }">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                </svg>
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center space-x-2">
+                  <h4 class="text-sm font-semibold text-white truncate">${escapeHtml(vid.title)}</h4>
+                  ${isCurrent ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">AO VIVO</span>' : ''}
+                </div>
+                <p class="text-xs text-slate-400 font-mono truncate mt-0.5">${escapeHtml(vid.url)}</p>
+              </div>
+            </div>
+
+            <div class="flex items-center space-x-2 w-full sm:w-auto justify-end">
+              <button
+                onclick="transmitVideo('${vid.id}')"
+                class="px-3.5 py-1.5 rounded-lg text-xs font-medium transition flex items-center space-x-1.5 ${
+                  isCurrent
+                    ? 'bg-slate-800 text-slate-400 cursor-default'
+                    : 'bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white shadow-md shadow-indigo-600/20'
+                }"
+                ${isCurrent ? 'disabled' : ''}
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                </svg>
+                <span>${isCurrent ? 'Em Exibição' : 'Transmitir Agora'}</span>
+              </button>
+
+              <button
+                onclick="removeVideo('${vid.id}')"
+                class="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition"
+                title="Excluir da lista"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function escapeHtml(string) {
+      if (!string) return '';
+      return String(string)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // 3. Ações
+    window.transmitVideo = async function(videoId) {
+      const vid = window.syncEngine.videos.find(v => v.id === videoId);
+      if (!vid) return;
+      try {
+        await window.syncEngine.changeActiveVideo(vid);
+        notify(`⚡ Transmitindo agora: "${vid.title}"`);
+      } catch (err) {
+        console.error('Erro ao trocar vídeo:', err);
+        notify('Erro ao transmitir: ' + err.message);
+      }
+    };
+
+    window.removeVideo = async function(videoId) {
+      if (!confirm('Deseja realmente remover este vídeo da lista?')) return;
+      try {
+        await window.syncEngine.deleteVideo(videoId);
+        notify('Vídeo removido com sucesso.');
+      } catch (err) {
+        console.error('Erro ao remover vídeo:', err);
+        notify('Erro ao remover: ' + err.message);
+      }
+    };
+
+    // 4. Submissão do Formulário
+    addVideoForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const title = newVideoTitle.value.trim();
+      const url = newVideoUrl.value.trim();
+      if (!url) return;
+
+      try {
+        await window.syncEngine.addVideoToCatalog(title, url);
+        newVideoTitle.value = '';
+        newVideoUrl.value = '';
+        notify(`Vídeo "${title}" adicionado à lista!`);
+      } catch (err) {
+        console.error('Erro ao adicionar vídeo:', err);
+        notify('Erro ao adicionar: ' + err.message);
+      }
+    });
+
+    quickPlayBtn.addEventListener('click', async () => {
+      const title = newVideoTitle.value.trim() || 'Vídeo Rápido';
+      const url = newVideoUrl.value.trim();
+      if (!url) {
+        alert('Por favor, informe a URL do vídeo primeiro.');
+        return;
+      }
+
+      try {
+        await window.syncEngine.changeActiveVideo({ title, url });
+        notify(`🚀 Transmitindo imediatamente para o celular!`);
+      } catch (err) {
+        console.error('Erro:', err);
+        notify('Erro: ' + err.message);
+      }
+    });
+
+    // 5. Configuração do Modal do Firebase
+    openConfigBtn.addEventListener('click', () => {
+      const current = localStorage.getItem('totemplay_firebase_config');
+      if (current) {
+        firebaseConfigInput.value = JSON.stringify(JSON.parse(current), null, 2);
+      }
+      configModal.classList.remove('hidden');
+    });
+
+    closeConfigBtn.addEventListener('click', () => configModal.classList.add('hidden'));
+    cancelConfigBtn.addEventListener('click', () => configModal.classList.add('hidden'));
+
+    saveConfigBtn.addEventListener('click', () => {
+      try {
+        const raw = firebaseConfigInput.value.trim();
+        if (!raw) return;
+        const config = JSON.parse(raw);
+        window.syncEngine.setFirebaseConfig(config);
+        configModal.classList.add('hidden');
+        notify('✅ Firebase conectado com sucesso!');
+        setTimeout(() => window.location.reload(), 1000);
+      } catch (e) {
+        alert('Formato de configuração inválido. Certifique-se de colar um JSON válido.');
+      }
+    });
+
+    clearConfigBtn.addEventListener('click', () => {
+      if (confirm('Deseja limpar as credenciais do Firebase e voltar para o servidor local?')) {
+        window.syncEngine.clearFirebaseConfig();
+      }
+    });
+
+    // 6. Ouvintes do SyncEngine
+    window.syncEngine.callbacks.onVideoChanged = (video) => {
+      updateActiveVideoUI(video);
+    };
+
+    window.syncEngine.callbacks.onCatalogUpdated = (videos) => {
+      renderCatalog(videos);
+    };
+
+    window.syncEngine.callbacks.onStatusChanged = (status) => {
+      connectionStatusText.innerHTML = `
+        <span class="w-2 h-2 rounded-full ${status.connected ? 'bg-emerald-400' : 'bg-amber-400'} inline-block ${status.connected ? 'animate-pulse' : ''}"></span>
+        <span>${status.message}</span>
+      `;
+    };
+  </script>
+</body>
+</html>

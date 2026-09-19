@@ -1,0 +1,53 @@
+{
+  "currentVideo": {
+    "id": "demo-1",
+    "title": "Vídeo Demonstrativo 1 (Big Buck Bunny)",
+    "url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+    "createdAt": "2026-09-19T11:56:35.928Z",
+    "updatedAt": "2026-09-19T11:57:42.420Z"
+  },
+  "videos": [
+    {
+      "id": "demo-1",
+      "title": "Vídeo Demonstrativo 1 (Big Buck Bunny)",
+      "url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+      "createdAt": "2026-09-19T11:56:35.928Z"
+    },
+    {
+      "id": "demo-2",
+      "title": "Vídeo Demonstrativo 2 (Elephants Dream)",
+      "url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+      "createdAt": "2026-09-19T11:56:35.928Z"
+    },
+    {
+      "id": "demo-3",
+      "title": "Vídeo Demonstrativo 3 (Tears of Steel)",
+      "url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
+      "createdAt": "2026-09-19T11:56:35.928Z"
+    },
+    {
+      "id": "demo-4",
+      "title": "Vídeo Demonstrativo 4 (For Bigger Blazes)",
+      "url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+      "createdAt": "2026-09-19T11:56:35.928Z"
+    }
+  ],
+  "devices": [
+    {
+      "id": "totem-sala-01",
+      "deviceName": "Modelo Totem",
+      "ipAddress": "127.0.0.1",
+      "status": "approved",
+      "currentVideoId": "demo-1",
+      "lastSeen": "2026-09-19T12:02:43.696Z"
+    },
+    {
+      "id": "totem-mrpbp8z",
+      "deviceName": "Modelo Totem",
+      "ipAddress": "127.0.0.1",
+      "status": "approved",
+      "currentVideoId": "demo-1",
+      "lastSeen": "2026-09-19T12:04:05.139Z"
+    }
+  ]
+}

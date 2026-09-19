@@ -1,0 +1,18 @@
+{
+  "name": "Totem Central - Gestão e Exibição de Vídeos",
+  "short_name": "TotemCentral",
+  "description": "Plataforma centralizada na Vercel para controle e reprodução de vídeos em totens",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

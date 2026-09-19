@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full bg-black">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Totem Screen - Tela Base</title>
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest-screen.json">
+  <link rel="icon" type="image/svg+xml" href="icon-screen.svg">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Supabase JS CDN Oficial -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    body {
+      overflow: hidden;
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .video-fade {
+      transition: opacity 0.5s ease-in-out;
+    }
+  </style>
+</head>
+<body class="h-full w-full flex items-center justify-center bg-black text-white relative font-sans">
+
+  <!-- 1. TELA DE ESPERA & PAREAMENTO COM A TOTEM CENTRAL -->
+  <div id="waitScreen" class="absolute inset-0 z-50 bg-slate-950 flex flex-col items-center justify-center p-6 text-center space-y-6">
+    <div class="relative">
+      <div class="w-24 h-24 rounded-3xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-2xl shadow-blue-500/30">
+        <svg class="w-12 h-12 text-white animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+        </svg>
+      </div>
+      <span class="absolute -bottom-1 -right-1 flex h-6 w-6">
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+        <span class="relative inline-flex rounded-full h-6 w-6 bg-amber-500 border-2 border-slate-950 items-center justify-center text-[10px] font-bold">!</span>
+      </span>
+    </div>
+
+    <div class="space-y-2 max-w-md">
+      <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 inline-block">
+        Aguardando Conexão
+      </span>
+      <h1 class="text-2xl sm:text-3xl font-black text-white">Totem Pronto na Nuvem</h1>
+      <p class="text-slate-400 text-xs sm:text-sm">
+        Abra a <strong>Totem Central</strong> no seu cadastro para autorizar o acesso deste dispositivo.
+      </p>
+    </div>
+
+    <!-- Informações do Dispositivo -->
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 max-w-sm w-full space-y-3.5 text-left">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <span class="text-xs text-slate-400">Nome do Totem:</span>
+        <div class="flex items-center space-x-1.5">
+          <input
+            type="text"
+            id="screenNameInput"
+            value="Modelo Totem"
+            class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white font-bold text-right focus:outline-none focus:ring-1 focus:ring-blue-500 w-36"
+          >
+          <button id="saveScreenNameBtn" class="text-[10px] bg-blue-600 hover:bg-blue-500 px-2.5 py-1.5 rounded-lg text-white font-bold transition">
+            OK
+          </button>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between text-xs">
+        <span class="text-slate-400">Identificador (ID):</span>
+        <span id="screenDeviceId" class="font-mono text-slate-200 font-bold">totem-xxxx</span>
+      </div>
+
+      <div class="flex items-center justify-between text-xs">
+        <span class="text-slate-400">Status:</span>
+        <span id="waitStatus" class="text-amber-400 font-bold flex items-center space-x-1.5">
+          <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+          <span>Aguardando Autorização...</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="flex items-center space-x-3 text-xs">
+      <a href="/" class="text-slate-500 hover:text-slate-300 underline">Voltar para a Central</a>
+    </div>
+  </div>
+
+  <!-- 2. PLAYER DE VÍDEO KIOSK (Tela Cheia, WakeLock e Loop) -->
+  <div id="playerBox" class="w-full h-full relative overflow-hidden flex items-center justify-center">
+    <video
+      id="videoElem"
+      class="w-full h-full object-contain video-fade opacity-0"
+      autoplay
+      loop
+      playsinline
+      muted
+    ></video>
+
+    <!-- Overlay de Carregamento -->
+    <div id="loaderOverlay" class="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-20 transition-opacity duration-300">
+      <div class="animate-spin rounded-full h-14 w-14 border-t-4 border-b-4 border-blue-500 mb-3"></div>
+      <p id="loaderMsg" class="text-slate-300 text-sm font-medium">Conectando à Totem Central...</p>
+    </div>
+
+    <!-- Barra Superior Flutuante (Oculta automaticamente após 3 segundos) -->
+    <header id="screenHeader" class="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/80 to-transparent z-30 flex items-center justify-between transition-opacity duration-500 opacity-90 hover:opacity-100">
+      <div class="flex items-center space-x-3">
+        <span class="flex h-3 w-3 relative">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+        </span>
+        <div>
+          <span id="videoTitleNow" class="text-sm font-bold text-white tracking-wide block truncate max-w-[220px] sm:max-w-md">
+            Vídeo de Exibição
+          </span>
+          <span id="deviceTitleBadge" class="text-[10px] text-emerald-400 font-medium">
+            Modelo Totem • Conectado à Totem Central
+          </span>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-2">
+        <button id="audioBtn" class="p-2.5 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur transition" title="Alternar Som">
+          <svg id="iconMute" class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/>
+          </svg>
+          <svg id="iconAudio" class="w-5 h-5 text-white hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+          </svg>
+        </button>
+
+        <button id="fullBtn" class="p-2.5 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur transition" title="Tela Cheia">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0 0l-5-5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Notificação Flutuante -->
+    <div id="screenToast" class="absolute bottom-6 bg-blue-600/90 backdrop-blur text-white px-5 py-2.5 rounded-full shadow-2xl flex items-center space-x-2 z-40 transition-all duration-300 opacity-0 translate-y-4 pointer-events-none">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+      </svg>
+      <span id="screenToastMsg" class="text-sm font-medium">Novo vídeo acionado!</span>
+    </div>
+  </div>
+
+  <!-- SCRIPTS -->
+  <script src="totem-central.js"></script>
+  <script>
+    const waitScreen = document.getElementById('waitScreen');
+    const screenNameInput = document.getElementById('screenNameInput');
+    const saveScreenNameBtn = document.getElementById('saveScreenNameBtn');
+    const screenDeviceId = document.getElementById('screenDeviceId');
+    const waitStatus = document.getElementById('waitStatus');
+
+    const videoElem = document.getElementById('videoElem');
+    const loaderOverlay = document.getElementById('loaderOverlay');
+    const loaderMsg = document.getElementById('loaderMsg');
+    const videoTitleNow = document.getElementById('videoTitleNow');
+    const deviceTitleBadge = document.getElementById('deviceTitleBadge');
+    const screenHeader = document.getElementById('screenHeader');
+    const screenToast = document.getElementById('screenToast');
+    const screenToastMsg = document.getElementById('screenToastMsg');
+    const audioBtn = document.getElementById('audioBtn');
+    const iconMute = document.getElementById('iconMute');
+    const iconAudio = document.getElementById('iconAudio');
+    const fullBtn = document.getElementById('fullBtn');
+
+    let currentUrl = null;
+    let wakeLock = null;
+    let hideTimer = null;
+
+    function toast(text) {
+      screenToastMsg.textContent = text;
+      screenToast.classList.remove('opacity-0', 'translate-y-4');
+      screenToast.classList.add('opacity-100', 'translate-y-0');
+      setTimeout(() => {
+        screenToast.classList.remove('opacity-100', 'translate-y-0');
+        screenToast.classList.add('opacity-0', 'translate-y-4');
+      }, 3000);
+    }
+
+    function scheduleHeaderHide() {
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(() => {
+        screenHeader.classList.add('opacity-0');
+      }, 3500);
+    }
+
+    window.addEventListener('mousemove', () => {
+      screenHeader.classList.remove('opacity-0');
+      scheduleHeaderHide();
+    });
+    window.addEventListener('touchstart', () => {
+      screenHeader.classList.remove('opacity-0');
+      scheduleHeaderHide();
+    });
+    scheduleHeaderHide();
+
+    // Wake Lock (não apagar a tela)
+    async function initWakeLock() {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await navigator.wakeLock.request('screen');
+        }
+      } catch (e) {}
+    }
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') initWakeLock();
+    });
+
+    // 1. REGISTRAR TELA
+    async function startRegistration() {
+      const name = screenNameInput.value.trim() || 'Modelo Totem';
+      const dev = await window.totemCentral.registerScreenDevice(name);
+      screenDeviceId.textContent = dev.id;
+    }
+
+    saveScreenNameBtn.addEventListener('click', () => {
+      startRegistration();
+      toast('Nome atualizado na Central!');
+    });
+
+    // 2. DESBLOQUEAR AO SER AUTORIZADO
+    function unlockPlayer(name) {
+      waitScreen.classList.add('hidden');
+      deviceTitleBadge.textContent = `${name || 'Modelo Totem'} • Conectado à Totem Central`;
+      initWakeLock();
+      toast('Conexão autorizada pela Totem Central!');
+    }
+
+    // 3. REPRODUZIR VÍDEO
+    function playVideo(video) {
+      if (!video || !video.url) return;
+      if (currentUrl === video.url) return;
+
+      currentUrl = video.url;
+      videoTitleNow.textContent = video.title || 'Vídeo em Exibição';
+      toast(`▶ Reproduzindo: ${video.title}`);
+
+      videoElem.classList.remove('opacity-100');
+      videoElem.classList.add('opacity-0');
+      loaderOverlay.classList.remove('opacity-0', 'pointer-events-none');
+      loaderMsg.textContent = `Carregando: ${video.title}...`;
+
+      videoElem.src = video.url;
+      videoElem.load();
+
+      videoElem.oncanplay = () => {
+        videoElem.play().then(() => {
+          loaderOverlay.classList.add('opacity-0', 'pointer-events-none');
+          videoElem.classList.remove('opacity-0');
+          videoElem.classList.add('opacity-100');
+          initWakeLock();
+        }).catch(() => {
+          videoElem.muted = true;
+          videoElem.play();
+          loaderOverlay.classList.add('opacity-0', 'pointer-events-none');
+          videoElem.classList.remove('opacity-0');
+          videoElem.classList.add('opacity-100');
+        });
+      };
+    }
+
+    // 4. LISTENERS EM TEMPO REAL
+    window.totemCentral.listeners.onDeviceApproved = (device) => {
+      if (device.status === 'approved') {
+        unlockPlayer(screenNameInput.value);
+      } else if (device.status === 'rejected') {
+        waitScreen.classList.remove('hidden');
+        waitStatus.innerHTML = '<span class="text-rose-400 font-bold">Acesso recusado na Central</span>';
+      }
+    };
+
+    window.totemCentral.listeners.onVideoCommandReceived = (video) => {
+      unlockPlayer(screenNameInput.value);
+      playVideo(video);
+    };
+
+    // Áudio e Fullscreen
+    audioBtn.addEventListener('click', () => {
+      videoElem.muted = !videoElem.muted;
+      if (videoElem.muted) {
+        iconMute.classList.remove('hidden');
+        iconAudio.classList.add('hidden');
+        toast('Áudio silenciado 🔇');
+      } else {
+        iconMute.classList.add('hidden');
+        iconAudio.classList.remove('hidden');
+        toast('Áudio ativado 🔊');
+      }
+    });
+
+    fullBtn.addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen();
+      }
+    });
+
+    startRegistration();
+    setInterval(startRegistration, 20000);
+    window.addEventListener('click', () => initWakeLock(), { once: true });
+  </script>
+</body>
+</html>

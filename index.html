@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full bg-slate-950 text-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#020617">
+  <title>Totem Central - Gestão e Exibição de Vídeos em Tempo Real</title>
+
+  <!-- PWA Manifest da Totem Central -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Supabase JS CDN Oficial -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="min-h-full flex flex-col font-sans bg-slate-950 text-slate-100 antialiased">
+
+  <!-- CABEÇALHO GLOBAL DA TOTEM CENTRAL -->
+  <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-base sm:text-lg font-black tracking-tight text-white flex items-center space-x-1.5">
+            <span>Totem Central</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">Vercel Cloud</span>
+          </h1>
+          <p id="headerStatus" class="text-[11px] text-slate-400 flex items-center space-x-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse"></span>
+            <span>Pronto e Conectado</span>
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-2.5">
+        <!-- Botão Abrir Tela Totem Kiosk -->
+        <a
+          href="/screen.html"
+          target="_blank"
+          class="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center space-x-1.5 border border-slate-700 transition"
+          title="Abrir a tela que vai rodar no celular de exibição"
+        >
+          <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+          </svg>
+          <span class="hidden sm:inline">Abrir Tela Totem</span>
+        </a>
+
+        <!-- Botão Chaves do Supabase -->
+        <button id="openConfigBtn" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition" title="Configurar Supabase">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+        </button>
+
+        <!-- Botão Logout (Exibido se logado) -->
+        <button id="logoutBtn" class="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-semibold border border-rose-500/30 transition hidden">
+          Sair
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- BANNER: NOTIFICAÇÃO EM TEMPO REAL DE NOVO TOTEM QUERENDO CONEXÃO -->
+  <div id="totemRequestBanner" class="bg-gradient-to-r from-amber-600 via-orange-600 to-rose-600 text-white p-4 shadow-xl hidden transition-all">
+    <div class="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div class="flex items-center space-x-3 text-center sm:text-left">
+        <div class="p-2.5 bg-black/20 rounded-2xl shrink-0">
+          <svg class="w-6 h-6 text-white animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+          </svg>
+        </div>
+        <div>
+          <h4 class="font-black text-sm">Dispositivo querendo se conectar ao seu cadastro!</h4>
+          <p id="totemRequestText" class="text-xs text-amber-100">
+            O dispositivo "Modelo Totem" solicitou acesso.
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-2">
+        <button id="rejectTotemBtn" class="px-3.5 py-1.5 rounded-xl bg-black/30 hover:bg-black/40 text-xs font-semibold transition">
+          Recusar
+        </button>
+        <button id="approveTotemBtn" class="px-4 py-1.5 rounded-xl bg-white text-slate-900 hover:bg-slate-100 text-xs font-bold shadow-lg transition">
+          Autorizar Acesso
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTAINER DE TELAS -->
+  <main class="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 flex flex-col">
+
+    <!-- 1. TELA DE AUTENTICAÇÃO (LOGIN / CADASTRO) -->
+    <section id="authSection" class="flex-1 flex items-center justify-center py-8">
+      <div class="max-w-md w-full bg-slate-900/80 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl">
+        <div class="text-center space-y-2">
+          <div class="w-14 h-14 rounded-2xl bg-indigo-600/20 text-indigo-400 mx-auto flex items-center justify-center mb-2">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+            </svg>
+          </div>
+          <h2 id="authTitle" class="text-2xl font-black text-white">Acesse a Totem Central</h2>
+          <p id="authSubtitle" class="text-xs text-slate-400">
+            Cadastre-se ou entre para vincular seus totens e controlar seus vídeos na nuvem.
+          </p>
+        </div>
+
+        <!-- Seletor de Modo (Entrar vs Criar Cadastro) -->
+        <div class="flex p-1 bg-slate-950 rounded-xl border border-slate-800 text-xs">
+          <button id="modeSignInBtn" class="flex-1 py-2 rounded-lg font-bold bg-indigo-600 text-white transition">
+            Entrar
+          </button>
+          <button id="modeSignUpBtn" class="flex-1 py-2 rounded-lg font-semibold text-slate-400 hover:text-white transition">
+            Criar Cadastro
+          </button>
+        </div>
+
+        <form id="authForm" class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1.5">E-mail</label>
+            <input
+              type="email"
+              id="authEmail"
+              required
+              placeholder="seuemail@exemplo.com"
+              class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1.5">Senha</label>
+            <input
+              type="password"
+              id="authPassword"
+              required
+              placeholder="Sua senha secreta"
+              minlength="6"
+              class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+          </div>
+
+          <button
+            type="submit"
+            id="authSubmitBtn"
+            class="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-[0.99] text-white font-bold text-sm shadow-lg shadow-indigo-600/25 transition flex items-center justify-center space-x-2"
+          >
+            <span>Entrar na Central</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+            </svg>
+          </button>
+        </form>
+
+        <div class="border-t border-slate-800 pt-4 text-center">
+          <button id="authOpenConfigBtn" class="text-xs text-indigo-400 hover:underline">
+            ⚙️ Configurar Chaves do Supabase
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. DASHBOARD DO USUÁRIO LOGADO -->
+    <section id="dashboardSection" class="space-y-6 hidden flex-1">
+
+      <!-- Informações do Usuário & Atalhos -->
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-900/60 border border-slate-800 rounded-3xl p-5">
+        <div>
+          <span class="text-xs text-slate-400">Conta Conectada:</span>
+          <h3 id="userEmailBadge" class="text-sm sm:text-base font-bold text-white">usuario@exemplo.com</h3>
+        </div>
+
+        <div class="flex items-center space-x-2">
+          <button id="copyScreenLinkBtn" class="px-3.5 py-2 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 text-xs font-semibold flex items-center space-x-1.5 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+            </svg>
+            <span>Copiar Link do Totem (/screen)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Abas de Navegação -->
+      <div class="border-b border-slate-800 flex space-x-6 text-sm">
+        <button id="navTabTotens" class="py-3.5 border-b-2 border-indigo-500 text-indigo-400 font-bold flex items-center space-x-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+          </svg>
+          <span>Meus Totens</span>
+          <span id="totemsBadge" class="px-1.5 py-0.5 rounded-full text-[10px] bg-indigo-500/20 text-indigo-300">0</span>
+        </button>
+
+        <button id="navTabUpload" class="py-3.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 font-semibold flex items-center space-x-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+          </svg>
+          <span>Upar Vídeo no Supabase</span>
+        </button>
+
+        <button id="navTabGallery" class="py-3.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 font-semibold flex items-center space-x-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+          </svg>
+          <span>Galeria & Transmissão</span>
+        </button>
+      </div>
+
+      <!-- ABA 1: MEUS TOTENS -->
+      <div id="contentTotens" class="space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-base font-bold text-white">Telas Cadastradas & Conectadas</h3>
+            <p class="text-xs text-slate-400">Dispositivos que estão vinculados à sua conta para reproduzir os vídeos.</p>
+          </div>
+          <button id="refreshTotensBtn" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 font-medium flex items-center space-x-1.5 border border-slate-700">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            <span>Atualizar</span>
+          </button>
+        </div>
+
+        <div id="totemsList" class="space-y-3">
+          <!-- Renderizado pelo JavaScript -->
+        </div>
+      </div>
+
+      <!-- ABA 2: UPLOAD DE VÍDEOS NO SUPABASE -->
+      <div id="contentUpload" class="space-y-4 hidden">
+        <div>
+          <h3 class="text-base font-bold text-white">Enviar Vídeo para o Supabase Storage</h3>
+          <p class="text-xs text-slate-400">O arquivo de vídeo será guardado na nuvem e ficará disponível para tocar em qualquer totem.</p>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-xl mx-auto space-y-5">
+          <form id="uploadForm" class="space-y-5">
+            <div>
+              <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                Nome do Vídeo (Para identificação) *
+              </label>
+              <input
+                type="text"
+                id="videoTitleInput"
+                placeholder="Ex: Comercial Vitrine / Promoção da Semana"
+                required
+                class="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                Arquivo de Vídeo (.mp4, .webm, .mov) *
+              </label>
+              <div id="dropZone" class="border-2 border-dashed border-slate-700 hover:border-indigo-500 rounded-2xl p-6 text-center cursor-pointer transition bg-slate-950/60">
+                <input type="file" id="videoFileInput" accept="video/mp4,video/webm,video/quicktime" class="hidden" required>
+                <div class="space-y-2 flex flex-col items-center">
+                  <div class="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                    </svg>
+                  </div>
+                  <span id="filePickedText" class="text-xs text-slate-300 font-medium">
+                    Toque para escolher o vídeo no celular ou computador
+                  </span>
+                  <p class="text-[11px] text-slate-500">Formatos aceitos: MP4, WebM ou MOV</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Progresso -->
+            <div id="progressBox" class="space-y-2 hidden">
+              <div class="flex justify-between text-xs text-slate-300">
+                <span id="progressText">Enviando para o Supabase Storage...</span>
+                <span id="progressPercent" class="font-bold text-indigo-400">0%</span>
+              </div>
+              <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                <div id="progressBar" class="bg-gradient-to-r from-indigo-500 to-purple-500 h-full w-0 transition-all duration-200"></div>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              id="uploadSubmitBtn"
+              class="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-[0.99] text-white font-bold text-sm shadow-lg shadow-indigo-600/25 transition flex items-center justify-center space-x-2"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+              </svg>
+              <span>Fazer Upload no Supabase</span>
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- ABA 3: GALERIA & TRANSMISSÃO -->
+      <div id="contentGallery" class="space-y-4 hidden">
+        <div>
+          <h3 class="text-base font-bold text-white">Biblioteca de Vídeos na Nuvem</h3>
+          <p class="text-xs text-slate-400">Clique em "Transmitir para o Totem" para trocar o vídeo na tela imediatamente.</p>
+        </div>
+
+        <div id="galleryGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <!-- Renderizado pelo JavaScript -->
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- MODAL DE CONFIGURAÇÃO DO SUPABASE -->
+  <div id="configModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="text-base font-bold text-white flex items-center space-x-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+          <span>Credenciais do Supabase Cloud</span>
+        </h3>
+        <button id="closeConfigModalBtn" class="text-slate-400 hover:text-white">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="space-y-4 text-xs text-slate-300">
+        <div>
+          <label class="block font-medium mb-1">Project URL do Supabase:</label>
+          <input
+            type="text"
+            id="cfgUrl"
+            placeholder="https://xyzproject.supabase.co"
+            class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          >
+        </div>
+
+        <div>
+          <label class="block font-medium mb-1">Anon Public Key do Supabase:</label>
+          <textarea
+            id="cfgKey"
+            rows="3"
+            placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+            class="w-full p-3 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          ></textarea>
+        </div>
+
+        <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800 space-y-1 text-slate-400 text-[11px]">
+          <p class="font-bold text-slate-200">Onde encontrar:</p>
+          <p>No console do Supabase > <strong>Project Settings</strong> > <strong>API</strong>. Copie a Project URL e a anon/public key.</p>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between border-t border-slate-800 pt-3">
+        <button id="clearConfigBtn" class="text-xs text-rose-400 hover:underline">
+          Limpar Chaves
+        </button>
+        <div class="flex space-x-2">
+          <button id="cancelConfigBtn" class="px-3.5 py-1.5 rounded-xl bg-slate-800 text-slate-300 text-xs">
+            Cancelar
+          </button>
+          <button id="saveConfigBtn" class="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs">
+            Salvar e Conectar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST FLUTUANTE -->
+  <div id="centralToast" class="fixed bottom-6 right-6 bg-indigo-600 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center space-x-2.5 z-50 transition-all duration-300 opacity-0 translate-y-4 pointer-events-none">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+    </svg>
+    <span id="toastText" class="text-sm font-medium">Ação realizada com sucesso!</span>
+  </div>
+
+  <!-- SCRIPTS -->
+  <script src="totem-central.js"></script>
+  <script>
+    // Elementos de Autenticação
+    const authSection = document.getElementById('authSection');
+    const dashboardSection = document.getElementById('dashboardSection');
+    const authTitle = document.getElementById('authTitle');
+    const authSubtitle = document.getElementById('authSubtitle');
+    const modeSignInBtn = document.getElementById('modeSignInBtn');
+    const modeSignUpBtn = document.getElementById('modeSignUpBtn');
+    const authForm = document.getElementById('authForm');
+    const authEmail = document.getElementById('authEmail');
+    const authPassword = document.getElementById('authPassword');
+    const authSubmitBtn = document.getElementById('authSubmitBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const userEmailBadge = document.getElementById('userEmailBadge');
+    const copyScreenLinkBtn = document.getElementById('copyScreenLinkBtn');
+
+    // Banner de Pareamento
+    const totemRequestBanner = document.getElementById('totemRequestBanner');
+    const totemRequestText = document.getElementById('totemRequestText');
+    const approveTotemBtn = document.getElementById('approveTotemBtn');
+    const rejectTotemBtn = document.getElementById('rejectTotemBtn');
+    let pendingDeviceId = null;
+
+    // Abas do Dashboard
+    const navTabTotens = document.getElementById('navTabTotens');
+    const navTabUpload = document.getElementById('navTabUpload');
+    const navTabGallery = document.getElementById('navTabGallery');
+    const contentTotens = document.getElementById('contentTotens');
+    const contentUpload = document.getElementById('contentUpload');
+    const contentGallery = document.getElementById('contentGallery');
+    const totemsBadge = document.getElementById('totemsBadge');
+
+    // Listas
+    const totemsList = document.getElementById('totemsList');
+    const refreshTotensBtn = document.getElementById('refreshTotensBtn');
+    const galleryGrid = document.getElementById('galleryGrid');
+
+    // Upload
+    const uploadForm = document.getElementById('uploadForm');
+    const videoTitleInput = document.getElementById('videoTitleInput');
+    const videoFileInput = document.getElementById('videoFileInput');
+    const dropZone = document.getElementById('dropZone');
+    const filePickedText = document.getElementById('filePickedText');
+    const progressBox = document.getElementById('progressBox');
+    const progressBar = document.getElementById('progressBar');
+    const progressPercent = document.getElementById('progressPercent');
+    const progressText = document.getElementById('progressText');
+    const uploadSubmitBtn = document.getElementById('uploadSubmitBtn');
+
+    // Config Modal
+    const configModal = document.getElementById('configModal');
+    const openConfigBtn = document.getElementById('openConfigBtn');
+    const authOpenConfigBtn = document.getElementById('authOpenConfigBtn');
+    const closeConfigModalBtn = document.getElementById('closeConfigModalBtn');
+    const cancelConfigBtn = document.getElementById('cancelConfigBtn');
+    const saveConfigBtn = document.getElementById('saveConfigBtn');
+    const clearConfigBtn = document.getElementById('clearConfigBtn');
+    const cfgUrl = document.getElementById('cfgUrl');
+    const cfgKey = document.getElementById('cfgKey');
+
+    // Toast
+    const centralToast = document.getElementById('centralToast');
+    const toastText = document.getElementById('toastText');
+
+    let authMode = 'signin'; // 'signin' ou 'signup'
+
+    function notify(text) {
+      toastText.textContent = text;
+      centralToast.classList.remove('opacity-0', 'translate-y-4');
+      centralToast.classList.add('opacity-100', 'translate-y-0');
+      setTimeout(() => {
+        centralToast.classList.remove('opacity-100', 'translate-y-0');
+        centralToast.classList.add('opacity-0', 'translate-y-4');
+      }, 3500);
+    }
+
+    // 1. ALTERNÂNCIA ENTRE ENTRAR E CRIAR CADASTRO
+    modeSignInBtn.addEventListener('click', () => {
+      authMode = 'signin';
+      modeSignInBtn.className = 'flex-1 py-2 rounded-lg font-bold bg-indigo-600 text-white transition';
+      modeSignUpBtn.className = 'flex-1 py-2 rounded-lg font-semibold text-slate-400 hover:text-white transition';
+      authTitle.textContent = 'Acesse a Totem Central';
+      authSubtitle.textContent = 'Entre com seu e-mail e senha para controlar seus totens.';
+      authSubmitBtn.innerHTML = '<span>Entrar na Central</span>';
+    });
+
+    modeSignUpBtn.addEventListener('click', () => {
+      authMode = 'signup';
+      modeSignUpBtn.className = 'flex-1 py-2 rounded-lg font-bold bg-indigo-600 text-white transition';
+      modeSignInBtn.className = 'flex-1 py-2 rounded-lg font-semibold text-slate-400 hover:text-white transition';
+      authTitle.textContent = 'Criar Meu Cadastro';
+      authSubtitle.textContent = 'Cadastre-se para ter sua central de totens exclusiva na nuvem.';
+      authSubmitBtn.innerHTML = '<span>Criar Minha Conta</span>';
+    });
+
+    authForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = authEmail.value.trim();
+      const password = authPassword.value;
+
+      try {
+        if (authMode === 'signup') {
+          await window.totemCentral.signUp(email, password);
+          notify('Cadastro realizado! Se o e-mail de confirmação estiver ativado no Supabase, confirme seu e-mail.');
+        } else {
+          await window.totemCentral.signIn(email, password);
+          notify('Login realizado com sucesso!');
+        }
+      } catch (err) {
+        alert('Erro de autenticação: ' + err.message);
+      }
+    });
+
+    logoutBtn.addEventListener('click', async () => {
+      await window.totemCentral.signOut();
+      notify('Você saiu da sua conta.');
+    });
+
+    // 2. CONTROLE DO ESTADO DE LOGIN
+    window.totemCentral.listeners.onAuthStateChanged = (user) => {
+      if (user) {
+        authSection.classList.add('hidden');
+        dashboardSection.classList.remove('hidden');
+        logoutBtn.classList.remove('hidden');
+        userEmailBadge.textContent = user.email;
+        setTab('totens');
+      } else {
+        authSection.classList.remove('hidden');
+        dashboardSection.classList.add('hidden');
+        logoutBtn.classList.add('hidden');
+      }
+    };
+
+    // 3. ABAS DO DASHBOARD
+    function setTab(tab) {
+      [navTabTotens, navTabUpload, navTabGallery].forEach(b => {
+        b.className = 'py-3.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 font-semibold flex items-center space-x-2';
+      });
+      [contentTotens, contentUpload, contentGallery].forEach(c => c.classList.add('hidden'));
+
+      if (tab === 'totens') {
+        navTabTotens.className = 'py-3.5 border-b-2 border-indigo-500 text-indigo-400 font-bold flex items-center space-x-2';
+        contentTotens.classList.remove('hidden');
+      } else if (tab === 'upload') {
+        navTabUpload.className = 'py-3.5 border-b-2 border-indigo-500 text-indigo-400 font-bold flex items-center space-x-2';
+        contentUpload.classList.remove('hidden');
+      } else if (tab === 'gallery') {
+        navTabGallery.className = 'py-3.5 border-b-2 border-indigo-500 text-indigo-400 font-bold flex items-center space-x-2';
+        contentGallery.classList.remove('hidden');
+      }
+    }
+
+    navTabTotens.addEventListener('click', () => setTab('totens'));
+    navTabUpload.addEventListener('click', () => setTab('upload'));
+    navTabGallery.addEventListener('click', () => setTab('gallery'));
+
+    // 4. RENDERIZAR TOTENS CADASTRADOS & NOTIFICAÇÕES
+    let cachedTotens = [];
+
+    function renderTotems(devices) {
+      cachedTotens = devices || [];
+      totemsBadge.textContent = cachedTotens.length;
+
+      // Verificar se há algum totem pendente querendo se conectar
+      const pendingTotem = cachedTotens.find(d => d.status === 'pending');
+      if (pendingTotem) {
+        pendingDeviceId = pendingTotem.id;
+        totemRequestText.textContent = `O dispositivo "${pendingTotem.device_name || 'Modelo Totem'}" solicitou conexão com seu cadastro.`;
+        totemRequestBanner.classList.remove('hidden');
+      } else {
+        totemRequestBanner.classList.add('hidden');
+      }
+
+      if (!cachedTotens.length) {
+        totemsList.innerHTML = `
+          <div class="text-center py-12 text-slate-500 text-sm bg-slate-900 border border-slate-800 rounded-3xl">
+            Nenhum totem cadastrado ainda.<br>
+            Abra o link <a href="/screen.html" target="_blank" class="text-blue-400 font-bold underline">/screen.html</a> no aparelho da TV/totem para ele solicitar conexão.
+          </div>
+        `;
+        return;
+      }
+
+      totemsList.innerHTML = cachedTotens.map(dev => {
+        const isApproved = dev.status === 'approved';
+        const isPending = dev.status === 'pending';
+
+        return `
+          <div class="p-4 rounded-2xl bg-slate-900 border ${isApproved ? 'border-emerald-500/30' : isPending ? 'border-amber-500/50 bg-amber-950/20' : 'border-slate-800'} flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div class="flex items-center space-x-3.5">
+              <div class="w-11 h-11 rounded-2xl ${isApproved ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'} flex items-center justify-center shrink-0">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                </svg>
+              </div>
+              <div>
+                <div class="flex items-center space-x-2">
+                  <h4 class="text-sm font-bold text-white">${dev.device_name || 'Modelo Totem'}</h4>
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${isApproved ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'}">
+                    ${isApproved ? 'AUTORIZADO / PRONTO' : 'PENDENTE'}
+                  </span>
+                </div>
+                <p class="text-xs text-slate-400 font-mono mt-0.5">ID: ${dev.id}</p>
+              </div>
+            </div>
+
+            <div class="flex items-center space-x-2 w-full sm:w-auto justify-end">
+              ${isPending ? `
+                <button onclick="approveDevice('${dev.id}', true)" class="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow transition">
+                  Autorizar Conexão
+                </button>
+                <button onclick="approveDevice('${dev.id}', false)" class="px-3 py-1.5 rounded-xl bg-slate-800 text-slate-400 hover:text-rose-400 text-xs transition">
+                  Recusar
+                </button>
+              ` : `
+                <span class="text-xs text-emerald-400 font-semibold flex items-center space-x-1 mr-2">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>Recebendo Transmissões</span>
+                </span>
+                <button onclick="approveDevice('${dev.id}', false)" class="text-xs text-slate-500 hover:text-rose-400 underline">
+                  Desconectar
+                </button>
+              `}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    window.approveDevice = async function(deviceId, approve) {
+      await window.totemCentral.authorizeDevice(deviceId, approve);
+      totemRequestBanner.classList.add('hidden');
+      notify(approve ? 'Dispositivo autorizado com sucesso!' : 'Acesso recusado.');
+    };
+
+    approveTotemBtn.addEventListener('click', () => {
+      if (pendingDeviceId) approveDevice(pendingDeviceId, true);
+    });
+    rejectTotemBtn.addEventListener('click', () => {
+      if (pendingDeviceId) approveDevice(pendingDeviceId, false);
+    });
+
+    refreshTotensBtn.addEventListener('click', () => {
+      window.totemCentral.refreshDevices();
+      notify('Lista de totens atualizada!');
+    });
+
+    window.totemCentral.listeners.onDevicesChanged = (devices) => {
+      renderTotems(devices);
+    };
+
+    // 5. UPLOAD DE VÍDEOS COM NOME NO SUPABASE STORAGE
+    dropZone.addEventListener('click', () => videoFileInput.click());
+
+    videoFileInput.addEventListener('change', () => {
+      if (videoFileInput.files.length > 0) {
+        const file = videoFileInput.files[0];
+        filePickedText.innerHTML = `<span class="text-indigo-400 font-bold">${file.name}</span> (${(file.size / (1024*1024)).toFixed(1)} MB)`;
+        if (!videoTitleInput.value) {
+          videoTitleInput.value = file.name.replace(/\.[^/.]+$/, "");
+        }
+      }
+    });
+
+    uploadForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const file = videoFileInput.files[0];
+      const title = videoTitleInput.value.trim();
+
+      if (!file) {
+        alert('Selecione um arquivo de vídeo.');
+        return;
+      }
+
+      progressBox.classList.remove('hidden');
+      uploadSubmitBtn.disabled = true;
+      uploadSubmitBtn.classList.add('opacity-50');
+
+      try {
+        await window.totemCentral.uploadVideo(file, title, (pct) => {
+          progressBar.style.width = pct + '%';
+          progressPercent.textContent = pct + '%';
+          if (pct === 100) progressText.textContent = 'Gravando no banco de dados...';
+        });
+
+        notify(`✅ Vídeo "${title}" salvo com sucesso no Supabase!`);
+        uploadForm.reset();
+        filePickedText.textContent = 'Toque para escolher o vídeo no celular ou computador';
+        progressBox.classList.add('hidden');
+        progressBar.style.width = '0%';
+        setTab('gallery');
+      } catch (err) {
+        alert('Erro ao enviar vídeo: ' + err.message);
+      } finally {
+        uploadSubmitBtn.disabled = false;
+        uploadSubmitBtn.classList.remove('opacity-50');
+      }
+    });
+
+    // 6. RENDERIZAR GALERIA & TRANSMISSÃO EM TEMPO REAL
+    let cachedVideos = [];
+
+    function renderGallery(videos) {
+      cachedVideos = videos || [];
+
+      if (!cachedVideos.length) {
+        galleryGrid.innerHTML = `
+          <div class="col-span-full text-center py-12 text-slate-500 text-sm bg-slate-900 border border-slate-800 rounded-3xl">
+            Nenhum vídeo salvo ainda.<br>Vá na aba <strong>"Upar Vídeo no Supabase"</strong> para subir o primeiro arquivo!
+          </div>
+        `;
+        return;
+      }
+
+      galleryGrid.innerHTML = cachedVideos.map(vid => {
+        return `
+          <div class="bg-slate-900 border border-slate-800 hover:border-indigo-500/50 rounded-3xl overflow-hidden shadow-lg transition flex flex-col justify-between">
+            <div class="aspect-video bg-black relative flex items-center justify-center overflow-hidden">
+              <video src="${vid.video_url}" class="w-full h-full object-cover" muted preload="metadata"></video>
+              <div class="absolute inset-0 bg-black/40 flex items-center justify-center pointer-events-none">
+                <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
+                  <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z"/>
+                  </svg>
+                </div>
+              </div>
+              <span class="absolute top-2 right-2 px-2 py-0.5 rounded text-[10px] font-bold bg-black/70 text-white backdrop-blur">
+                ${vid.file_size_mb ? vid.file_size_mb + ' MB' : 'Vídeo'}
+              </span>
+            </div>
+
+            <div class="p-4 space-y-3 flex-1 flex flex-col justify-between">
+              <div>
+                <h4 class="font-bold text-white text-sm line-clamp-1">${escapeHtml(vid.title)}</h4>
+                <p class="text-[11px] text-slate-500 font-mono truncate mt-0.5">${escapeHtml(vid.video_url)}</p>
+              </div>
+
+              <div class="pt-2 border-t border-slate-800 flex items-center justify-between">
+                <button
+                  onclick="transmitLive('${vid.id}')"
+                  class="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs transition shadow-md shadow-emerald-600/20 flex items-center justify-center space-x-1.5 mr-2"
+                >
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                  </svg>
+                  <span>Transmitir para o Totem</span>
+                </button>
+
+                <button
+                  onclick="deleteVideo('${vid.id}', '${vid.storage_path || ''}')"
+                  class="p-2 rounded-xl text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition"
+                  title="Excluir vídeo"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    window.transmitLive = async function(videoId) {
+      const vid = cachedVideos.find(v => v.id === videoId);
+      if (!vid) return;
+      try {
+        await window.totemCentral.transmitVideo(vid);
+        notify(`⚡ Transmitindo "${vid.title}" para o Totem!`);
+      } catch (err) {
+        alert('Erro ao transmitir: ' + err.message);
+      }
+    };
+
+    window.deleteVideo = async function(videoId, path) {
+      if (!confirm('Deseja realmente excluir este vídeo?')) return;
+      try {
+        await window.totemCentral.deleteVideo(videoId, path);
+        notify('Vídeo excluído com sucesso.');
+      } catch (err) {
+        alert('Erro ao excluir: ' + err.message);
+      }
+    };
+
+    window.totemCentral.listeners.onCatalogChanged = (videos) => {
+      renderGallery(videos);
+    };
+
+    // 7. CONFIGURAÇÕES DO SUPABASE MODAL
+    function openConfig() {
+      const cfg = window.totemCentral.config;
+      if (cfg) {
+        cfgUrl.value = cfg.url || '';
+        cfgKey.value = cfg.anonKey || '';
+      }
+      configModal.classList.remove('hidden');
+    }
+
+    openConfigBtn.addEventListener('click', openConfig);
+    authOpenConfigBtn.addEventListener('click', openConfig);
+    closeConfigModalBtn.addEventListener('click', () => configModal.classList.add('hidden'));
+    cancelConfigBtn.addEventListener('click', () => configModal.classList.add('hidden'));
+
+    saveConfigBtn.addEventListener('click', () => {
+      const u = cfgUrl.value.trim();
+      const k = cfgKey.value.trim();
+      if (!u || !k) {
+        alert('Informe a URL e a Anon Key.');
+        return;
+      }
+      window.totemCentral.saveConfig(u, k);
+      configModal.classList.add('hidden');
+      notify('Configurações salvas!');
+      setTimeout(() => window.location.reload(), 700);
+    });
+
+    clearConfigBtn.addEventListener('click', () => {
+      if (confirm('Deseja limpar as chaves salvas?')) {
+        window.totemCentral.clearConfig();
+      }
+    });
+
+    copyScreenLinkBtn.addEventListener('click', () => {
+      const screenUrl = window.location.origin + '/screen.html';
+      navigator.clipboard.writeText(screenUrl).then(() => {
+        notify('Link da tela copiado: ' + screenUrl);
+      }).catch(() => {
+        prompt('Copie o link do totem:', screenUrl);
+      });
+    });
+
+    // Se ainda não estiver configurado, avisa amigavelmente
+    if (!window.totemCentral.isConfigured) {
+      document.getElementById('headerStatus').innerHTML = `
+        <span class="w-2 h-2 rounded-full bg-amber-400 inline-block animate-pulse"></span>
+        <span class="text-amber-400">Clique na engrenagem para conectar o Supabase</span>
+      `;
+    }
+  </script>
+</body>
+</html>

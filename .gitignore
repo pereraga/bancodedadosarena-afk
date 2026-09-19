@@ -1,0 +1,5 @@
+.vercel
+.git
+node_modules
+uploads
+database.json

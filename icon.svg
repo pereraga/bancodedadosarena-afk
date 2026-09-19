@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#6366f1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#9333ea;stop-opacity:1" />
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#000" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+  <!-- Background com cantos arredondados -->
+  <rect width="512" height="512" rx="110" fill="url(#grad)" />
+  
+  <!-- Círculo interno -->
+  <circle cx="256" cy="256" r="160" fill="rgba(255, 255, 255, 0.15)" filter="url(#shadow)" />
+  
+  <!-- Ícone de Play -->
+  <polygon points="216,176 352,256 216,336" fill="#ffffff" filter="url(#shadow)" />
+  
+  <!-- Indicador de Sinal / Transmissão ao vivo -->
+  <circle cx="380" cy="132" r="24" fill="#22c55e" stroke="#ffffff" stroke-width="6" />
+</svg>
