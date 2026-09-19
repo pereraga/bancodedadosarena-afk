@@ -35,15 +35,17 @@ class SupabaseEngine {
       const saved = localStorage.getItem('totem_supabase_config');
       if (saved) {
         this.config = JSON.parse(saved);
-        if (this.config.url && this.config.anonKey) {
-          this.initSupabase(this.config.url, this.config.anonKey);
-          return;
-        }
       }
     } catch (e) {
-      console.warn('Configuração do Supabase não encontrada. Usando modo local.', e);
+      console.warn('Configuração salva não carregada:', e);
     }
-    this.initLocalMode();
+    if (!this.config || !this.config.url) {
+      this.config = {
+        url: 'https://qvnsahvdjhimlmtqrnif.supabase.co',
+        anonKey: 'sb_publishable_vvqh9vB0Dr0EqR9JGhy4kA_XnJ-9h0z'
+      };
+    }
+    this.initSupabase(this.config.url, this.config.anonKey);
   }
 
   saveSupabaseConfig(url, anonKey) {
@@ -56,9 +58,11 @@ class SupabaseEngine {
 
   clearSupabaseConfig() {
     localStorage.removeItem('totem_supabase_config');
-    this.isSupabaseConnected = false;
-    this.client = null;
-    this.initLocalMode();
+    this.config = {
+      url: 'https://qvnsahvdjhimlmtqrnif.supabase.co',
+      anonKey: 'sb_publishable_vvqh9vB0Dr0EqR9JGhy4kA_XnJ-9h0z'
+    };
+    this.initSupabase(this.config.url, this.config.anonKey);
   }
 
   initSupabase(url, anonKey) {
@@ -68,16 +72,30 @@ class SupabaseEngine {
         this.isSupabaseConnected = true;
         console.log('✅ Conectado ao Supabase Cloud com sucesso!');
 
-        // Configurar Supabase Realtime Channel para comandos instantâneos
+        // Configurar Supabase Realtime Channels para comandos instantâneos
         const channel = this.client.channel('totem-broadcast');
         channel
           .on('broadcast', { event: 'PLAY_VIDEO' }, payload => {
-            console.log('⚡ Ordem do Supabase Realtime recebida:', payload);
+            console.log('⚡ Ordem PLAY_VIDEO recebida:', payload);
             if (this.listeners.onVideoChanged) {
               this.listeners.onVideoChanged(payload.payload);
             }
           })
           .on('broadcast', { event: 'DEVICE_AUTHORIZED' }, payload => {
+            if (this.listeners.onDeviceStatusChanged) {
+              this.listeners.onDeviceStatusChanged(payload.payload);
+            }
+          })
+          .subscribe();
+
+        const globalChannel = this.client.channel('totem-global-channel');
+        globalChannel
+          .on('broadcast', { event: 'PLAY_VIDEO' }, payload => {
+            if (this.listeners.onVideoChanged) {
+              this.listeners.onVideoChanged(payload.payload);
+            }
+          })
+          .on('broadcast', { event: 'DEVICE_STATUS' }, payload => {
             if (this.listeners.onDeviceStatusChanged) {
               this.listeners.onDeviceStatusChanged(payload.payload);
             }
@@ -105,7 +123,7 @@ class SupabaseEngine {
     } catch (err) {
       console.error('Falha ao inicializar cliente Supabase:', err);
     }
-    // Mantém também o SSE local para garantia e pareamento no mesmo Wi-Fi
+    // SSE local como fallback
     this.initLocalMode();
   }
 
@@ -241,34 +259,121 @@ class SupabaseEngine {
     return localData.device;
   }
 
-  // Autorizar ou recusar Totem (pelo App de Controle)
-  async authorizeDevice(deviceId, approve = true) {
-    const res = await fetch('/api/devices/authorize', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ deviceId, approve })
-    });
+  // Vincular Totem manualmente por ID e dar autorização imediata
+  async bindAndAuthorizeDevice(deviceId, deviceName = 'Modelo Totem') {
+    if (!deviceId) throw new Error('Informe o ID do Totem');
+    deviceId = deviceId.trim();
 
     if (this.client) {
       try {
-        await this.client.from('devices').update({
-          status: approve ? 'approved' : 'rejected',
-          last_seen: new Date().toISOString()
-        }).eq('id', deviceId);
+        const { data, error } = await this.client
+          .from('devices')
+          .upsert({
+            id: deviceId,
+            device_name: deviceName || 'Modelo Totem',
+            status: 'approved',
+            last_seen: new Date().toISOString()
+          })
+          .select()
+          .single();
 
-        // Disparar via Realtime Broadcast
-        const channel = this.client.channel('totem-broadcast');
-        await channel.send({
+        if (error) {
+          console.warn('Aviso ao salvar totem no Supabase:', error);
+        }
+
+        // 1. Notificar canal individual da tela
+        const screenChan = this.client.channel(`device-${deviceId}`);
+        await screenChan.send({
+          type: 'broadcast',
+          event: 'AUTHORIZATION',
+          payload: { id: deviceId, status: 'approved', deviceName: deviceName || 'Modelo Totem' }
+        });
+
+        // 2. Notificar canal global
+        const globalChan = this.client.channel('totem-global-channel');
+        await globalChan.send({
+          type: 'broadcast',
+          event: 'DEVICE_STATUS',
+          payload: { id: deviceId, status: 'approved' }
+        });
+
+        // 3. Notificar canal compatível
+        const broadChan = this.client.channel('totem-broadcast');
+        await broadChan.send({
           type: 'broadcast',
           event: 'DEVICE_AUTHORIZED',
-          payload: { id: deviceId, status: approve ? 'approved' : 'rejected' }
+          payload: { id: deviceId, status: 'approved' }
         });
+
+        await this.fetchDevicesFromSupabase();
+        return data || { id: deviceId, status: 'approved' };
+      } catch (err) {
+        console.warn('Erro ao autorizar via Supabase:', err);
+      }
+    }
+
+    try {
+      await fetch('/api/devices/authorize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceId, approve: true })
+      });
+    } catch (e) {}
+
+    return { id: deviceId, status: 'approved' };
+  }
+
+  // Autorizar ou recusar Totem (pelo App de Controle)
+  async authorizeDevice(deviceId, approve = true) {
+    deviceId = String(deviceId).trim();
+    const newStatus = approve ? 'approved' : 'rejected';
+
+    if (this.client) {
+      try {
+        await this.client.from('devices').upsert({
+          id: deviceId,
+          status: newStatus,
+          last_seen: new Date().toISOString()
+        });
+
+        // Disparar via Realtime Broadcast para todos os canais possíveis
+        const screenChan = this.client.channel(`device-${deviceId}`);
+        await screenChan.send({
+          type: 'broadcast',
+          event: 'AUTHORIZATION',
+          payload: { id: deviceId, status: newStatus }
+        });
+
+        const globalChan = this.client.channel('totem-global-channel');
+        await globalChan.send({
+          type: 'broadcast',
+          event: 'DEVICE_STATUS',
+          payload: { id: deviceId, status: newStatus }
+        });
+
+        const broadChan = this.client.channel('totem-broadcast');
+        await broadChan.send({
+          type: 'broadcast',
+          event: 'DEVICE_AUTHORIZED',
+          payload: { id: deviceId, status: newStatus }
+        });
+
+        await this.fetchDevicesFromSupabase();
       } catch (err) {
         console.warn('Erro ao autorizar no Supabase:', err);
       }
     }
 
-    return await res.json();
+    try {
+      const res = await fetch('/api/devices/authorize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceId, approve })
+      });
+      return await res.json();
+    } catch (e) {
+      return { id: deviceId, status: newStatus };
+    }
   }
 
   // UPLOAD DIRETO DE VÍDEO COM NOME PERSONALIZADO
@@ -376,43 +481,82 @@ class SupabaseEngine {
   }
 
   // TRANSMITIR VÍDEO EM TEMPO REAL
-  async playVideoOnTotem(video) {
-    // 1. Notificar servidor local
-    await fetch('/api/change-video', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ videoId: video.id })
-    });
+  async playVideoOnTotem(video, targetDeviceId = null) {
+    const payload = {
+      id: video.id,
+      title: video.title,
+      url: video.video_url || video.url,
+      targetDeviceId,
+      updatedAt: new Date().toISOString()
+    };
 
-    // 2. Se Supabase estiver conectado, envia via Supabase Realtime Broadcast
     if (this.client) {
       try {
-        const channel = this.client.channel('totem-broadcast');
-        await channel.send({
+        // 1. Enviar para canal broadcast compatível
+        const broadChan = this.client.channel('totem-broadcast');
+        await broadChan.send({
           type: 'broadcast',
           event: 'PLAY_VIDEO',
-          payload: {
-            id: video.id,
-            title: video.title,
-            url: video.url,
-            updatedAt: new Date().toISOString()
-          }
+          payload
         });
+
+        // 2. Enviar para canal broadcast global
+        const globalChan = this.client.channel('totem-global-channel');
+        await globalChan.send({
+          type: 'broadcast',
+          event: 'PLAY_VIDEO',
+          payload
+        });
+
+        // 3. Se for para um totem específico, enviar no canal do aparelho
+        if (targetDeviceId) {
+          const screenChan = this.client.channel(`device-${targetDeviceId}`);
+          await screenChan.send({
+            type: 'broadcast',
+            event: 'PLAY_VIDEO',
+            payload
+          });
+
+          await this.client
+            .from('devices')
+            .update({ current_video_id: video.id })
+            .eq('id', targetDeviceId);
+        } else {
+          // Atualizar todos os dispositivos com este vídeo
+          await this.client
+            .from('devices')
+            .update({ current_video_id: video.id })
+            .eq('status', 'approved');
+        }
       } catch (err) {
-        console.warn('Erro ao emitir Realtime Broadcast no Supabase:', err);
+        console.warn('Aviso ao emitir Realtime Broadcast no Supabase:', err);
       }
     }
+
+    try {
+      await fetch('/api/change-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ videoId: video.id })
+      });
+    } catch (e) {}
   }
 
-  async deleteVideo(videoId) {
-    await fetch(`/api/videos/${videoId}`, { method: 'DELETE' });
+  async deleteVideo(videoId, storagePath = null) {
     if (this.client) {
       try {
+        if (storagePath) {
+          await this.client.storage.from('videos').remove([storagePath]);
+        }
         await this.client.from('videos').delete().eq('id', videoId);
+        await this.fetchVideosFromSupabase();
       } catch (err) {
         console.warn('Erro ao deletar no Supabase:', err);
       }
     }
+    try {
+      await fetch(`/api/videos/${videoId}`, { method: 'DELETE' });
+    } catch (e) {}
   }
 }
 

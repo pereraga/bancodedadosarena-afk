@@ -167,19 +167,37 @@ class TotemCentralEngine {
       localStorage.setItem('totem_screen_device_id', deviceId);
     }
 
-    const pairCode = Math.floor(100000 + Math.random() * 900000).toString();
-
-    const deviceData = {
-      id: deviceId,
-      device_name: deviceName,
-      pair_code: pairCode,
-      status: 'pending',
-      last_seen: new Date().toISOString()
-    };
+    let status = 'pending';
+    let currentVideoId = null;
 
     if (this.client) {
       try {
-        await this.client.from('devices').upsert(deviceData);
+        const { data: existing } = await this.client
+          .from('devices')
+          .select('id, device_name, status, current_video_id')
+          .eq('id', deviceId)
+          .maybeSingle();
+
+        if (existing) {
+          status = existing.status || 'pending';
+          currentVideoId = existing.current_video_id;
+          await this.client.from('devices').update({
+            device_name: deviceName,
+            last_seen: new Date().toISOString()
+          }).eq('id', deviceId);
+        } else {
+          await this.client.from('devices').insert({
+            id: deviceId,
+            device_name: deviceName,
+            status: 'pending',
+            last_seen: new Date().toISOString()
+          });
+        }
+
+        // Se o dispositivo já estiver aprovado, avisar o listener imediatamente!
+        if (status === 'approved' && this.listeners.onDeviceApproved) {
+          this.listeners.onDeviceApproved({ id: deviceId, status: 'approved', currentVideoId });
+        }
 
         // Ouvir aprovação deste dispositivo específico via Realtime
         const screenChannel = this.client.channel(`device-${deviceId}`);
@@ -196,12 +214,42 @@ class TotemCentralEngine {
           })
           .subscribe();
 
+        // Ouvir canal global
+        const globalChannel = this.client.channel('totem-global-channel');
+        globalChannel
+          .on('broadcast', { event: 'DEVICE_STATUS' }, payload => {
+            if (this.listeners.onDeviceApproved && payload.payload.id === deviceId) {
+              this.listeners.onDeviceApproved(payload.payload);
+            }
+          })
+          .on('broadcast', { event: 'PLAY_VIDEO' }, payload => {
+            if (this.listeners.onVideoCommandReceived) {
+              this.listeners.onVideoCommandReceived(payload.payload);
+            }
+          })
+          .subscribe();
+
+        // Ouvir totem-broadcast
+        const broadChannel = this.client.channel('totem-broadcast');
+        broadChannel
+          .on('broadcast', { event: 'DEVICE_AUTHORIZED' }, payload => {
+            if (this.listeners.onDeviceApproved && payload.payload.id === deviceId) {
+              this.listeners.onDeviceApproved(payload.payload);
+            }
+          })
+          .on('broadcast', { event: 'PLAY_VIDEO' }, payload => {
+            if (this.listeners.onVideoCommandReceived) {
+              this.listeners.onVideoCommandReceived(payload.payload);
+            }
+          })
+          .subscribe();
+
       } catch (err) {
         console.warn('Erro ao registrar tela no Supabase:', err);
       }
     }
 
-    return deviceData;
+    return { id: deviceId, device_name: deviceName, status, current_video_id: currentVideoId };
   }
 
   async refreshDevices() {
@@ -215,6 +263,48 @@ class TotemCentralEngine {
       if (this.listeners.onDevicesChanged) {
         this.listeners.onDevicesChanged(data);
       }
+    }
+  }
+
+  // Vincular Totem manualmente por ID e dar autorização imediata
+  async bindAndAuthorizeDevice(deviceId, deviceName = 'Modelo Totem') {
+    if (!deviceId) throw new Error('Informe o ID do Totem');
+    deviceId = deviceId.trim();
+
+    if (this.client) {
+      await this.client
+        .from('devices')
+        .upsert({
+          id: deviceId,
+          device_name: deviceName || 'Modelo Totem',
+          status: 'approved',
+          user_id: this.currentUser ? this.currentUser.id : null,
+          last_seen: new Date().toISOString()
+        });
+
+      // Notificar a tela em tempo real via Broadcast em todos os canais
+      const channel = this.client.channel(`device-${deviceId}`);
+      await channel.send({
+        type: 'broadcast',
+        event: 'AUTHORIZATION',
+        payload: { id: deviceId, status: 'approved', deviceName: deviceName || 'Modelo Totem' }
+      });
+
+      const globalChannel = this.client.channel('totem-global-channel');
+      await globalChannel.send({
+        type: 'broadcast',
+        event: 'DEVICE_STATUS',
+        payload: { id: deviceId, status: 'approved' }
+      });
+
+      const broadChannel = this.client.channel('totem-broadcast');
+      await broadChannel.send({
+        type: 'broadcast',
+        event: 'DEVICE_AUTHORIZED',
+        payload: { id: deviceId, status: 'approved' }
+      });
+
+      this.refreshDevices();
     }
   }
 
@@ -233,7 +323,7 @@ class TotemCentralEngine {
 
     if (error) throw error;
 
-    // Notificar a tela em tempo real via Broadcast
+    // Notificar a tela em tempo real via Broadcast em todos os canais
     const channel = this.client.channel(`device-${deviceId}`);
     await channel.send({
       type: 'broadcast',
@@ -245,6 +335,13 @@ class TotemCentralEngine {
     await globalChannel.send({
       type: 'broadcast',
       event: 'DEVICE_STATUS',
+      payload: { id: deviceId, status: newStatus }
+    });
+
+    const broadChannel = this.client.channel('totem-broadcast');
+    await broadChannel.send({
+      type: 'broadcast',
+      event: 'DEVICE_AUTHORIZED',
       payload: { id: deviceId, status: newStatus }
     });
 

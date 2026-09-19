@@ -107,23 +107,86 @@
 
     <!-- ABA 1: TELAS E TOTENS (Descoberta e Pareamento) -->
     <section id="tabContentDevices" class="space-y-6">
-      <div class="flex items-center justify-between">
-        <div>
-          <h2 class="text-lg font-bold text-white">Dispositivos de Tela (Totems)</h2>
-          <p class="text-xs text-slate-400">Telas conectadas no mesmo Wi-Fi ou registradas no banco de dados.</p>
+
+      <!-- CARD: VINCULAR TOTEM POR IDENTIFICADOR (ID) -->
+      <div class="bg-gradient-to-br from-indigo-950/70 via-slate-900 to-slate-900 border border-indigo-500/40 rounded-3xl p-5 sm:p-7 shadow-2xl space-y-4">
+        <div class="flex items-center space-x-3.5">
+          <div class="w-11 h-11 rounded-2xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0 shadow-lg shadow-indigo-500/10">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-base sm:text-lg font-black text-white">Vincular Totem por Identificador (ID)</h3>
+            <p class="text-xs text-slate-300">
+              Copie o ID que aparece no aplicativo do Totem (<a href="/screen" target="_blank" class="text-indigo-400 hover:underline font-bold">/screen</a>) e cole aqui para autorizar o acesso na hora.
+            </p>
+          </div>
         </div>
-        <button id="refreshDevicesBtn" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 font-medium flex items-center space-x-1.5 border border-slate-700">
+
+        <form id="bindTotemForm" class="grid grid-cols-1 sm:grid-cols-12 gap-3.5 pt-1">
+          <div class="sm:col-span-6">
+            <label class="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+              Identificador (ID do Totem) *
+            </label>
+            <input
+              type="text"
+              id="manualTotemId"
+              placeholder="Ex: totem-w7q4v1z"
+              required
+              class="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+          </div>
+
+          <div class="sm:col-span-6">
+            <label class="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+              Nome / Identificação do Totem (Opcional)
+            </label>
+            <input
+              type="text"
+              id="manualTotemName"
+              placeholder="Ex: Totem Entrada / Recepção"
+              class="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+          </div>
+
+          <div class="sm:col-span-12 flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-slate-800">
+            <div class="text-[11px] text-slate-400 flex items-center space-x-1.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse"></span>
+              <span>Ao autorizar, o Totem desbloqueará imediatamente e iniciará a exibição contínua.</span>
+            </div>
+
+            <button
+              type="submit"
+              id="btnBindTotem"
+              class="w-full sm:w-auto px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs sm:text-sm flex items-center justify-center space-x-2 shadow-lg shadow-emerald-600/25 transition shrink-0"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              <span>Vincular e Autorizar Totem</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div class="flex items-center justify-between pt-2">
+        <div>
+          <h2 class="text-lg font-bold text-white">Totens Vinculados & Detectados</h2>
+          <p class="text-xs text-slate-400">Telas autorizadas no banco de dados e prontas para receber vídeos.</p>
+        </div>
+        <button id="refreshDevicesBtn" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 font-semibold flex items-center space-x-1.5 border border-slate-700 transition">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
           </svg>
-          <span>Atualizar</span>
+          <span>Atualizar Lista</span>
         </button>
       </div>
 
       <div id="devicesList" class="space-y-3">
         <!-- Lista de Totens -->
         <div class="text-center py-12 text-slate-500 text-sm bg-slate-900/40 rounded-2xl border border-slate-800">
-          Nenhuma tela detectada no momento. Abra o <strong>App 1 (Totem Screen)</strong> no celular de exibição conectado no mesmo Wi-Fi.
+          Nenhum totem cadastrado ainda. Use o formulário acima para vincular pelo ID da tela.
         </div>
       </div>
     </section>
@@ -366,6 +429,55 @@
 
     // 1. RENDERIZAR DISPOSITIVOS DETECTADOS NA REDE
     let currentDevices = [];
+    const bindTotemForm = document.getElementById('bindTotemForm');
+    const manualTotemId = document.getElementById('manualTotemId');
+    const manualTotemName = document.getElementById('manualTotemName');
+    const btnBindTotem = document.getElementById('btnBindTotem');
+
+    // Formulário de Vinculação Manual por ID
+    if (bindTotemForm) {
+      bindTotemForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = manualTotemId.value.trim();
+        const name = manualTotemName.value.trim() || 'Modelo Totem';
+        if (!id) return;
+
+        btnBindTotem.disabled = true;
+        btnBindTotem.classList.add('opacity-75');
+        btnBindTotem.innerHTML = `
+          <svg class="animate-spin w-4 h-4 text-white" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+          </svg>
+          <span>Vinculando Totem...</span>
+        `;
+
+        try {
+          await window.supabaseEngine.bindAndAuthorizeDevice(id, name);
+          notify(`✅ Totem "${name}" (${id}) vinculado e autorizado!`);
+          manualTotemId.value = '';
+          manualTotemName.value = '';
+
+          // Se tiver vídeo na galeria, já transmite o primeiro vídeo para a tela começar a tocar
+          if (currentVideos && currentVideos.length > 0) {
+            await window.supabaseEngine.playVideoOnTotem(currentVideos[0], id);
+            notify(`⚡ Totem liberado e reproduzindo "${currentVideos[0].title}"!`);
+          }
+        } catch (err) {
+          console.error('Erro ao autorizar:', err);
+          alert('Erro ao vincular totem: ' + err.message);
+        } finally {
+          btnBindTotem.disabled = false;
+          btnBindTotem.classList.remove('opacity-75');
+          btnBindTotem.innerHTML = `
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span>Vincular e Autorizar Totem</span>
+          `;
+        }
+      });
+    }
 
     function renderDevices(devices) {
       currentDevices = devices || [];
@@ -373,8 +485,9 @@
 
       if (!currentDevices.length) {
         devicesList.innerHTML = `
-          <div class="text-center py-12 text-slate-500 text-sm bg-slate-900/40 rounded-2xl border border-slate-800">
-            Nenhum totem detectado no momento.<br>Abra o <strong>App 1 (Totem Screen)</strong> no celular de exibição conectado no mesmo Wi-Fi.
+          <div class="text-center py-12 text-slate-500 text-sm bg-slate-900/40 rounded-2xl border border-slate-800 space-y-2">
+            <p class="font-medium text-slate-400">Nenhum totem cadastrado ainda.</p>
+            <p class="text-xs">Digite o ID exibido na tela do Totem no campo acima e clique em <strong>Vincular e Autorizar Totem</strong>.</p>
           </div>
         `;
         return;
@@ -385,39 +498,44 @@
         const isPending = dev.status === 'pending';
 
         return `
-          <div class="p-4 rounded-xl bg-slate-900 border ${isApproved ? 'border-emerald-500/40' : isPending ? 'border-amber-500/50 bg-amber-950/20' : 'border-slate-800'} flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div class="p-4 sm:p-5 rounded-2xl bg-slate-900 border ${isApproved ? 'border-emerald-500/40' : isPending ? 'border-amber-500/50 bg-amber-950/20' : 'border-slate-800'} flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg transition">
             <div class="flex items-center space-x-3.5">
-              <div class="w-10 h-10 rounded-xl ${isApproved ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'} flex items-center justify-center shrink-0">
+              <div class="w-11 h-11 rounded-2xl ${isApproved ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'} flex items-center justify-center shrink-0">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
                 </svg>
               </div>
               <div>
-                <div class="flex items-center space-x-2">
-                  <h4 class="text-sm font-bold text-white">${dev.deviceName || 'Modelo Totem'}</h4>
-                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${isApproved ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'}">
-                    ${isApproved ? 'AUTORIZADO / ONLINE' : 'PENDENTE DE APROVAÇÃO'}
+                <div class="flex items-center space-x-2 flex-wrap gap-y-1">
+                  <h4 class="text-sm sm:text-base font-bold text-white">${escapeHtml(dev.deviceName || 'Modelo Totem')}</h4>
+                  <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${isApproved ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'}">
+                    ${isApproved ? 'AUTORIZADO / CONECTADO' : 'PENDENTE DE AUTORIZAÇÃO'}
                   </span>
                 </div>
-                <p class="text-xs text-slate-400 font-mono mt-0.5">IP: ${dev.ipAddress || 'Wi-Fi Local'} • ID: ${dev.id}</p>
+                <div class="flex items-center space-x-2 text-xs text-slate-400 font-mono mt-1">
+                  <span>ID: <strong class="text-slate-200 select-all">${dev.id}</strong></span>
+                  <button onclick="copyDevId('${dev.id}')" class="text-[10px] text-indigo-400 hover:underline">Copiar ID</button>
+                </div>
               </div>
             </div>
 
-            <div class="flex items-center space-x-2 w-full sm:w-auto justify-end">
+            <div class="flex items-center space-x-2 w-full sm:w-auto justify-end flex-wrap gap-y-2">
               ${isPending ? `
-                <button onclick="authorize('${dev.id}', true)" class="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow transition">
+                <button onclick="authorize('${dev.id}', true)" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition">
                   Autorizar Acesso
                 </button>
-                <button onclick="authorize('${dev.id}', false)" class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-rose-400 text-xs transition">
+                <button onclick="authorize('${dev.id}', false)" class="px-3.5 py-2 rounded-xl bg-slate-800 text-slate-400 hover:text-rose-400 text-xs transition">
                   Recusar
                 </button>
               ` : `
-                <span class="text-xs text-emerald-400 font-semibold flex items-center space-x-1 mr-2">
-                  <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                  <span>Pronto para receber vídeos</span>
-                </span>
-                <button onclick="authorize('${dev.id}', false)" class="text-xs text-slate-500 hover:text-rose-400 underline">
-                  Desconectar
+                <button onclick="transmitCurrentToDev('${dev.id}')" class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs flex items-center space-x-1.5 transition">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                  </svg>
+                  <span>Transmitir Vídeo</span>
+                </button>
+                <button onclick="authorize('${dev.id}', false)" class="px-3 py-2 text-xs text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition" title="Remover Totem">
+                  Desvincular
                 </button>
               `}
             </div>
@@ -425,6 +543,24 @@
         `;
       }).join('');
     }
+
+    window.copyDevId = function(id) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(id);
+      }
+      notify(`ID ${id} copiado!`);
+    };
+
+    window.transmitCurrentToDev = async function(deviceId) {
+      if (!currentVideos || !currentVideos.length) {
+        alert('Nenhum vídeo cadastrado na galeria. Faça upload de um vídeo primeiro na aba 2!');
+        setTab('upload');
+        return;
+      }
+      const vid = currentVideos[0];
+      await window.supabaseEngine.playVideoOnTotem(vid, deviceId);
+      notify(`⚡ Transmitindo "${vid.title}" para o Totem!`);
+    };
 
     window.authorize = async function(deviceId, approve) {
       await window.supabaseEngine.authorizeDevice(deviceId, approve);
@@ -626,7 +762,7 @@
       }
     });
 
-    // 5. LISTENERS GLOBAIS
+    // 5. LISTENERS GLOBAIS E INICIALIZAÇÃO
     window.supabaseEngine.listeners.onDevicesUpdated = (devices) => {
       renderDevices(devices);
     };
@@ -635,10 +771,45 @@
       renderCatalog(videos);
     };
 
-    refreshDevicesBtn.addEventListener('click', () => {
-      fetch('/api/devices').then(r => r.json()).then(renderDevices);
-      notify('Lista de dispositivos atualizada!');
+    // Atualizar dados ao clicar no botão
+    refreshDevicesBtn.addEventListener('click', async () => {
+      if (window.supabaseEngine && window.supabaseEngine.client) {
+        await window.supabaseEngine.fetchDevicesFromSupabase();
+        await window.supabaseEngine.fetchVideosFromSupabase();
+      }
+      try {
+        const r = await fetch('/api/devices');
+        if (r.ok) {
+          const devs = await r.json();
+          renderDevices(devs);
+        }
+      } catch (e) {}
+      notify('Lista de totens atualizada!');
     });
+
+    // Ao carregar a página: verificar conexão Supabase e sincronizar
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.supabaseEngine) {
+        if (window.supabaseEngine.isSupabaseConnected) {
+          cloudStatusBadge.innerHTML = `
+            <span class="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse"></span>
+            <span class="text-emerald-400 font-semibold">Conectado ao Supabase Cloud</span>
+          `;
+        }
+        window.supabaseEngine.fetchDevicesFromSupabase();
+        window.supabaseEngine.fetchVideosFromSupabase();
+      }
+    });
+
+    // Se já carregou
+    if (window.supabaseEngine && window.supabaseEngine.isSupabaseConnected) {
+      cloudStatusBadge.innerHTML = `
+        <span class="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse"></span>
+        <span class="text-emerald-400 font-semibold">Conectado ao Supabase Cloud</span>
+      `;
+      window.supabaseEngine.fetchDevicesFromSupabase();
+      window.supabaseEngine.fetchVideosFromSupabase();
+    }
   </script>
 </body>
 </html>

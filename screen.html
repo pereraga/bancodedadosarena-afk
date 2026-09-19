@@ -58,9 +58,36 @@
       </p>
     </div>
 
-    <!-- Informações do Dispositivo -->
-    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 max-w-sm w-full space-y-3.5 text-left">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+    <!-- Informações do Dispositivo & Identificador ID -->
+    <div class="bg-slate-900/90 border border-slate-800 rounded-3xl p-5 sm:p-6 max-w-md w-full space-y-4 text-left shadow-2xl">
+      <div>
+        <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
+          Identificador do Totem (ID para autorização)
+        </span>
+        <div class="flex items-center justify-between bg-slate-950 border border-indigo-500/40 rounded-2xl p-3">
+          <span id="screenDeviceId" class="font-mono text-base sm:text-lg text-emerald-400 font-black select-all tracking-wider">
+            totem-carregando...
+          </span>
+          <button id="copyIdBtn" class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs flex items-center space-x-1.5 transition shrink-0 ml-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+            </svg>
+            <span id="copyIdText">Copiar ID</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="bg-indigo-950/40 border border-indigo-500/20 rounded-xl p-3.5 text-[11px] text-indigo-200 leading-relaxed space-y-1">
+        <p class="font-bold flex items-center space-x-1 text-white">
+          <span>Como autorizar esta tela:</span>
+        </p>
+        <p>1. Toque em <strong>Copiar ID</strong> acima.</p>
+        <p>2. Abra <strong class="text-white underline">totemarena.vercel.app/control</strong> no seu celular ou computador.</p>
+        <p>3. Cole no campo <strong>"Vincular Totem por ID"</strong> e toque em Autorizar.</p>
+        <p class="text-emerald-400 font-semibold pt-1">O vídeo iniciará automaticamente assim que aprovado!</p>
+      </div>
+
+      <div class="flex items-center justify-between border-t border-slate-800 pt-3">
         <span class="text-xs text-slate-400">Nome do Totem:</span>
         <div class="flex items-center space-x-1.5">
           <input
@@ -70,27 +97,24 @@
             class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white font-bold text-right focus:outline-none focus:ring-1 focus:ring-blue-500 w-36"
           >
           <button id="saveScreenNameBtn" class="text-[10px] bg-blue-600 hover:bg-blue-500 px-2.5 py-1.5 rounded-lg text-white font-bold transition">
-            OK
+            Salvar
           </button>
         </div>
-      </div>
-
-      <div class="flex items-center justify-between text-xs">
-        <span class="text-slate-400">Identificador (ID):</span>
-        <span id="screenDeviceId" class="font-mono text-slate-200 font-bold">totem-xxxx</span>
       </div>
 
       <div class="flex items-center justify-between text-xs">
         <span class="text-slate-400">Status:</span>
         <span id="waitStatus" class="text-amber-400 font-bold flex items-center space-x-1.5">
           <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
-          <span>Aguardando Autorização...</span>
+          <span>Aguardando Autorização no Painel...</span>
         </span>
       </div>
     </div>
 
     <div class="flex items-center space-x-3 text-xs">
-      <a href="/" class="text-slate-500 hover:text-slate-300 underline">Voltar para a Central</a>
+      <a href="/control" class="text-indigo-400 hover:text-indigo-300 font-medium underline">Abrir Painel de Controle (/control)</a>
+      <span class="text-slate-600">•</span>
+      <a href="/" class="text-slate-500 hover:text-slate-300 underline">Central Geral</a>
     </div>
   </div>
 
@@ -164,6 +188,8 @@
     const saveScreenNameBtn = document.getElementById('saveScreenNameBtn');
     const screenDeviceId = document.getElementById('screenDeviceId');
     const waitStatus = document.getElementById('waitStatus');
+    const copyIdBtn = document.getElementById('copyIdBtn');
+    const copyIdText = document.getElementById('copyIdText');
 
     const videoElem = document.getElementById('videoElem');
     const loaderOverlay = document.getElementById('loaderOverlay');
@@ -190,6 +216,40 @@
         screenToast.classList.remove('opacity-100', 'translate-y-0');
         screenToast.classList.add('opacity-0', 'translate-y-4');
       }, 3000);
+    }
+
+    // Copiar ID com 1 clique
+    if (copyIdBtn) {
+      copyIdBtn.addEventListener('click', () => {
+        const id = screenDeviceId.textContent.trim();
+        if (id && id !== 'totem-carregando...') {
+          const doFeedback = () => {
+            copyIdText.textContent = 'Copiado!';
+            toast('✅ ID copiado: ' + id);
+            setTimeout(() => { copyIdText.textContent = 'Copiar ID'; }, 2500);
+          };
+
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(id).then(doFeedback).catch(() => {
+              const ta = document.createElement('textarea');
+              ta.value = id;
+              document.body.appendChild(ta);
+              ta.select();
+              document.execCommand('copy');
+              document.body.removeChild(ta);
+              doFeedback();
+            });
+          } else {
+            const ta = document.createElement('textarea');
+            ta.value = id;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            doFeedback();
+          }
+        }
+      });
     }
 
     function scheduleHeaderHide() {
@@ -226,6 +286,11 @@
       const name = screenNameInput.value.trim() || 'Modelo Totem';
       const dev = await window.totemCentral.registerScreenDevice(name);
       screenDeviceId.textContent = dev.id;
+
+      if (dev.status === 'approved') {
+        unlockPlayer(dev.device_name || name);
+        fetchActiveOrLatestVideo(dev.current_video_id);
+      }
     }
 
     saveScreenNameBtn.addEventListener('click', () => {
@@ -235,10 +300,42 @@
 
     // 2. DESBLOQUEAR AO SER AUTORIZADO
     function unlockPlayer(name) {
+      if (waitScreen.classList.contains('hidden')) return;
       waitScreen.classList.add('hidden');
       deviceTitleBadge.textContent = `${name || 'Modelo Totem'} • Conectado à Totem Central`;
       initWakeLock();
-      toast('Conexão autorizada pela Totem Central!');
+      toast('✅ Totem autorizado pela Central!');
+    }
+
+    // Buscar vídeo ativo ou o mais recente da biblioteca
+    async function fetchActiveOrLatestVideo(preferredVideoId = null) {
+      if (!window.totemCentral || !window.totemCentral.client) return;
+      try {
+        if (preferredVideoId) {
+          const { data: v } = await window.totemCentral.client
+            .from('videos')
+            .select('*')
+            .eq('id', preferredVideoId)
+            .maybeSingle();
+          if (v) {
+            playVideo({ id: v.id, title: v.title, url: v.video_url });
+            return;
+          }
+        }
+
+        // Se não tiver preferred, busca o vídeo mais recente
+        const { data: videos } = await window.totemCentral.client
+          .from('videos')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (videos && videos.length > 0) {
+          playVideo({ id: videos[0].id, title: videos[0].title, url: videos[0].video_url });
+        }
+      } catch (err) {
+        console.warn('Aviso ao carregar vídeo inicial:', err);
+      }
     }
 
     // 3. REPRODUZIR VÍDEO
@@ -278,6 +375,7 @@
     window.totemCentral.listeners.onDeviceApproved = (device) => {
       if (device.status === 'approved') {
         unlockPlayer(screenNameInput.value);
+        fetchActiveOrLatestVideo(device.currentVideoId);
       } else if (device.status === 'rejected') {
         waitScreen.classList.remove('hidden');
         waitStatus.innerHTML = '<span class="text-rose-400 font-bold">Acesso recusado na Central</span>';
@@ -288,6 +386,26 @@
       unlockPlayer(screenNameInput.value);
       playVideo(video);
     };
+
+    // 5. POLLING DE SEGURANÇA (Garante autorização imediata mesmo se houver reconexão de rede)
+    async function checkApprovalStatus() {
+      if (waitScreen.classList.contains('hidden')) return;
+      const deviceId = localStorage.getItem('totem_screen_device_id');
+      if (!deviceId || !window.totemCentral || !window.totemCentral.client) return;
+
+      try {
+        const { data, error } = await window.totemCentral.client
+          .from('devices')
+          .select('id, device_name, status, current_video_id')
+          .eq('id', deviceId)
+          .maybeSingle();
+
+        if (!error && data && data.status === 'approved') {
+          unlockPlayer(data.device_name || screenNameInput.value);
+          fetchActiveOrLatestVideo(data.current_video_id);
+        }
+      } catch (e) {}
+    }
 
     // Áudio e Fullscreen
     audioBtn.addEventListener('click', () => {
@@ -312,7 +430,8 @@
     });
 
     startRegistration();
-    setInterval(startRegistration, 20000);
+    setInterval(checkApprovalStatus, 3000);
+    setInterval(startRegistration, 25000);
     window.addEventListener('click', () => initWakeLock(), { once: true });
 
     // Registro do Service Worker para o PWABuilder
