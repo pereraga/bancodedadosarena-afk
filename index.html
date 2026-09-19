@@ -718,8 +718,9 @@
       }
 
       totemsList.innerHTML = cachedTotens.map(dev => {
-        const isApproved = dev.status === 'approved';
-        const isPending = dev.status === 'pending';
+        const isRejected = dev.status === 'rejected' || dev.status === 'unlinked';
+        const isApproved = !isRejected;
+        const isPending = false;
 
         return `
           <div class="p-4 rounded-2xl bg-slate-900 border ${isApproved ? 'border-emerald-500/30' : isPending ? 'border-amber-500/50 bg-amber-950/20' : 'border-slate-800'} flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

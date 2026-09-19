@@ -608,8 +608,9 @@
       }
 
       devicesList.innerHTML = currentDevices.map(dev => {
-        const isApproved = dev.status === 'approved';
-        const isPending = dev.status === 'pending';
+        const isRejected = dev.status === 'rejected' || dev.status === 'unlinked';
+        const isApproved = !isRejected;
+        const isPending = false;
 
         let badgeClass = '';
         let badgeText = '';
@@ -621,11 +622,6 @@
           badgeText = 'AUTORIZADO PERMANENTE';
           borderClass = 'border-emerald-500/40 bg-slate-900';
           iconBg = 'bg-emerald-500/20 text-emerald-400';
-        } else if (isPending) {
-          badgeClass = 'bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse';
-          badgeText = 'AGUARDANDO CONEXÃO';
-          borderClass = 'border-amber-500/50 bg-amber-950/20';
-          iconBg = 'bg-amber-500/20 text-amber-400';
         } else {
           badgeClass = 'bg-rose-500/20 text-rose-300 border border-rose-500/30';
           badgeText = 'ACESSO RECUSADO / BLOQUEADO';
@@ -724,12 +720,12 @@
       notify('Totem removido com sucesso.');
     };
 
-    // Notificação imediata de novo dispositivo pendente
-    window.supabaseEngine.listeners.onNewDevicePending = (device) => {
+    // Dispositivo conectado: autorização permanente automática
+    window.supabaseEngine.listeners.onNewDevicePending = async (device) => {
       if (device.status === 'pending') {
-        pendingDeviceId = device.id;
-        pendingDeviceDetails.textContent = `Dispositivo "${device.deviceName || 'Modelo Totem'}" (IP: ${device.ipAddress || 'Wi-Fi'}) solicitando conexão.`;
-        pendingDeviceAlert.classList.remove('hidden');
+        try {
+          await window.supabaseEngine.authorizeDevice(device.id, true);
+        } catch (e) {}
       }
     };
 

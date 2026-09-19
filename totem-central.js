@@ -63,17 +63,19 @@ class TotemCentralEngine {
         this.client = window.supabase.createClient(this.config.url, this.config.anonKey);
         this.isConfigured = true;
 
+        // Configurar canais Realtime e carregar dados imediatamente (mesmo sem login / telas de Totem anônimas)
+        this.setupRealtimeSubscriptions();
+        this.refreshCatalog();
+        this.refreshDevices();
+
         // Ouvir mudanças de autenticação (Login / Logout / Cadastro)
         this.client.auth.onAuthStateChange((event, session) => {
           this.currentUser = session ? session.user : null;
           if (this.listeners.onAuthStateChanged) {
             this.listeners.onAuthStateChanged(this.currentUser);
           }
-          if (this.currentUser) {
-            this.setupRealtimeSubscriptions();
-            this.refreshCatalog();
-            this.refreshDevices();
-          }
+          this.refreshCatalog();
+          this.refreshDevices();
         });
 
         // Verificar sessão ativa
@@ -81,11 +83,6 @@ class TotemCentralEngine {
           this.currentUser = data && data.session ? data.session.user : null;
           if (this.listeners.onAuthStateChanged) {
             this.listeners.onAuthStateChanged(this.currentUser);
-          }
-          if (this.currentUser) {
-            this.setupRealtimeSubscriptions();
-            this.refreshCatalog();
-            this.refreshDevices();
           }
         });
       }
@@ -98,7 +95,7 @@ class TotemCentralEngine {
   setupRealtimeSubscriptions() {
     if (!this.client) return;
 
-    // Canal Broadcast de ordens imediatas para as telas
+    // Canal Broadcast Global de ordens imediatas para as telas
     const broadcastChannel = this.client.channel('totem-global-channel');
     broadcastChannel
       .on('broadcast', { event: 'PLAY_VIDEO' }, payload => {
@@ -113,11 +110,32 @@ class TotemCentralEngine {
       })
       .subscribe();
 
+    // Canal totem-broadcast (compatibilidade cruzada)
+    const totemBroadcastChannel = this.client.channel('totem-broadcast');
+    totemBroadcastChannel
+      .on('broadcast', { event: 'PLAY_VIDEO' }, payload => {
+        if (this.listeners.onVideoCommandReceived) {
+          this.listeners.onVideoCommandReceived(payload.payload);
+        }
+      })
+      .on('broadcast', { event: 'DEVICE_AUTHORIZED' }, payload => {
+        if (this.listeners.onDeviceApproved) {
+          this.listeners.onDeviceApproved(payload.payload);
+        }
+      })
+      .subscribe();
+
     // Ouvir alterações no banco de dispositivos e vídeos
     this.client
       .channel('db-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'devices' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'devices' }, (payload) => {
         this.refreshDevices();
+        const storedId = localStorage.getItem('totem_screen_device_id');
+        if (payload && payload.new && payload.new.id === storedId) {
+          if (this.listeners.onDeviceApproved) {
+            this.listeners.onDeviceApproved(payload.new);
+          }
+        }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'videos' }, () => {
         this.refreshCatalog();
@@ -167,7 +185,7 @@ class TotemCentralEngine {
       localStorage.setItem('totem_screen_device_id', deviceId);
     }
 
-    let status = 'pending';
+    let status = 'approved';
     let currentVideoId = null;
 
     if (this.client) {
@@ -178,17 +196,21 @@ class TotemCentralEngine {
           .eq('id', deviceId)
           .maybeSingle();
 
-        const isApprovedLocally = localStorage.getItem('totem_is_approved') === 'true';
-
         if (existing) {
-          status = existing.status || 'approved';
+          // Permanece recusado apenas se o administrador clicou explicitamente em RECUSAR no painel
+          if (existing.status === 'rejected' || existing.status === 'unlinked') {
+            status = existing.status;
+          } else {
+            status = 'approved';
+          }
           currentVideoId = existing.current_video_id;
           await this.client.from('devices').update({
             device_name: deviceName,
+            status: status,
             last_seen: new Date().toISOString()
           }).eq('id', deviceId);
         } else {
-          // Dispositivo novo ou atualizado: aprovado permanente por padrão!
+          // Dispositivo novo: APROVADO PERMANENTEMENTE AUTOMÁTICO!
           status = 'approved';
           await this.client.from('devices').insert({
             id: deviceId,
@@ -198,7 +220,7 @@ class TotemCentralEngine {
           });
         }
 
-        // Se o dispositivo já estiver aprovado, avisar o listener imediatamente!
+        // Se o dispositivo estiver aprovado, avisar o listener imediatamente!
         if (status === 'approved' && this.listeners.onDeviceApproved) {
           this.listeners.onDeviceApproved({ id: deviceId, status: 'approved', currentVideoId });
         }
@@ -537,40 +559,64 @@ class TotemCentralEngine {
   // --- TRANSMISSÃO DE VÍDEO EM TEMPO REAL ---
 
   async transmitVideo(video, targetDeviceId = null) {
+    return await this.playVideoOnTotem(video, targetDeviceId);
+  }
+
+  async playVideoOnTotem(video, targetDeviceId = null) {
     if (!this.client) return;
+
+    let mediaUrl = video.video_url || video.url;
+    if (mediaUrl && mediaUrl.startsWith('/')) {
+      mediaUrl = 'https://totemarena.vercel.app' + mediaUrl;
+    }
 
     const payload = {
       id: video.id,
       title: video.title,
-      url: video.video_url || video.url,
+      url: mediaUrl,
       targetDeviceId,
       updatedAt: new Date().toISOString()
     };
 
-    // Disparar no canal broadcast global para todos os totens conectados
-    const globalChannel = this.client.channel('totem-global-channel');
-    await globalChannel.send({
-      type: 'broadcast',
-      event: 'PLAY_VIDEO',
-      payload
-    });
-
-    // Se for para um totem específico
-    if (targetDeviceId) {
-      const screenChannel = this.client.channel(`device-${targetDeviceId}`);
-      await screenChannel.send({
+    try {
+      // 1. Disparar no canal broadcast global para todos os totens conectados
+      const globalChannel = this.client.channel('totem-global-channel');
+      await globalChannel.send({
         type: 'broadcast',
         event: 'PLAY_VIDEO',
         payload
       });
-    }
 
-    // Registrar no banco
-    if (targetDeviceId) {
-      await this.client
-        .from('devices')
-        .update({ current_video_id: video.id })
-        .eq('id', targetDeviceId);
+      // 2. Disparar no canal totem-broadcast
+      const broadChannel = this.client.channel('totem-broadcast');
+      await broadChannel.send({
+        type: 'broadcast',
+        event: 'PLAY_VIDEO',
+        payload
+      });
+
+      // 3. Se for para um totem específico
+      if (targetDeviceId) {
+        const screenChannel = this.client.channel(`device-${targetDeviceId}`);
+        await screenChannel.send({
+          type: 'broadcast',
+          event: 'PLAY_VIDEO',
+          payload
+        });
+
+        await this.client
+          .from('devices')
+          .update({ current_video_id: video.id, status: 'approved' })
+          .eq('id', targetDeviceId);
+      } else {
+        // Atualizar todos os totens ativos na tabela
+        await this.client
+          .from('devices')
+          .update({ current_video_id: video.id, status: 'approved' })
+          .neq('status', 'rejected');
+      }
+    } catch (err) {
+      console.warn('Erro ao transmitir vídeo:', err);
     }
   }
 }

@@ -157,7 +157,7 @@ class SupabaseEngine {
             id: d.id,
             deviceName: d.device_name,
             ipAddress: d.ip_address,
-            status: d.status,
+            status: (d.status === 'rejected' || d.status === 'unlinked') ? d.status : 'approved',
             lastSeen: d.last_seen
           }));
         }
@@ -264,7 +264,7 @@ class SupabaseEngine {
         await this.client.from('devices').upsert({
           id: this.deviceId,
           device_name: this.deviceName,
-          status: 'pending',
+          status: 'approved',
           last_seen: new Date().toISOString()
         });
       } catch (err) {
@@ -686,14 +686,14 @@ class SupabaseEngine {
 
           await this.client
             .from('devices')
-            .update({ current_video_id: video.id })
+            .update({ current_video_id: video.id, status: 'approved' })
             .eq('id', targetDeviceId);
         } else {
-          // Atualizar todos os dispositivos com este vídeo
+          // Atualizar todos os dispositivos ativos com este vídeo
           await this.client
             .from('devices')
-            .update({ current_video_id: video.id })
-            .eq('status', 'approved');
+            .update({ current_video_id: video.id, status: 'approved' })
+            .neq('status', 'rejected');
         }
       } catch (err) {
         console.warn('Aviso ao emitir Realtime Broadcast no Supabase:', err);

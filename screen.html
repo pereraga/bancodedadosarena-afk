@@ -71,7 +71,7 @@
 <body class="h-full w-full flex items-center justify-center bg-black text-white relative font-sans">
 
   <!-- 1. TELA DE ESPERA & PAREAMENTO COM A TOTEM CENTRAL -->
-  <div id="waitScreen" class="absolute inset-0 z-50 bg-slate-950 flex flex-col items-center justify-center p-6 text-center space-y-6">
+  <div id="waitScreen" class="absolute inset-0 z-50 bg-slate-950 flex flex-col items-center justify-center p-6 text-center space-y-6 hidden">
     <div class="relative">
       <div class="w-24 h-24 rounded-3xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-2xl shadow-blue-500/30">
         <svg class="w-12 h-12 text-white animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -223,6 +223,7 @@
     const fullBtn = document.getElementById('fullBtn');
 
     let currentUrl = null;
+    let currentPlayingVideoId = null;
     let wakeLock = null;
     let hideTimer = null;
 
@@ -362,9 +363,13 @@
       const id = getStoredDeviceId();
       if (screenDeviceId) screenDeviceId.textContent = id;
 
-      // Destrava e inicia a reprodução do vídeo IMEDIATAMENTE (sem travar em carregando)
+      // Destrava tela imediatamente
       unlockPlayer(name, false);
-      fetchActiveOrLatestVideo();
+
+      // Inicia o vídeo inicial se ainda não estiver tocando
+      if (!currentUrl) {
+        fetchActiveOrLatestVideo();
+      }
 
       try {
         const dev = await window.totemCentral.registerScreenDevice(name);
@@ -373,10 +378,12 @@
           if (screenDeviceId) screenDeviceId.textContent = dev.id;
         }
 
-        if (dev && dev.status === 'approved') {
+        if (dev && dev.status !== 'rejected' && dev.status !== 'unlinked') {
           setDeviceApprovedLocally(true);
           unlockPlayer(dev.device_name || name, false);
-          if (dev.current_video_id) {
+          if (dev.current_video_id && dev.current_video_id !== currentPlayingVideoId) {
+            fetchActiveOrLatestVideo(dev.current_video_id);
+          } else if (!currentUrl) {
             fetchActiveOrLatestVideo(dev.current_video_id);
           }
         }
@@ -423,21 +430,42 @@
             .select('*')
             .eq('id', preferredVideoId)
             .maybeSingle();
-          if (v && v.video_url) {
-            playVideo({ id: v.id, title: v.title, url: v.video_url });
+          if (v && (v.video_url || v.url)) {
+            playVideo({ id: v.id, title: v.title, url: v.video_url || v.url });
             return;
           }
         }
 
-        // Busca o vídeo mais recente cadastrado
+        // Se não tiver preferência explícita, consulta o vídeo atribuído a este aparelho na tabela devices
+        const myDevId = getStoredDeviceId();
+        if (myDevId) {
+          const { data: dev } = await window.totemCentral.client
+            .from('devices')
+            .select('current_video_id')
+            .eq('id', myDevId)
+            .maybeSingle();
+          if (dev && dev.current_video_id) {
+            const { data: v } = await window.totemCentral.client
+              .from('videos')
+              .select('*')
+              .eq('id', dev.current_video_id)
+              .maybeSingle();
+            if (v && (v.video_url || v.url)) {
+              playVideo({ id: v.id, title: v.title, url: v.video_url || v.url });
+              return;
+            }
+          }
+        }
+
+        // Busca o vídeo mais recente cadastrado na galeria
         const { data: videos } = await window.totemCentral.client
           .from('videos')
           .select('*')
           .order('created_at', { ascending: false })
           .limit(1);
 
-        if (videos && videos.length > 0 && videos[0].video_url) {
-          playVideo({ id: videos[0].id, title: videos[0].title, url: videos[0].video_url });
+        if (videos && videos.length > 0 && (videos[0].video_url || videos[0].url)) {
+          playVideo({ id: videos[0].id, title: videos[0].title, url: videos[0].video_url || videos[0].url });
         }
       } catch (err) {
         console.warn('Aviso ao carregar vídeo inicial:', err);
@@ -501,15 +529,24 @@
 
     // 3. REPRODUZIR VÍDEO (Modo Kiosk: 100% Sem Controles e Loop Eterno)
     function playVideo(video) {
-      if (!video || !video.url) return;
+      if (!video || (!video.url && !video.video_url)) return;
 
-      currentUrl = video.url;
+      const mediaRawUrl = video.url || video.video_url;
+      const newVideoId = video.id || null;
+
+      // Se já estiver tocando esse mesmo vídeo exatamente, não recarrega para não piscar
+      if (currentUrl === mediaRawUrl && currentPlayingVideoId === newVideoId && videoElem && !videoElem.paused && !videoElem.ended) {
+        return;
+      }
+
+      currentUrl = mediaRawUrl;
+      currentPlayingVideoId = newVideoId;
       if (videoTitleNow) videoTitleNow.textContent = video.title || 'Vídeo em Exibição';
 
-      const ytId = getYouTubeId(video.url);
-      const driveId = getDriveId(video.url);
+      const ytId = getYouTubeId(mediaRawUrl);
+      const driveId = getDriveId(mediaRawUrl);
 
-      showLoader(`Carregando: ${video.title}...`);
+      showLoader(`Carregando: ${video.title || 'Vídeo'}...`);
 
       if (ytId) {
         // Reprodução via YouTube Iframe Embed Kiosk (sem controles e em loop infinito)
@@ -534,7 +571,7 @@
       iframeElem.src = 'about:blank';
       videoElem.classList.remove('hidden');
 
-      let targetMediaUrl = video.url;
+      let targetMediaUrl = mediaRawUrl;
       if (driveId) {
         targetMediaUrl = window.location.origin + `/api/stream?id=${driveId}`;
       } else if (targetMediaUrl.includes('dropbox.com')) {
@@ -586,7 +623,7 @@
         hideLoader();
         // Em caso de falha de conexão móvel, reconectar o stream sem abrir interfaces com controles
         setTimeout(() => {
-          if (currentUrl === video.url) {
+          if (currentUrl === mediaRawUrl) {
             videoElem.src = targetMediaUrl;
             videoElem.load();
             videoElem.play().catch(() => {});
@@ -614,17 +651,21 @@
 
     // 4. LISTENERS EM TEMPO REAL
     window.totemCentral.listeners.onDeviceApproved = (device) => {
-      if (device.status === 'approved') {
-        setDeviceApprovedLocally(true);
-        unlockPlayer(screenNameInput.value);
-        fetchActiveOrLatestVideo(device.currentVideoId);
-      } else if (device.status === 'rejected' || device.status === 'unlinked') {
+      if (device.status === 'rejected' || device.status === 'unlinked') {
         setDeviceApprovedLocally(false);
         try { videoElem.pause(); } catch (e) {}
         if (iframeElem) iframeElem.src = 'about:blank';
         currentUrl = null;
+        currentPlayingVideoId = null;
         waitScreen.classList.remove('hidden');
         waitStatus.innerHTML = '<span class="text-rose-400 font-bold">Totem desvinculado no Painel</span>';
+      } else {
+        setDeviceApprovedLocally(true);
+        unlockPlayer(screenNameInput.value, false);
+        const nextVidId = device.currentVideoId || device.current_video_id;
+        if (nextVidId && nextVidId !== currentPlayingVideoId) {
+          fetchActiveOrLatestVideo(nextVidId);
+        }
       }
     };
 
@@ -633,11 +674,12 @@
       if (video && video.targetDeviceId && video.targetDeviceId !== myDevId) {
         return; // Comando direcionado a outro Totem
       }
+      setDeviceApprovedLocally(true);
       unlockPlayer(screenNameInput.value, false);
       playVideo(video);
     };
 
-    // 5. POLLING DE SEGURANÇA (Verifica se foi aprovado ou se foi explicitamente desvinculado)
+    // 5. POLLING DE SEGURANÇA & HOT-SWAP AUTOMÁTICO
     async function checkApprovalStatus() {
       const deviceId = getStoredDeviceId();
       if (!deviceId || !window.totemCentral || !window.totemCentral.client) return;
@@ -649,24 +691,34 @@
           .eq('id', deviceId)
           .maybeSingle();
 
-        if (!error) {
-          if (data && data.status === 'approved') {
-            setDeviceApprovedLocally(true);
-            unlockPlayer(data.device_name || screenNameInput.value, false);
-            if (data.current_video_id && !currentUrl) {
-              fetchActiveOrLatestVideo(data.current_video_id);
-            }
-          } else if (data && (data.status === 'rejected' || data.status === 'unlinked')) {
+        if (!error && data) {
+          if (data.status === 'rejected' || data.status === 'unlinked') {
             // Acesso recusado ou bloqueado explicitamente no painel
             setDeviceApprovedLocally(false);
             try { videoElem.pause(); } catch (e) {}
             if (iframeElem) iframeElem.src = 'about:blank';
             currentUrl = null;
+            currentPlayingVideoId = null;
             waitScreen.classList.remove('hidden');
             waitStatus.innerHTML = '<span class="text-rose-400 font-bold">Acesso ao vídeo recusado no Painel</span>';
+            return;
+          }
+
+          // Dispositivo autorizado e ativo permanentemente
+          setDeviceApprovedLocally(true);
+          unlockPlayer(data.device_name || screenNameInput.value, false);
+
+          // HOT-SWAP AUTOMÁTICO: se o vídeo foi trocado no painel, atualiza NA HORA sem precisar revincular!
+          if (data.current_video_id && data.current_video_id !== currentPlayingVideoId) {
+            console.log('⚡ Hot-swap: novo vídeo detectado no painel:', data.current_video_id);
+            fetchActiveOrLatestVideo(data.current_video_id);
+          } else if (!currentUrl) {
+            fetchActiveOrLatestVideo(data.current_video_id);
           }
         }
-      } catch (e) {}
+      } catch (e) {
+        console.warn('Aviso ao checar status de aprovação:', e);
+      }
     }
 
     // Watchdog / Loop Perpétuo: Garante que o vídeo NUNCA pare e rode em loop infinito
