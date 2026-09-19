@@ -28,7 +28,10 @@ class TotemCentralEngine {
     } catch (e) {
       console.warn('Configuração não encontrada no localStorage:', e);
     }
-    return null;
+    return {
+      url: 'https://qvnsahvdjhimlmtqrnif.supabase.co',
+      anonKey: ''
+    };
   }
 
   saveConfig(url, anonKey) {
