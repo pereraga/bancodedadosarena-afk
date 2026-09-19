@@ -965,7 +965,7 @@
                 </div>
               </div>
               <span class="absolute top-2 right-2 px-2 py-0.5 rounded text-[10px] font-bold bg-black/70 text-white backdrop-blur">
-                ${vid.file_size_mb ? vid.file_size_mb + ' MB' : 'Vídeo'}
+                ${vid.file_size_mb ? (String(vid.file_size_mb).includes('MB') || String(vid.file_size_mb).includes('GB') || String(vid.file_size_mb).includes('Link') ? vid.file_size_mb : vid.file_size_mb + ' MB') : 'Vídeo'}
               </span>
             </div>
 

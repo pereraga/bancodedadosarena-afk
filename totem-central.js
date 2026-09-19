@@ -381,7 +381,7 @@ class TotemCentralEngine {
         throw new Error('O bucket "videos" ainda não foi criado no Supabase. Abra o SQL Editor no painel do Supabase e execute o script para criar o bucket "videos" público com limite de 200 MB.');
       }
       if (uploadError.message && (uploadError.message.includes('exceeded the maximum allowed size') || uploadError.message.includes('Payload too large'))) {
-        throw new Error(`O vídeo selecionado possui ${formattedSize} e o Supabase retornou limite de tamanho excedido. No SQL Editor do Supabase, execute: UPDATE storage.buckets SET file_size_limit = 209715200 WHERE id = 'videos'; para liberar 200 MB. Se o seu arquivo for maior, use a opção "Inserir Link Direto do Vídeo".`);
+        throw new Error(`O arquivo possui ${formattedSize}.\n\nO plano gratuito do Supabase possui um limite rígido de 50 MB por arquivo no Storage.\n\nPara usar vídeos maiores que 50 MB (como este de ${formattedSize}), use a "Opção 2: Inserir Link Direto do Vídeo" logo abaixo — aceita links do Google Drive, Dropbox ou links diretos .mp4 sem limite!`);
       }
       throw new Error('Falha no upload para o Supabase Storage: ' + uploadError.message);
     }
@@ -429,7 +429,24 @@ class TotemCentralEngine {
     if (!videoUrl) throw new Error('Informe o link direto do vídeo');
     if (!this.client) throw new Error('Supabase não inicializado');
 
-    const cleanUrl = videoUrl.trim();
+    let cleanUrl = videoUrl.trim();
+
+    // Suporte automático para links do Google Drive
+    if (cleanUrl.includes('drive.google.com')) {
+      const gmatch = cleanUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || cleanUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      if (gmatch && gmatch[1]) {
+        cleanUrl = `https://drive.google.com/uc?export=download&id=${gmatch[1]}`;
+      }
+    }
+
+    // Suporte automático para Dropbox
+    if (cleanUrl.includes('dropbox.com')) {
+      cleanUrl = cleanUrl.replace(/[?&]dl=0/, '?raw=1').replace(/[?&]dl=1/, '?raw=1');
+      if (!cleanUrl.includes('raw=1')) {
+        cleanUrl += (cleanUrl.includes('?') ? '&' : '?') + 'raw=1';
+      }
+    }
+
     const { data: dbData, error: dbError } = await this.client
       .from('videos')
       .insert({
