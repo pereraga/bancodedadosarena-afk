@@ -32,10 +32,11 @@ export default async function handler(request) {
     : targetUrl;
 
   const fetchHeaders = new Headers();
-  const range = request.headers.get('range');
-  if (range) {
-    fetchHeaders.set('range', range);
+  let range = request.headers.get('range');
+  if (!range) {
+    range = 'bytes=0-';
   }
+  fetchHeaders.set('range', range);
   fetchHeaders.set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
   try {
@@ -47,7 +48,8 @@ export default async function handler(request) {
     const responseHeaders = new Headers();
     responseHeaders.set('Access-Control-Allow-Origin', '*');
     responseHeaders.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
-    responseHeaders.set('Access-Control-Allow-Headers', 'Range');
+    responseHeaders.set('Access-Control-Allow-Headers', 'Range, Content-Range, Content-Type, Accept-Ranges');
+    responseHeaders.set('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges');
     responseHeaders.set('Accept-Ranges', 'bytes');
     responseHeaders.set('Cache-Control', 'public, max-age=3600');
 

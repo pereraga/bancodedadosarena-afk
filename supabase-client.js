@@ -645,10 +645,14 @@ class SupabaseEngine {
 
   // TRANSMITIR VÍDEO EM TEMPO REAL
   async playVideoOnTotem(video, targetDeviceId = null) {
+    let mediaUrl = video.video_url || video.url;
+    if (mediaUrl && mediaUrl.startsWith('/')) {
+      mediaUrl = 'https://totemarena.vercel.app' + mediaUrl;
+    }
     const payload = {
       id: video.id,
       title: video.title,
-      url: video.video_url || video.url,
+      url: mediaUrl,
       targetDeviceId,
       updatedAt: new Date().toISOString()
     };

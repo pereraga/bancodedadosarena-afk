@@ -122,24 +122,26 @@
   <div id="playerBox" class="w-full h-full relative overflow-hidden flex items-center justify-center">
     <video
       id="videoElem"
-      class="w-full h-full object-contain video-fade opacity-0"
+      class="w-full h-full object-contain video-fade"
       autoplay
       loop
       playsinline
       muted
+      preload="auto"
     ></video>
 
     <iframe
       id="iframeElem"
-      class="w-full h-full object-contain video-fade opacity-0 hidden border-0"
+      class="w-full h-full object-contain video-fade hidden border-0"
       allow="autoplay; encrypted-media; picture-in-picture"
       allowfullscreen
     ></iframe>
 
-    <!-- Overlay de Carregamento -->
-    <div id="loaderOverlay" class="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-20 transition-opacity duration-300">
+    <!-- Overlay de Carregamento (Toque para fechar / auto-dismiss) -->
+    <div id="loaderOverlay" class="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-20 transition-opacity duration-300 cursor-pointer select-none">
       <div class="animate-spin rounded-full h-14 w-14 border-t-4 border-b-4 border-blue-500 mb-3"></div>
       <p id="loaderMsg" class="text-slate-300 text-sm font-medium">Conectando à Totem Central...</p>
+      <span class="text-[11px] text-slate-400 mt-2">Toque na tela se demorar a carregar</span>
     </div>
 
     <!-- Barra Superior Flutuante (Oculta automaticamente após 3 segundos) -->
@@ -454,11 +456,40 @@
     }
 
     let isMuted = true;
+    let loaderTimer = null;
+
+    function hideLoader() {
+      if (loaderTimer) clearTimeout(loaderTimer);
+      loaderOverlay.classList.add('opacity-0', 'pointer-events-none');
+      videoElem.classList.remove('opacity-0');
+      videoElem.classList.add('opacity-100');
+      if (iframeElem && !iframeElem.classList.contains('hidden')) {
+        iframeElem.classList.remove('opacity-0');
+        iframeElem.classList.add('opacity-100');
+      }
+    }
+
+    function showLoader(text) {
+      if (loaderTimer) clearTimeout(loaderTimer);
+      loaderMsg.textContent = text || 'Carregando vídeo...';
+      loaderOverlay.classList.remove('opacity-0', 'pointer-events-none');
+      // Proteção de segurança: se o vídeo demorar mais de 2.5 segundos para responder, fechar o overlay!
+      loaderTimer = setTimeout(hideLoader, 2500);
+    }
+
+    // Permitir tocar na tela a qualquer momento para fechar o overlay e liberar o áudio/vídeo
+    loaderOverlay.addEventListener('click', () => {
+      hideLoader();
+      try { videoElem.play(); } catch (e) {}
+    });
+    loaderOverlay.addEventListener('touchstart', () => {
+      hideLoader();
+      try { videoElem.play(); } catch (e) {}
+    }, { passive: true });
 
     // 3. REPRODUZIR VÍDEO
     function playVideo(video) {
       if (!video || !video.url) return;
-      if (currentUrl === video.url) return;
 
       currentUrl = video.url;
       videoTitleNow.textContent = video.title || 'Vídeo em Exibição';
@@ -467,8 +498,7 @@
       const ytId = getYouTubeId(video.url);
       const driveId = getDriveId(video.url);
 
-      loaderOverlay.classList.remove('opacity-0', 'pointer-events-none');
-      loaderMsg.textContent = `Carregando: ${video.title}...`;
+      showLoader(`Carregando: ${video.title}...`);
 
       if (ytId) {
         // Reprodução via YouTube Iframe Embed Kiosk
@@ -481,9 +511,10 @@
         iframeElem.src = `https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&mute=${isMuted ? 1 : 0}&loop=1&playlist=${ytId}&controls=0&modestbranding=1&rel=0&playsinline=1&enablejsapi=1`;
 
         iframeElem.onload = () => {
-          loaderOverlay.classList.add('opacity-0', 'pointer-events-none');
+          hideLoader();
           initWakeLock();
         };
+        setTimeout(hideLoader, 1200);
         return;
       }
 
@@ -491,40 +522,43 @@
       iframeElem.classList.add('hidden', 'opacity-0');
       iframeElem.src = 'about:blank';
       videoElem.classList.remove('hidden');
-      videoElem.classList.remove('opacity-100');
-      videoElem.classList.add('opacity-0');
 
       let targetMediaUrl = video.url;
       if (driveId) {
-        targetMediaUrl = `/api/stream?id=${driveId}`;
+        targetMediaUrl = window.location.origin + `/api/stream?id=${driveId}`;
       } else if (targetMediaUrl.includes('dropbox.com')) {
         targetMediaUrl = targetMediaUrl.replace(/[?&]dl=0/, '?raw=1').replace(/[?&]dl=1/, '?raw=1');
+      } else if (targetMediaUrl.startsWith('/')) {
+        targetMediaUrl = window.location.origin + targetMediaUrl;
       }
 
-      videoElem.src = targetMediaUrl;
-      videoElem.load();
+      // Configurações críticas para celular antes de carregar
+      videoElem.muted = isMuted;
+      videoElem.defaultMuted = isMuted;
+      videoElem.playsInline = true;
+      videoElem.setAttribute('playsinline', '');
+      videoElem.setAttribute('webkit-playsinline', '');
+      videoElem.preload = 'auto';
+
+      // Qualquer sinal de reprodução fecha o overlay imediatamente
+      videoElem.onplaying = hideLoader;
+      videoElem.onloadeddata = hideLoader;
+      videoElem.ontimeupdate = () => {
+        if (videoElem.currentTime > 0) hideLoader();
+      };
 
       videoElem.oncanplay = () => {
-        videoElem.muted = isMuted;
-        videoElem.play().then(() => {
-          loaderOverlay.classList.add('opacity-0', 'pointer-events-none');
-          videoElem.classList.remove('opacity-0');
-          videoElem.classList.add('opacity-100');
-          initWakeLock();
-        }).catch(() => {
+        hideLoader();
+        videoElem.play().catch(() => {
           videoElem.muted = true;
-          videoElem.play().finally(() => {
-            loaderOverlay.classList.add('opacity-0', 'pointer-events-none');
-            videoElem.classList.remove('opacity-0');
-            videoElem.classList.add('opacity-100');
-          });
+          videoElem.play().catch(() => {});
         });
       };
 
       videoElem.onerror = () => {
         console.warn('Erro ao carregar vídeo direto:', videoElem.error);
         if (driveId) {
-          // Fallback para Google Drive Preview Iframe
+          // Fallback instantâneo para Google Drive Preview Iframe
           console.log('Ativando fallback para Google Drive Preview Iframe...');
           videoElem.classList.add('hidden', 'opacity-0');
           iframeElem.classList.remove('hidden');
@@ -532,21 +566,33 @@
           iframeElem.classList.add('opacity-100');
           iframeElem.src = `https://drive.google.com/file/d/${driveId}/preview`;
           iframeElem.onload = () => {
-            loaderOverlay.classList.add('opacity-0', 'pointer-events-none');
+            hideLoader();
             initWakeLock();
           };
+          setTimeout(hideLoader, 1200);
           return;
         }
 
-        loaderOverlay.classList.remove('opacity-0', 'pointer-events-none');
-        loaderMsg.innerHTML = `
-          <span class="text-rose-400 font-bold block mb-1">Aviso ao reproduzir mídia</span>
-          <span class="text-xs text-slate-300 block mb-3">Não foi possível transmitir diretamente.</span>
-          <button onclick="currentUrl=''; fetchActiveOrLatestVideo();" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-xs">
-            Tentar Novamente
-          </button>
-        `;
+        hideLoader();
+        toast('⚠️ Aviso: falha ao carregar arquivo de vídeo.');
       };
+
+      videoElem.src = targetMediaUrl;
+      videoElem.load();
+
+      // Disparar reprodução imediatamente
+      const startPromise = videoElem.play();
+      if (startPromise !== undefined) {
+        startPromise.then(() => {
+          hideLoader();
+          initWakeLock();
+        }).catch(() => {
+          videoElem.muted = true;
+          videoElem.play().then(hideLoader).catch(() => {
+            hideLoader();
+          });
+        });
+      }
     }
 
     // 4. LISTENERS EM TEMPO REAL
