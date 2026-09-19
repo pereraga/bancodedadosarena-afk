@@ -6,9 +6,11 @@
   <meta name="theme-color" content="#020617">
   <title>Totem Central - Gestão e Exibição de Vídeos em Tempo Real</title>
 
-  <!-- PWA Manifest da Totem Central -->
-  <link rel="manifest" href="manifest.json">
-  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <!-- PWA Manifest & Icons para PWABuilder -->
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
+  <link rel="apple-touch-icon" href="/icon-192.png">
 
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -843,6 +845,13 @@
         <span class="w-2 h-2 rounded-full bg-amber-400 inline-block animate-pulse"></span>
         <span class="text-amber-400">Clique na engrenagem para conectar o Supabase</span>
       `;
+    }
+
+    // Registro do Service Worker para o PWABuilder
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js', { scope: '/' })
+        .then(() => console.log('Service Worker ativo.'))
+        .catch(console.warn);
     }
   </script>
 </body>

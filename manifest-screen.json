@@ -1,18 +1,48 @@
 {
+  "id": "/screen",
   "name": "Totem Screen - Tela Base",
   "short_name": "TotemScreen",
   "description": "Aplicativo base de tela para reprodução contínua em Totem",
-  "start_url": "./screen.html",
+  "start_url": "/screen",
+  "scope": "/",
   "display": "fullscreen",
   "orientation": "landscape",
   "background_color": "#020617",
   "theme_color": "#020617",
   "icons": [
     {
-      "src": "icon-screen.svg",
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-screen.svg",
       "sizes": "192x192 512x512",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Totem Screen em modo Paisagem"
+    },
+    {
+      "src": "/screenshot-mobile.png",
+      "sizes": "720x1280",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Totem Screen em Celular"
     }
   ]
 }

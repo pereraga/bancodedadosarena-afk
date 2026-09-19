@@ -1,17 +1,21 @@
-// Service Worker básico para permitir instalação PWA no Android
-const CACHE_NAME = 'totemplay-v1';
-const ASSETS_TO_CACHE = [
-  './',
-  './index.html',
-  './player.html',
-  './admin.html',
-  './manifest.json'
+// Service Worker oficial compatível com PWABuilder e Android WebAPK
+const CACHE_NAME = 'totem-central-v2';
+const OFFLINE_URL = '/screen';
+
+const ASSETS = [
+  '/',
+  '/screen',
+  '/manifest.json',
+  '/manifest-screen.json',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/totem-central.js'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
+      return cache.addAll(ASSETS);
     })
   );
   self.skipWaiting();
@@ -33,8 +37,18 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Para requisições normais de página, tenta rede primeiro, depois cache
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() => {
+        return caches.match(OFFLINE_URL) || caches.match('/');
+      })
+    );
+    return;
+  }
+
   event.respondWith(
-    fetch(event.request).catch(() => caches.match(event.request))
+    caches.match(event.request).then((response) => {
+      return response || fetch(event.request);
+    })
   );
 });

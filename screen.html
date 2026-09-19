@@ -8,9 +8,11 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Totem Screen - Tela Base</title>
 
-  <!-- PWA Manifest -->
-  <link rel="manifest" href="manifest-screen.json">
-  <link rel="icon" type="image/svg+xml" href="icon-screen.svg">
+  <!-- PWA Manifest & Icons para PWABuilder -->
+  <link rel="manifest" href="/manifest-screen.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
+  <link rel="apple-touch-icon" href="/icon-192.png">
 
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -312,6 +314,13 @@
     startRegistration();
     setInterval(startRegistration, 20000);
     window.addEventListener('click', () => initWakeLock(), { once: true });
+
+    // Registro do Service Worker para o PWABuilder
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js', { scope: '/' })
+        .then(() => console.log('Service Worker ativo para Totem Screen.'))
+        .catch(console.warn);
+    }
   </script>
 </body>
 </html>
