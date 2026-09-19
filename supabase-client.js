@@ -158,6 +158,7 @@ class SupabaseEngine {
             deviceName: d.device_name,
             ipAddress: d.ip_address,
             status: (d.status === 'rejected' || d.status === 'unlinked') ? d.status : 'approved',
+            currentVideoId: d.current_video_id,
             lastSeen: d.last_seen
           }));
         }

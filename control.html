@@ -303,6 +303,12 @@
               </div>
             </div>
 
+            <!-- Opção de transmissão imediata -->
+            <label class="flex items-center space-x-2.5 cursor-pointer bg-slate-800/60 p-3 rounded-xl border border-slate-700 hover:border-indigo-500/40 transition">
+              <input type="checkbox" id="autoTransmitAfterUpload" checked class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-700 bg-slate-800">
+              <span class="text-xs text-slate-200 font-medium">⚡ Colocar no Totem automaticamente assim que o envio terminar</span>
+            </label>
+
             <button
               type="submit"
               id="startUploadBtn"
@@ -358,6 +364,11 @@
                 class="w-full px-4 py-3 rounded-xl bg-slate-800/90 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono text-xs"
               >
             </div>
+
+            <label class="flex items-center space-x-2.5 cursor-pointer bg-slate-800/60 p-3 rounded-xl border border-slate-700 hover:border-emerald-500/40 transition">
+              <input type="checkbox" id="autoTransmitAfterLink" checked class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-700 bg-slate-800">
+              <span class="text-xs text-slate-200 font-medium">⚡ Colocar no Totem automaticamente ao adicionar</span>
+            </label>
 
             <button
               type="submit"
@@ -610,7 +621,6 @@
       devicesList.innerHTML = currentDevices.map(dev => {
         const isRejected = dev.status === 'rejected' || dev.status === 'unlinked';
         const isApproved = !isRejected;
-        const isPending = false;
 
         let badgeClass = '';
         let badgeText = '';
@@ -629,55 +639,79 @@
           iconBg = 'bg-rose-500/20 text-rose-400';
         }
 
+        const activeVid = currentVideos.find(v => v.id === dev.currentVideoId);
+        const activeVidTitle = activeVid ? escapeHtml(activeVid.title) : 'Nenhum vídeo atribuído';
+
         return `
-          <div class="p-4 sm:p-5 rounded-2xl border ${borderClass} flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg transition">
-            <div class="flex items-center space-x-3.5">
-              <div class="w-11 h-11 rounded-2xl ${iconBg} flex items-center justify-center shrink-0">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                </svg>
+          <div class="p-4 sm:p-5 rounded-2xl border ${borderClass} flex flex-col gap-4 shadow-lg transition">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div class="flex items-center space-x-3.5">
+                <div class="w-11 h-11 rounded-2xl ${iconBg} flex items-center justify-center shrink-0">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                  </svg>
+                </div>
+                <div>
+                  <div class="flex items-center space-x-2 flex-wrap gap-y-1">
+                    <h4 class="text-sm sm:text-base font-bold text-white">${escapeHtml(dev.deviceName || 'Modelo Totem')}</h4>
+                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${badgeClass}">
+                      ${badgeText}
+                    </span>
+                  </div>
+                  <div class="flex items-center space-x-2 text-xs text-slate-400 font-mono mt-0.5">
+                    <span>ID: <strong class="text-slate-200 select-all">${dev.id}</strong></span>
+                    <button onclick="copyDevId('${dev.id}')" class="text-[10px] text-indigo-400 hover:underline">Copiar ID</button>
+                  </div>
+                </div>
               </div>
-              <div>
-                <div class="flex items-center space-x-2 flex-wrap gap-y-1">
-                  <h4 class="text-sm sm:text-base font-bold text-white">${escapeHtml(dev.deviceName || 'Modelo Totem')}</h4>
-                  <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${badgeClass}">
-                    ${badgeText}
-                  </span>
-                </div>
-                <div class="flex items-center space-x-2 text-xs text-slate-400 font-mono mt-1">
-                  <span>ID: <strong class="text-slate-200 select-all">${dev.id}</strong></span>
-                  <button onclick="copyDevId('${dev.id}')" class="text-[10px] text-indigo-400 hover:underline">Copiar ID</button>
-                </div>
+
+              <div class="flex items-center space-x-2">
+                ${isApproved ? `
+                  <button onclick="rejectAccess('${dev.id}')" class="px-3 py-1.5 text-xs text-rose-400 hover:bg-rose-500/10 rounded-xl transition font-medium" title="Recusar acesso e bloquear tela do Totem">
+                    Recusar Acesso
+                  </button>
+                ` : `
+                  <button onclick="authorize('${dev.id}', true)" class="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow transition">
+                    Permitir Acesso
+                  </button>
+                  <button onclick="deleteDevice('${dev.id}')" class="px-3 py-1.5 text-xs text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition">
+                    Remover
+                  </button>
+                `}
               </div>
             </div>
 
-            <div class="flex items-center space-x-2 w-full sm:w-auto justify-end flex-wrap gap-y-2">
-              ${isPending ? `
-                <button onclick="authorize('${dev.id}', true)" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition">
-                  Permitir Acesso
-                </button>
-                <button onclick="rejectAccess('${dev.id}')" class="px-3.5 py-2 rounded-xl bg-slate-800 text-slate-400 hover:text-rose-400 text-xs transition">
-                  Recusar
-                </button>
-              ` : isApproved ? `
-                <button onclick="transmitCurrentToDev('${dev.id}')" class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs flex items-center space-x-1.5 transition shadow-md shadow-indigo-600/20">
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <!-- Seletor Direto de Vídeo para Este Totem -->
+            ${isApproved ? `
+              <div class="pt-3 border-t border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-slate-950/60 p-3.5 rounded-xl">
+                <div class="flex-1 min-w-0">
+                  <div class="text-[11px] text-slate-400 mb-1 flex items-center space-x-1.5">
+                    <span class="w-2 h-2 rounded-full ${activeVid ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}"></span>
+                    <span>Em reprodução no Totem:</span>
+                    <strong class="text-emerald-300 truncate max-w-[280px]">
+                      ${activeVid ? activeVidTitle : 'Nenhum vídeo transmitido ainda'}
+                    </strong>
+                  </div>
+                  <select id="select-video-${dev.id}" class="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-2.5 py-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
+                    <option value="">-- Selecione o vídeo que deseja colocar no Totem --</option>
+                    ${currentVideos.map(v => `
+                      <option value="${v.id}" ${v.id === dev.currentVideoId ? 'selected' : ''}>
+                        ${escapeHtml(v.title)} (${v.fileSizeMb || 'Vídeo'})
+                      </option>
+                    `).join('')}
+                  </select>
+                </div>
+                <button
+                  onclick="transmitSelectedToDev('${dev.id}')"
+                  class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs flex items-center justify-center space-x-1.5 shadow-md shadow-emerald-600/20 transition shrink-0 self-end sm:self-auto"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
                   </svg>
-                  <span>Transmitir Vídeo</span>
+                  <span>Colocar no Totem</span>
                 </button>
-                <button onclick="rejectAccess('${dev.id}')" class="px-3 py-2 text-xs text-rose-400 hover:bg-rose-500/10 rounded-xl transition font-medium" title="Recusar acesso e bloquear tela do Totem">
-                  Recusar Acesso
-                </button>
-              ` : `
-                <button onclick="authorize('${dev.id}', true)" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition">
-                  Permitir Acesso
-                </button>
-                <button onclick="deleteDevice('${dev.id}')" class="px-3 py-2 text-xs text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition">
-                  Remover
-                </button>
-              `}
-            </div>
+              </div>
+            ` : ''}
           </div>
         `;
       }).join('');
@@ -690,15 +724,28 @@
       notify(`ID ${id} copiado!`);
     };
 
-    window.transmitCurrentToDev = async function(deviceId) {
+    window.transmitSelectedToDev = async function(deviceId) {
       if (!currentVideos || !currentVideos.length) {
         alert('Nenhum vídeo cadastrado na galeria. Faça upload de um vídeo primeiro na aba 2!');
         setTab('upload');
         return;
       }
-      const vid = currentVideos[0];
-      await window.supabaseEngine.playVideoOnTotem(vid, deviceId);
-      notify(`⚡ Transmitindo "${vid.title}" para o Totem!`);
+      const sel = document.getElementById(`select-video-${deviceId}`);
+      const selectedVideoId = sel ? sel.value : null;
+      if (!selectedVideoId) {
+        alert('Por favor, selecione qual vídeo deseja colocar no Totem.');
+        return;
+      }
+      const vid = currentVideos.find(v => v.id === selectedVideoId);
+      if (!vid) return;
+
+      try {
+        await window.supabaseEngine.playVideoOnTotem(vid, deviceId);
+        notify(`⚡ Vídeo "${vid.title}" colocado no Totem com sucesso!`);
+        await window.supabaseEngine.fetchDevicesFromSupabase();
+      } catch (err) {
+        notify('Erro: ' + err.message);
+      }
     };
 
     window.authorize = async function(deviceId, approve) {
@@ -810,11 +857,19 @@
           </span>`;
         }
 
+        const isPlaying = currentDevices.some(d => d.currentVideoId === vid.id);
+
         return `
-          <div class="bg-slate-900 border border-slate-800 hover:border-indigo-500/50 rounded-2xl overflow-hidden shadow-lg transition flex flex-col justify-between">
+          <div class="bg-slate-900 border ${isPlaying ? 'border-2 border-emerald-500 shadow-xl shadow-emerald-500/10' : 'border border-slate-800 hover:border-indigo-500/50'} rounded-2xl overflow-hidden shadow-lg transition flex flex-col justify-between relative">
             <div class="aspect-video bg-black relative flex items-center justify-center overflow-hidden">
               ${mediaPreviewHtml}
               ${badgeHtml}
+              ${isPlaying ? `
+                <span class="absolute top-2 left-2 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-600 text-white shadow-lg flex items-center space-x-1 animate-pulse">
+                  <span class="w-1.5 h-1.5 rounded-full bg-white"></span>
+                  <span>EM EXIBIÇÃO NO TOTEM</span>
+                </span>
+              ` : ''}
             </div>
 
             <div class="p-4 space-y-3 flex-1 flex flex-col justify-between">
@@ -826,12 +881,12 @@
               <div class="pt-2 border-t border-slate-800 flex items-center justify-between">
                 <button
                   onclick="transmitToTotem('${vid.id}')"
-                  class="flex-1 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs transition shadow-md shadow-emerald-600/20 flex items-center justify-center space-x-1.5 mr-2"
+                  class="flex-1 py-2 rounded-lg ${isPlaying ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-indigo-600 hover:bg-indigo-500'} active:scale-95 text-white font-bold text-xs transition shadow-md flex items-center justify-center space-x-1.5 mr-2"
                 >
                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
                   </svg>
-                  <span>Transmitir para o Totem</span>
+                  <span>${isPlaying ? '✓ Transmitindo (Reenviar)' : '⚡ Colocar no Totem'}</span>
                 </button>
 
                 <button
@@ -860,7 +915,8 @@
       if (!vid) return;
       try {
         await window.supabaseEngine.playVideoOnTotem(vid);
-        notify(`⚡ Transmitindo "${vid.title}" para a tela!`);
+        notify(`⚡ Vídeo "${vid.title}" colocado no Totem com sucesso!`);
+        await window.supabaseEngine.fetchDevicesFromSupabase();
       } catch (err) {
         notify('Erro: ' + err.message);
       }
@@ -920,7 +976,7 @@
       startUploadBtn.classList.add('opacity-50');
 
       try {
-        await window.supabaseEngine.uploadVideo(file, title, (percent) => {
+        const uploaded = await window.supabaseEngine.uploadVideo(file, title, (percent) => {
           progressBar.style.width = percent + '%';
           progressPercentText.textContent = percent + '%';
           if (percent === 100) {
@@ -928,13 +984,20 @@
           }
         });
 
-        notify(`✅ Vídeo "${title}" enviado com sucesso!`);
+        const shouldTransmit = document.getElementById('autoTransmitAfterUpload')?.checked;
+        if (shouldTransmit && uploaded) {
+          await window.supabaseEngine.playVideoOnTotem(uploaded);
+          notify(`⚡ Vídeo "${title}" enviado e já transmitido para o Totem!`);
+        } else {
+          notify(`✅ Vídeo "${title}" enviado com sucesso!`);
+        }
+
         uploadForm.reset();
         fileChosenText.textContent = 'Toque para escolher o vídeo no celular ou PC (Até 200 MB)';
         progressContainer.classList.add('hidden');
         progressBar.style.width = '0%';
 
-        // Abrir automaticamente a aba de galeria para o usuário já ver o vídeo pronto
+        await window.supabaseEngine.fetchDevicesFromSupabase();
         setTab('catalog');
       } catch (err) {
         console.error('Erro no upload:', err);
@@ -966,9 +1029,16 @@
         linkVideoBtn.classList.add('opacity-50');
 
         try {
-          await window.supabaseEngine.addVideoByUrl(title, url);
-          notify(`✅ Vídeo "${title}" adicionado com sucesso pelo link!`);
+          const added = await window.supabaseEngine.addVideoByUrl(title, url);
+          const shouldTransmit = document.getElementById('autoTransmitAfterLink')?.checked;
+          if (shouldTransmit && added) {
+            await window.supabaseEngine.playVideoOnTotem(added);
+            notify(`⚡ Vídeo "${title}" adicionado e colocado no Totem!`);
+          } else {
+            notify(`✅ Vídeo "${title}" adicionado com sucesso pelo link!`);
+          }
           linkVideoForm.reset();
+          await window.supabaseEngine.fetchDevicesFromSupabase();
           setTab('catalog');
         } catch (err) {
           alert('Erro ao adicionar vídeo por link: ' + err.message);
