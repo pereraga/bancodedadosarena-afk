@@ -178,18 +178,21 @@ class TotemCentralEngine {
           .eq('id', deviceId)
           .maybeSingle();
 
+        const isApprovedLocally = localStorage.getItem('totem_is_approved') === 'true';
+
         if (existing) {
-          status = existing.status || 'pending';
+          status = existing.status || (isApprovedLocally ? 'approved' : 'pending');
           currentVideoId = existing.current_video_id;
           await this.client.from('devices').update({
             device_name: deviceName,
             last_seen: new Date().toISOString()
           }).eq('id', deviceId);
         } else {
+          status = isApprovedLocally ? 'approved' : 'pending';
           await this.client.from('devices').insert({
             id: deviceId,
             device_name: deviceName,
-            status: 'pending',
+            status: status,
             last_seen: new Date().toISOString()
           });
         }
@@ -310,8 +313,11 @@ class TotemCentralEngine {
 
   async authorizeDevice(deviceId, approve = true) {
     if (!this.client) return;
+    if (!approve) {
+      return await this.deleteDevice(deviceId);
+    }
 
-    const newStatus = approve ? 'approved' : 'rejected';
+    const newStatus = 'approved';
     const { error } = await this.client
       .from('devices')
       .update({
@@ -344,6 +350,35 @@ class TotemCentralEngine {
       event: 'DEVICE_AUTHORIZED',
       payload: { id: deviceId, status: newStatus }
     });
+
+    this.refreshDevices();
+  }
+
+  async deleteDevice(deviceId) {
+    if (!this.client) return;
+    deviceId = String(deviceId).trim();
+
+    try {
+      // 1. Notificar a tela que ela foi desvinculada
+      const channel = this.client.channel(`device-${deviceId}`);
+      await channel.send({
+        type: 'broadcast',
+        event: 'AUTHORIZATION',
+        payload: { id: deviceId, status: 'unlinked' }
+      });
+
+      const globalChannel = this.client.channel('totem-global-channel');
+      await globalChannel.send({
+        type: 'broadcast',
+        event: 'DEVICE_STATUS',
+        payload: { id: deviceId, status: 'unlinked' }
+      });
+
+      // 2. Remover do banco de dados
+      await this.client.from('devices').delete().eq('id', deviceId);
+    } catch (e) {
+      console.warn('Erro ao deletar device:', e);
+    }
 
     this.refreshDevices();
   }

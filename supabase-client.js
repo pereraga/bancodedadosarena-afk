@@ -355,17 +355,17 @@ class SupabaseEngine {
   // Autorizar ou recusar Totem (pelo App de Controle)
   async authorizeDevice(deviceId, approve = true) {
     deviceId = String(deviceId).trim();
-    const newStatus = approve ? 'approved' : 'rejected';
+    if (!approve) {
+      return await this.deleteDevice(deviceId);
+    }
+
+    const newStatus = 'approved';
 
     // Atualizar no localStorage
     try {
       let bound = JSON.parse(localStorage.getItem('totem_bound_devices') || '[]');
-      if (!approve) {
-        bound = bound.filter(d => d.id !== deviceId);
-      } else {
-        const found = bound.find(d => d.id === deviceId);
-        if (found) found.status = 'approved';
-      }
+      const found = bound.find(d => d.id === deviceId);
+      if (found) found.status = 'approved';
       localStorage.setItem('totem_bound_devices', JSON.stringify(bound));
     } catch (e) {}
 
@@ -403,16 +403,46 @@ class SupabaseEngine {
       } catch (err) {}
     }
 
+    await this.fetchDevicesFromSupabase();
+    return { id: deviceId, status: newStatus };
+  }
+
+  // Desvincular e Excluir Totem Permanentemente
+  async deleteDevice(deviceId) {
+    deviceId = String(deviceId).trim();
+
+    if (this.client) {
+      try {
+        // Notificar a tela que foi desvinculada antes de remover
+        const screenChan = this.client.channel(`device-${deviceId}`);
+        await screenChan.send({
+          type: 'broadcast',
+          event: 'AUTHORIZATION',
+          payload: { id: deviceId, status: 'unlinked' }
+        });
+
+        const globalChan = this.client.channel('totem-global-channel');
+        await globalChan.send({
+          type: 'broadcast',
+          event: 'DEVICE_STATUS',
+          payload: { id: deviceId, status: 'unlinked' }
+        });
+
+        // Excluir permanentemente do banco de dados
+        await this.client.from('devices').delete().eq('id', deviceId);
+      } catch (err) {
+        console.warn('Erro ao deletar totem do Supabase:', err);
+      }
+    }
+
     try {
-      await fetch('/api/devices/authorize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deviceId, approve })
-      });
+      let bound = JSON.parse(localStorage.getItem('totem_bound_devices') || '[]');
+      bound = bound.filter(d => d.id !== deviceId);
+      localStorage.setItem('totem_bound_devices', JSON.stringify(bound));
     } catch (e) {}
 
     await this.fetchDevicesFromSupabase();
-    return { id: deviceId, status: newStatus };
+    return { id: deviceId, deleted: true };
   }
 
   // UPLOAD DIRETO DE VÍDEO COM NOME PERSONALIZADO

@@ -289,27 +289,100 @@
       if (document.visibilityState === 'visible') initWakeLock();
     });
 
-    // 1. REGISTRAR TELA
+    // 1. GERENCIAMENTO DE IDENTIFICADOR FIXO & PERSISTENTE
+    function getStoredDeviceId() {
+      // a. Verificar se veio na URL (?id=totem-xxx)
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlId = urlParams.get('id') || urlParams.get('totem_id');
+        if (urlId && urlId.trim()) {
+          const cleanId = urlId.trim();
+          saveDeviceId(cleanId);
+          return cleanId;
+        }
+      } catch (e) {}
+
+      // b. Verificar no localStorage
+      try {
+        const stored = localStorage.getItem('totem_screen_device_id');
+        if (stored && stored.trim()) {
+          saveDeviceId(stored.trim());
+          return stored.trim();
+        }
+      } catch (e) {}
+
+      // c. Verificar em Cookie persistente (10 anos)
+      try {
+        const match = document.cookie.match(/(?:^|;\s*)totem_screen_device_id=([^;]+)/);
+        if (match && match[1] && match[1].trim()) {
+          saveDeviceId(match[1].trim());
+          return match[1].trim();
+        }
+      } catch (e) {}
+
+      // d. Gerar novo ID e salvar permanentemente
+      const newId = 'totem-' + Math.random().toString(36).substring(2, 9);
+      saveDeviceId(newId);
+      return newId;
+    }
+
+    function saveDeviceId(id) {
+      if (!id) return;
+      try { localStorage.setItem('totem_screen_device_id', id); } catch (e) {}
+      try { document.cookie = `totem_screen_device_id=${id}; path=/; max-age=315360000; SameSite=Lax`; } catch (e) {}
+      try {
+        const url = new URL(window.location.href);
+        if (url.searchParams.get('id') !== id) {
+          url.searchParams.set('id', id);
+          window.history.replaceState({}, '', url.toString());
+        }
+      } catch (e) {}
+    }
+
+    function isDeviceApprovedLocally() {
+      try {
+        if (localStorage.getItem('totem_is_approved') === 'true') return true;
+      } catch (e) {}
+      try {
+        const match = document.cookie.match(/(?:^|;\s*)totem_is_approved=([^;]+)/);
+        if (match && match[1] === 'true') return true;
+      } catch (e) {}
+      return false;
+    }
+
+    function setDeviceApprovedLocally(approved) {
+      try {
+        if (approved) {
+          localStorage.setItem('totem_is_approved', 'true');
+          document.cookie = 'totem_is_approved=true; path=/; max-age=315360000; SameSite=Lax';
+        } else {
+          localStorage.removeItem('totem_is_approved');
+          document.cookie = 'totem_is_approved=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+        }
+      } catch (e) {}
+    }
+
+    // 2. REGISTRAR TELA E INICIAR IMEDIATO SE JÁ FOI APROVADO
     async function startRegistration() {
       const name = screenNameInput.value.trim() || 'Modelo Totem';
-      let id = localStorage.getItem('totem_screen_device_id');
-      if (!id) {
-        id = 'totem-' + Math.random().toString(36).substring(2, 9);
-        localStorage.setItem('totem_screen_device_id', id);
-      }
+      const id = getStoredDeviceId();
       screenDeviceId.textContent = id;
 
-      // Se já estava aprovado nesta máquina, destrava direto
-      if (localStorage.getItem('totem_is_approved') === 'true') {
-        unlockPlayer(name);
+      // Se já estava aprovado nesta máquina, destrava direto SEM PRECISAR PEDIR PERMISSÃO DE NOVO!
+      if (isDeviceApprovedLocally()) {
+        unlockPlayer(name, false);
         fetchActiveOrLatestVideo();
       }
 
       const dev = await window.totemCentral.registerScreenDevice(name);
-      if (dev && dev.id) screenDeviceId.textContent = dev.id;
+      if (dev && dev.id) {
+        saveDeviceId(dev.id);
+        screenDeviceId.textContent = dev.id;
+      }
 
       if (dev && dev.status === 'approved') {
-        unlockPlayer(dev.device_name || name);
+        setDeviceApprovedLocally(true);
+        unlockPlayer(dev.device_name || name, false);
         fetchActiveOrLatestVideo(dev.current_video_id);
       }
     }
@@ -319,14 +392,17 @@
       toast('Nome atualizado na Central!');
     });
 
-    // 2. DESBLOQUEAR AO SER AUTORIZADO
-    function unlockPlayer(name) {
-      localStorage.setItem('totem_is_approved', 'true');
-      if (waitScreen.classList.contains('hidden')) return;
-      waitScreen.classList.add('hidden');
+    // 3. DESBLOQUEAR AO SER AUTORIZADO
+    function unlockPlayer(name, showToast = true) {
+      setDeviceApprovedLocally(true);
+      if (!waitScreen.classList.contains('hidden')) {
+        waitScreen.classList.add('hidden');
+      }
       deviceTitleBadge.textContent = `${name || 'Modelo Totem'} • Conectado à Totem Central`;
       initWakeLock();
-      toast('✅ Totem autorizado pela Central!');
+      if (showToast) {
+        toast('✅ Totem autorizado pela Central!');
+      }
     }
 
     // Buscar vídeo ativo ou o mais recente da biblioteca
@@ -476,28 +552,31 @@
     // 4. LISTENERS EM TEMPO REAL
     window.totemCentral.listeners.onDeviceApproved = (device) => {
       if (device.status === 'approved') {
+        setDeviceApprovedLocally(true);
         unlockPlayer(screenNameInput.value);
         fetchActiveOrLatestVideo(device.currentVideoId);
-      } else if (device.status === 'rejected') {
-        localStorage.removeItem('totem_is_approved');
+      } else if (device.status === 'rejected' || device.status === 'unlinked') {
+        setDeviceApprovedLocally(false);
+        try { videoElem.pause(); } catch (e) {}
+        if (iframeElem) iframeElem.src = 'about:blank';
+        currentUrl = null;
         waitScreen.classList.remove('hidden');
-        waitStatus.innerHTML = '<span class="text-rose-400 font-bold">Acesso recusado na Central</span>';
+        waitStatus.innerHTML = '<span class="text-rose-400 font-bold">Totem desvinculado no Painel</span>';
       }
     };
 
     window.totemCentral.listeners.onVideoCommandReceived = (video) => {
-      const myDevId = localStorage.getItem('totem_screen_device_id');
+      const myDevId = getStoredDeviceId();
       if (video && video.targetDeviceId && video.targetDeviceId !== myDevId) {
         return; // Comando direcionado a outro Totem
       }
-      unlockPlayer(screenNameInput.value);
+      unlockPlayer(screenNameInput.value, false);
       playVideo(video);
     };
 
-    // 5. POLLING DE SEGURANÇA (Garante autorização imediata mesmo se houver reconexão de rede)
+    // 5. POLLING DE SEGURANÇA (Verifica se foi aprovado ou se foi explicitamente desvinculado)
     async function checkApprovalStatus() {
-      if (waitScreen.classList.contains('hidden')) return;
-      const deviceId = localStorage.getItem('totem_screen_device_id');
+      const deviceId = getStoredDeviceId();
       if (!deviceId || !window.totemCentral || !window.totemCentral.client) return;
 
       try {
@@ -507,9 +586,30 @@
           .eq('id', deviceId)
           .maybeSingle();
 
-        if (!error && data && data.status === 'approved') {
-          unlockPlayer(data.device_name || screenNameInput.value);
-          fetchActiveOrLatestVideo(data.current_video_id);
+        if (!error) {
+          if (data && data.status === 'approved') {
+            setDeviceApprovedLocally(true);
+            unlockPlayer(data.device_name || screenNameInput.value, false);
+            if (data.current_video_id && !currentUrl) {
+              fetchActiveOrLatestVideo(data.current_video_id);
+            }
+          } else if (data && (data.status === 'rejected' || data.status === 'unlinked')) {
+            // Foi desvinculado explicitamente pelo usuário no painel
+            setDeviceApprovedLocally(false);
+            try { videoElem.pause(); } catch (e) {}
+            if (iframeElem) iframeElem.src = 'about:blank';
+            currentUrl = null;
+            waitScreen.classList.remove('hidden');
+            waitStatus.innerHTML = '<span class="text-rose-400 font-bold">Totem desvinculado no Painel</span>';
+          } else if (!data && isDeviceApprovedLocally()) {
+            // O registro foi apagado do banco de dados (desvinculado)
+            setDeviceApprovedLocally(false);
+            try { videoElem.pause(); } catch (e) {}
+            if (iframeElem) iframeElem.src = 'about:blank';
+            currentUrl = null;
+            waitScreen.classList.remove('hidden');
+            waitStatus.innerHTML = '<span class="text-rose-400 font-bold">Totem desvinculado</span>';
+          }
         }
       } catch (e) {}
     }
