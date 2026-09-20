@@ -70,14 +70,37 @@
 </head>
 <body class="h-full w-full flex items-center justify-center bg-black text-white relative font-sans">
 
-  <!-- 1. TELA DE EMPARELHAMENTO PROFISSIONAL (ESTILO ABLESIGN - IMAGEM 3) -->
-  <div id="waitScreen" class="absolute inset-0 z-50 flex flex-col items-center justify-center p-6 text-center select-none transition-opacity duration-500 hidden" style="background-color: #8f2975;">
-    <div class="max-w-2xl w-full flex flex-col items-center justify-center space-y-6 sm:space-y-8">
+  <!-- 1. TELA DE EMPARELHAMENTO PROFISSIONAL (TOTEMSCREEN) -->
+  <div id="waitScreen" class="absolute inset-0 z-50 flex flex-col items-center justify-center p-6 text-center select-none transition-opacity duration-500 hidden" style="background: radial-gradient(ellipse at center, #172a4d 0%, #0a1120 100%);">
+    <div class="max-w-2xl w-full flex flex-col items-center justify-center space-y-5 sm:space-y-7">
       
+      <!-- Logo Oficial TotemScreen -->
+      <div class="flex items-center space-x-3 justify-center">
+        <div class="w-12 h-12 rounded-2xl overflow-hidden shadow-2xl shadow-blue-500/40 shrink-0">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="w-full h-full">
+            <defs>
+              <linearGradient id="screenLogoGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#2563eb;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#1d4ed8;stop-opacity:1" />
+              </linearGradient>
+            </defs>
+            <rect width="512" height="512" rx="120" fill="url(#screenLogoGrad2)" />
+            <rect x="96" y="116" width="320" height="220" rx="20" fill="#0f172a" stroke="#ffffff" stroke-width="16" />
+            <rect x="236" y="336" width="40" height="60" fill="#ffffff" />
+            <rect x="196" y="396" width="120" height="16" rx="8" fill="#ffffff" />
+            <polygon points="236,186 306,226 236,266" fill="#38bdf8" />
+            <circle cx="396" cy="136" r="18" fill="#22c55e" stroke="#ffffff" stroke-width="5" />
+          </svg>
+        </div>
+        <span class="text-2xl sm:text-3xl font-black text-white tracking-tight">
+          Totem<span class="text-sky-400">Screen</span>
+        </span>
+      </div>
+
       <!-- Código de Emparelhamento Gigante de 6 Dígitos -->
       <div class="w-full text-center">
-        <span class="text-xs uppercase tracking-widest text-white/70 font-semibold block mb-2">Código de Emparelhamento</span>
-        <div id="screenPairCode" class="font-mono text-7xl sm:text-8xl md:text-9xl font-black text-white tracking-widest drop-shadow-lg select-all">
+        <span class="text-xs uppercase tracking-widest text-sky-300/80 font-semibold block mb-1">Código de Emparelhamento</span>
+        <div id="screenPairCode" class="font-mono text-7xl sm:text-8xl md:text-9xl font-black text-white tracking-widest drop-shadow-2xl select-all">
           ------
         </div>
       </div>
@@ -85,16 +108,16 @@
       <!-- Instruções Claras e Elegantes -->
       <div class="space-y-2 text-white/95 max-w-xl mx-auto px-4">
         <p class="text-base sm:text-xl md:text-2xl font-medium leading-relaxed">
-          Para começar, acesse <strong class="font-bold underline decoration-white/50">totemarena.vercel.app/control</strong><br>
-          clique em <strong class="font-bold">"Adicionar tela"</strong> e digite o código de emparelhamento acima.
+          Para começar, acesse <strong class="font-bold underline decoration-sky-400 text-sky-300">totemarena.vercel.app/control</strong><br>
+          clique em <strong class="font-bold text-white">"Adicionar tela"</strong> e digite o código de emparelhamento acima.
         </p>
-        <p class="text-xs sm:text-sm text-white/60 pt-2 font-mono">
+        <p class="text-xs sm:text-sm text-slate-400 pt-1 font-mono">
           To get started, login at app.totemarena.vercel.app, click 'add screen' and enter the pairing code above.
         </p>
       </div>
 
       <!-- Barra de Status com Dispositivo na Rede Wi-Fi -->
-      <div class="inline-flex items-center space-x-2 px-4 py-2 rounded-full bg-black/20 backdrop-blur border border-white/10 text-xs text-white/80">
+      <div class="inline-flex items-center space-x-2 px-4 py-2 rounded-full bg-slate-900/80 backdrop-blur border border-blue-500/20 text-xs text-white/80">
         <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
         <span id="screenPairStatus">Conectado à rede • Aguardando emparelhamento no painel...</span>
       </div>
