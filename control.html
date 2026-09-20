@@ -59,11 +59,11 @@
 
         <!-- Links de Navegação das Abas -->
         <nav class="flex items-center space-x-6 text-sm font-medium">
-          <button id="navBtnContent" class="py-4 border-b-2 border-transparent text-slate-400 hover:text-white transition">
-            Conteúdo
-          </button>
           <button id="navBtnScreens" class="py-4 border-b-2 active-nav-tab font-semibold transition">
             Telas
+          </button>
+          <button id="navBtnContent" class="py-4 border-b-2 border-transparent text-slate-400 hover:text-white transition">
+            Conteúdo
           </button>
         </nav>
       </div>
@@ -422,6 +422,31 @@
     </div>
   </div>
 
+  <!-- MODAL DE SELECIONAR VÍDEO PARA TELA -->
+  <div id="assignVideoModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-white flex items-center space-x-2">
+          <svg class="w-5 h-5 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+          </svg>
+          <span>Alterar Vídeo da Tela</span>
+        </h3>
+        <button id="closeAssignVideoModalBtn" class="text-slate-400 hover:text-white">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <p id="assignScreenNameLabel" class="text-xs text-slate-400">Selecione o vídeo que deve ser reproduzido nesta tela:</p>
+      <input type="hidden" id="assignScreenId">
+      <select id="assignVideoSelect" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs focus:ring-2 focus:ring-sky-500 outline-none">
+      </select>
+      <div class="flex items-center justify-end space-x-2 pt-2 border-t border-slate-800">
+        <button id="cancelAssignVideoBtn" class="px-3.5 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs">Cancelar</button>
+        <button id="confirmAssignVideoBtn" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs">Transmitir</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL DE RENOMEAR TELA -->
   <div id="renameScreenModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden">
     <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
@@ -624,6 +649,10 @@
 
                 <!-- Dropdown de Ações -->
                 <div id="dropdown-${dev.id}" class="absolute right-0 bottom-full mb-1 w-48 rounded-xl bg-slate-900 border border-slate-700 shadow-2xl p-1.5 text-xs text-slate-200 z-30 hidden space-y-1">
+                  <button onclick="promptChangeVideo('${dev.id}', '${screenName}')" class="w-full px-3 py-2 text-left rounded-lg hover:bg-slate-800 flex items-center space-x-2">
+                    <svg class="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <span>Alterar Vídeo</span>
+                  </button>
                   <button onclick="promptRenameScreen('${dev.id}', '${screenName}')" class="w-full px-3 py-2 text-left rounded-lg hover:bg-slate-800 flex items-center space-x-2">
                     <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                     <span>Renomear Tela</span>
@@ -637,31 +666,6 @@
                     <span>Desvincular Tela</span>
                   </button>
                 </div>
-              </div>
-            </div>
-
-            <!-- Seletor Rápido de Vídeo no Próprio Cartão -->
-            <div class="px-4 pb-4 pt-1 border-t border-slate-800/80 bg-slate-950/40 mt-auto space-y-2">
-              <div class="text-[11px] text-slate-400 flex items-center space-x-1.5 truncate">
-                <span class="w-1.5 h-1.5 rounded-full ${activeVid ? 'bg-emerald-400' : 'bg-slate-600'}"></span>
-                <span class="truncate">Reproduzindo: <strong class="text-white">${activeVidTitle}</strong></span>
-              </div>
-              <div class="flex items-center space-x-2">
-                <select id="card-select-video-${dev.id}" class="flex-1 bg-slate-800 border border-slate-700 text-white rounded-xl px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-500">
-                  <option value="">-- Trocar Vídeo --</option>
-                  ${currentVideos.map(v => `
-                    <option value="${v.id}" ${v.id === (dev.currentVideoId || dev.current_video_id) ? 'selected' : ''}>
-                      ${escapeHtml(v.title)}
-                    </option>
-                  `).join('')}
-                </select>
-                <button
-                  onclick="changeVideoForScreen('${dev.id}')"
-                  class="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-bold text-xs shrink-0 transition"
-                  title="Aplicar vídeo nesta tela"
-                >
-                  Trocar
-                </button>
               </div>
             </div>
 
@@ -691,24 +695,48 @@
       }
     });
 
-    window.changeVideoForScreen = async function(deviceId) {
-      const sel = document.getElementById(`card-select-video-${deviceId}`);
-      const vidId = sel ? sel.value : null;
-      if (!vidId) {
-        alert('Selecione um vídeo no menu primeiro.');
+    window.promptChangeVideo = function(devId, screenName) {
+      if (!currentVideos.length) {
+        notify('Nenhum vídeo cadastrado na biblioteca. Adicione um vídeo na aba Conteúdo primeiro.');
         return;
       }
-      const vid = currentVideos.find(v => v.id === vidId);
+      document.querySelectorAll('[id^="dropdown-"]').forEach(d => d.classList.add('hidden'));
+      document.getElementById('assignScreenId').value = devId;
+      document.getElementById('assignScreenNameLabel').textContent = `Selecione o vídeo que deve ser reproduzido na tela "${screenName}":`;
+      const select = document.getElementById('assignVideoSelect');
+      const dev = currentScreens.find(d => d.id === devId);
+      const currentVidId = dev ? (dev.currentVideoId || dev.current_video_id) : '';
+      select.innerHTML = currentVideos.map(v => `
+        <option value="${v.id}" ${v.id === currentVidId ? 'selected' : ''}>${escapeHtml(v.title)}</option>
+      `).join('');
+      document.getElementById('assignVideoModal').classList.remove('hidden');
+    };
+
+    document.getElementById('cancelAssignVideoBtn').addEventListener('click', () => {
+      document.getElementById('assignVideoModal').classList.add('hidden');
+    });
+
+    document.getElementById('closeAssignVideoModalBtn').addEventListener('click', () => {
+      document.getElementById('assignVideoModal').classList.add('hidden');
+    });
+
+    document.getElementById('confirmAssignVideoBtn').addEventListener('click', async () => {
+      const devId = document.getElementById('assignScreenId').value;
+      const videoId = document.getElementById('assignVideoSelect').value;
+      if (!devId || !videoId) return;
+
+      const vid = currentVideos.find(v => v.id === videoId);
       if (!vid) return;
 
       try {
-        await window.totemCentral.playVideoOnTotem(vid, deviceId);
-        notify(`⚡ Vídeo "${vid.title}" colocado na tela com sucesso!`);
+        await window.totemCentral.playVideoOnTotem(vid, devId);
+        notify(`⚡ Vídeo "${vid.title}" enviado para a tela!`);
+        document.getElementById('assignVideoModal').classList.add('hidden');
         await window.totemCentral.refreshDevices();
       } catch (e) {
         notify('Erro ao transmitir: ' + e.message);
       }
-    };
+    });
 
     // 2. MODAL ADICIONAR TELA COM CÓDIGO (ESTILO IMAGEM 2)
     const addScreenModal = document.getElementById('addScreenModal');
