@@ -2,12 +2,22 @@ package com.totem.screen;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.Context;
+import android.content.res.Configuration;
+import android.graphics.Bitmap;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.net.http.SslError;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.webkit.CookieManager;
+import android.webkit.SslErrorHandler;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceError;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -16,13 +26,14 @@ public class MainActivity extends Activity {
 
     private WebView webView;
     private static final String TARGET_URL = "https://totemarena.vercel.app/screen";
+    private boolean isError = false;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // 1. Manter a tela do celular/totem sempre acesa (NUNCA desliga nem bloqueia)
+        // 1. Manter a tela do totem SEMPRE ligada (24/7)
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setFlags(
@@ -30,10 +41,15 @@ public class MainActivity extends Activity {
             WindowManager.LayoutParams.FLAG_FULLSCREEN
         );
 
-        // 2. Modo Imersivo Kiosk (oculta barras de navegação do Android)
+        // 2. Modo Imersivo Kiosk (oculta botões virtuais e barra de status do Android)
         hideSystemUI();
+        getWindow().getDecorView().setOnSystemUiVisibilityChangeListener(visibility -> {
+            if ((visibility & View.SYSTEM_UI_FLAG_FULLSCREEN) == 0) {
+                hideSystemUI();
+            }
+        });
 
-        // 3. Inicializar WebView Otimizada para Player de Vídeo
+        // 3. Inicializar WebView Otimizada para Player de Vídeo e Kiosk
         webView = new WebView(this);
         setContentView(webView);
 
@@ -45,12 +61,30 @@ public class MainActivity extends Activity {
         settings.setUseWideViewPort(true);
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
+        settings.setSupportZoom(false);
+        settings.setBuiltInZoomControls(false);
+        settings.setDisplayZoomControls(false);
 
-        // Autoplay de vídeos sem exigir toque do usuário na tela
+        // Habilita reprodução de mídia sem exigir clique manual
         settings.setMediaPlaybackRequiresUserGesture(false);
 
-        // Aceleração por hardware para vídeos pesados em Full HD / 4K
+        // Suporte a conteúdo misto e cache inteligente
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        }
+        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+
+        // Cookies e LocalStorage persistentes para salvar ID e Pareamento
+        CookieManager cookieManager = CookieManager.getInstance();
+        cookieManager.setAcceptCookie(true);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            cookieManager.setAcceptThirdPartyCookies(webView, true);
+        }
+
+        // Aceleração por hardware para vídeos pesados
         webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        webView.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
+        webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
@@ -60,9 +94,30 @@ public class MainActivity extends Activity {
             }
 
             @Override
+            public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                super.onPageStarted(view, url, favicon);
+                isError = false;
+            }
+
+            @Override
             public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
-                // Tenta reconectar em 5 segundos se a internet oscilar
-                webView.postDelayed(() -> webView.loadUrl(TARGET_URL), 5000);
+                isError = true;
+                retryConnection();
+            }
+
+            @Override
+            public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                if (request.isForMainFrame()) {
+                    isError = true;
+                    retryConnection();
+                }
+            }
+
+            @SuppressLint("WebViewClientOnReceivedSslError")
+            @Override
+            public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
+                // Garante que o app carregue mesmo em dispositivos antigos com certificados expirados
+                handler.proceed();
             }
         });
 
@@ -70,6 +125,29 @@ public class MainActivity extends Activity {
 
         // 4. Carregar a Tela do Totem da Totem Central
         webView.loadUrl(TARGET_URL);
+    }
+
+    private void retryConnection() {
+        if (webView != null) {
+            webView.postDelayed(() -> {
+                if (isOnline()) {
+                    webView.loadUrl(TARGET_URL);
+                } else {
+                    retryConnection();
+                }
+            }, 4000);
+        }
+    }
+
+    private boolean isOnline() {
+        try {
+            ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (cm == null) return false;
+            NetworkInfo netInfo = cm.getActiveNetworkInfo();
+            return netInfo != null && netInfo.isConnected();
+        } catch (Exception e) {
+            return true;
+        }
     }
 
     private void hideSystemUI() {
@@ -94,6 +172,12 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        hideSystemUI();
+    }
+
+    @Override
     protected void onResume() {
         super.onResume();
         hideSystemUI();
@@ -112,6 +196,6 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
-        // Bloquear botão de voltar no totem para evitar fechar a tela sem querer
+        // Bloqueia o botão de voltar físico ou virtual para o totem nunca sair acidentalmente
     }
 }
