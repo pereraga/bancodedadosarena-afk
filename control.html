@@ -566,6 +566,9 @@
         return;
       }
 
+      const openDrop = document.querySelector('[id^="dropdown-"]:not(.hidden)');
+      const openDropId = openDrop ? openDrop.id : null;
+
       screensGrid.innerHTML = currentScreens.map(dev => {
         const lastSeenDate = dev.lastSeen || dev.last_seen;
         const isOnline = lastSeenDate ? (Date.now() - new Date(lastSeenDate).getTime() < 3 * 60 * 1000) : true;
@@ -600,21 +603,17 @@
               </span>
             </div>
 
-            <!-- Dados da Tela: Nome, Visto por Último e Menu 3 Pontos (Imagem 1) -->
-            <div class="p-4 flex items-center justify-between">
-              <div class="min-w-0 flex-1 pr-2">
-                <h3 class="font-bold text-white text-base leading-snug truncate" title="${screenName}">
-                  ${screenName}
-                </h3>
-                <p class="text-xs text-slate-400 font-normal mt-0.5">
-                  ${lastSeenText}
-                </p>
+            <!-- Dados da Tela -->
+            <div class="p-4 flex items-start justify-between">
+              <div>
+                <h3 class="font-bold text-white text-base">${screenName}</h3>
+                <p class="text-xs text-slate-400 mt-0.5">${lastSeenText}</p>
               </div>
 
-              <!-- Menu 3 Pontinhos ⋮ -->
+              <!-- Menu 3 Pontinhos (Imagem 1) -->
               <div class="relative">
                 <button
-                  onclick="toggleScreenDropdown('${dev.id}')"
+                  onclick="toggleScreenDropdown('${dev.id}', event)"
                   class="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition"
                   title="Opções da Tela"
                 >
@@ -669,10 +668,19 @@
           </div>
         `;
       }).join('');
+
+      if (openDropId) {
+        const restoredDrop = document.getElementById(openDropId);
+        if (restoredDrop) restoredDrop.classList.remove('hidden');
+      }
     }
 
-    window.toggleScreenDropdown = function(devId) {
+    window.toggleScreenDropdown = function(devId, e) {
+      if (e) e.stopPropagation();
       const drop = document.getElementById(`dropdown-${devId}`);
+      document.querySelectorAll('[id^="dropdown-"]').forEach(d => {
+        if (d !== drop) d.classList.add('hidden');
+      });
       if (drop) drop.classList.toggle('hidden');
     };
 

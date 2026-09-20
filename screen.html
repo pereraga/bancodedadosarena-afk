@@ -172,13 +172,6 @@
     <!-- Barra Oculta (sem controles visíveis na tela do totem) -->
     <header id="screenHeader" class="hidden"></header>
 
-    <!-- Notificação Flutuante -->
-    <div id="screenToast" class="absolute bottom-6 bg-blue-600/90 backdrop-blur text-white px-5 py-2.5 rounded-full shadow-2xl flex items-center space-x-2 z-40 transition-all duration-300 opacity-0 translate-y-4 pointer-events-none">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-      </svg>
-      <span id="screenToastMsg" class="text-sm font-medium">Novo vídeo acionado!</span>
-    </div>
   </div>
 
   <!-- SCRIPTS -->
@@ -196,8 +189,6 @@
     const loaderOverlay = document.getElementById('loaderOverlay');
     const loaderMsg = document.getElementById('loaderMsg');
     const playerBox = document.getElementById('playerBox');
-    const screenToast = document.getElementById('screenToast');
-    const screenToastMsg = document.getElementById('screenToastMsg');
 
     // Estado da Tela
     let currentUrl = null;
@@ -210,18 +201,9 @@
     let isMuted = true;
     let loaderTimer = null;
 
-    // Toast de notificação
+    // Log silencioso (sem popups na tela do totem)
     function toast(text) {
       console.log('[TotemScreen]', text);
-      if (screenToast && screenToastMsg) {
-        screenToastMsg.textContent = text;
-        screenToast.classList.remove('opacity-0', 'translate-y-4');
-        screenToast.classList.add('opacity-100', 'translate-y-0');
-        setTimeout(() => {
-          screenToast.classList.remove('opacity-100', 'translate-y-0');
-          screenToast.classList.add('opacity-0', 'translate-y-4');
-        }, 3000);
-      }
     }
 
     // Bloqueia menu de contexto e gestos do sistema Android
@@ -364,7 +346,10 @@
     }
 
     // 3. DESBLOQUEAR AO SER EMPARELHADO E AUTORIZADO
-    function unlockPlayer(name = 'Modelo Totem', showFeedback = false) {
+    function unlockPlayer(name = 'Modelo Totem') {
+      if (isPaired && waitScreen && waitScreen.classList.contains('hidden') && videoElem && !videoElem.classList.contains('hidden')) {
+        return; // Já está desbloqueado e ativo
+      }
       isPaired = true;
       try {
         localStorage.setItem('totem_screen_paired', 'true');
@@ -386,10 +371,6 @@
       hideLoader();
       initWakeLock();
       sendHeartbeat();
-
-      if (showFeedback) {
-        toast('✅ Dispositivo Conectado com Sucesso!');
-      }
     }
 
     // Botão de bypass manual ("Testar Sem Emparelhar")

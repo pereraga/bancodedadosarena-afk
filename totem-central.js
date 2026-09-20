@@ -129,11 +129,26 @@ class TotemCentralEngine {
     this.client
       .channel('db-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'devices' }, (payload) => {
-        this.refreshDevices();
+        // Se a alteração for apenas de last_seen (heartbeat periódico), NÃO recarrega tudo para não fechar menus abertos!
+        const isOnlyHeartbeat = payload && payload.old && payload.new && 
+          payload.new.status === payload.old.status && 
+          payload.new.device_name === payload.old.device_name && 
+          payload.new.current_video_id === payload.old.current_video_id &&
+          payload.new.pair_code === payload.old.pair_code;
+
+        if (!isOnlyHeartbeat) {
+          this.refreshDevices();
+        }
+
         const storedId = localStorage.getItem('totem_screen_device_id');
         if (payload && payload.new && payload.new.id === storedId) {
-          if (this.listeners.onDeviceApproved) {
-            this.listeners.onDeviceApproved(payload.new);
+          // Só notifica onDeviceApproved se o status ou o vídeo realmente mudou!
+          const statusChanged = !payload.old || payload.new.status !== payload.old.status;
+          const videoChanged = payload.old && payload.new.current_video_id !== payload.old.current_video_id;
+          if (statusChanged || videoChanged) {
+            if (this.listeners.onDeviceApproved) {
+              this.listeners.onDeviceApproved(payload.new);
+            }
           }
         }
       })
