@@ -163,122 +163,176 @@
     </section>
 
     <!-- ========================================== -->
-    <!-- ABA 2: CONTEÚDO (VÍDEOS & UPLOADS)         -->
+    <!-- ABA 2: CONTEÚDO (CONTENT LIBRARY)          -->
     <!-- ========================================== -->
-    <section id="tabContentContent" class="space-y-6 hidden">
-      <div class="flex items-center justify-between">
+    <section id="tabContentContent" class="space-y-5 hidden">
+      
+      <!-- Cabeçalho Estilo AbleSign (Imagem 1) -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-800/80">
         <div>
-          <h1 class="text-2xl font-bold text-white tracking-tight">Conteúdo & Biblioteca de Vídeos</h1>
-          <p class="text-xs text-slate-400">Faça upload de novos vídeos ou adicione links para transmissão nas telas.</p>
+          <h1 class="text-2xl font-bold text-white tracking-tight flex items-center space-x-2.5">
+            <span>Biblioteca de Conteúdo</span>
+            <span id="contentCountBadge" class="text-xs font-normal px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300">0 itens</span>
+          </h1>
+          <p class="text-xs text-slate-400 mt-0.5">Gerencie os vídeos e transmita para as telas em tempo real.</p>
         </div>
-      </div>
 
-      <!-- Formulários de Adição de Conteúdo -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        <!-- Opção 1: Upload Direto no Supabase -->
-        <div class="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-xl">
-          <h3 class="text-sm font-bold text-white flex items-center space-x-2">
-            <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-            <span>Upload de Arquivo (Supabase Storage)</span>
-          </h3>
+        <!-- Barra de Ferramentas / Ações da Biblioteca (Imagem 1) -->
+        <div class="flex items-center space-x-2 sm:space-x-3">
+          
+          <!-- Botão de Upload com Setinha pra Cima (Imagem 2 do usuário) -->
+          <button
+            id="openUploadModalBtn"
+            class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 shadow-sm transition flex items-center justify-center group"
+            title="Adicionar / Fazer Upload de Vídeo"
+          >
+            <!-- Ícone Setinha pra Cima exato da imagem 2 -->
+            <svg class="w-5 h-5 text-slate-300 group-hover:text-sky-400 transition" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/>
+            </svg>
+          </button>
 
-          <form id="uploadForm" class="space-y-4">
-            <div>
-              <label class="block text-xs font-semibold text-slate-300 mb-1">Nome do Vídeo *</label>
-              <input
-                type="text"
-                id="videoTitleInput"
-                placeholder="Ex: Comercial Arena Novembro"
-                required
-                class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs placeholder-slate-500 focus:ring-2 focus:ring-[#bf4080] outline-none"
-              >
-            </div>
+          <!-- Botão Ordenar (⇅) -->
+          <button
+            id="sortVideosBtn"
+            class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 shadow-sm transition flex items-center justify-center"
+            title="Ordenar Lista (A-Z / Recentes)"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/></svg>
+          </button>
 
-            <div>
-              <label class="block text-xs font-semibold text-slate-300 mb-1">Arquivo de Vídeo (.mp4, .webm, .mov)</label>
-              <input
-                type="file"
-                id="videoFileInput"
-                accept="video/*"
-                required
-                class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-slate-400 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-500 cursor-pointer"
-              >
-            </div>
-
-            <!-- Barra de Progresso -->
-            <div id="progressContainer" class="space-y-1 hidden">
-              <div class="flex justify-between text-[11px] text-slate-400">
-                <span id="progressStatusText">Enviando...</span>
-                <span id="progressPercentText" class="font-bold text-white">0%</span>
-              </div>
-              <div class="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
-                <div id="progressBar" class="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-200" style="width: 0%"></div>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              id="startUploadBtn"
-              class="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-lg transition"
+          <!-- Campo de Busca (Search 🔍) -->
+          <div class="relative w-44 sm:w-60">
+            <input
+              type="text"
+              id="searchVideosInput"
+              placeholder="Search"
+              class="w-full pl-3.5 pr-8 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 transition"
             >
-              Fazer Upload e Salvar Vídeo
-            </button>
-          </form>
-        </div>
+            <svg class="w-4 h-4 text-slate-400 absolute right-2.5 top-2.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          </div>
 
-        <!-- Opção 2: Inserir Link Direto -->
-        <div class="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-xl">
-          <h3 class="text-sm font-bold text-white flex items-center space-x-2">
-            <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
-            <span>Inserir Link Direto (Sem Limite de Tamanho)</span>
-          </h3>
-
-          <form id="directUrlForm" class="space-y-4">
-            <div>
-              <label class="block text-xs font-semibold text-slate-300 mb-1">Nome do Vídeo *</label>
-              <input
-                type="text"
-                id="urlVideoTitleInput"
-                placeholder="Ex: Vídeo Promocional 4K"
-                required
-                class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs placeholder-slate-500 focus:ring-2 focus:ring-blue-500 outline-none"
-              >
-            </div>
-
-            <div>
-              <label class="block text-xs font-semibold text-slate-300 mb-1">Link Direto (Google Drive, Dropbox ou .mp4)</label>
-              <input
-                type="url"
-                id="directVideoUrlInput"
-                placeholder="https://drive.google.com/file/d/... ou link .mp4"
-                required
-                class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs font-mono placeholder-slate-500 focus:ring-2 focus:ring-blue-500 outline-none"
-              >
-            </div>
-
-            <button
-              type="submit"
-              id="submitUrlBtn"
-              class="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-lg transition"
-            >
-              Salvar Link de Vídeo
-            </button>
-          </form>
-        </div>
-
-      </div>
-
-      <!-- Galeria de Vídeos Cadastrados -->
-      <div class="space-y-4 pt-4">
-        <h2 class="text-lg font-bold text-white">Biblioteca de Vídeos Cadastrados</h2>
-        <div id="catalogGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          <!-- Renderizado via JS -->
         </div>
       </div>
+
+      <!-- Lista de Vídeos Estilo Cartões Horizontais (Imagem 1) -->
+      <div id="catalogGrid" class="space-y-3">
+        <!-- Renderizado via JS -->
+      </div>
+
     </section>
-
   </main>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: ADICIONAR CONTEÚDO (UPLOAD & LINK DIRETO - SETINHA PRA CIMA)        -->
+  <!-- ========================================================================= -->
+  <div id="uploadModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 sm:p-7 space-y-5 shadow-2xl relative text-left">
+      
+      <!-- Cabeçalho do Modal com Ícone da Setinha -->
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div class="flex items-center space-x-2.5 text-white font-bold text-lg">
+          <div class="w-8 h-8 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/>
+            </svg>
+          </div>
+          <span>Adicionar Conteúdo</span>
+        </div>
+        <button id="closeUploadModalBtn" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Alternador de Abas do Modal: Upload vs Link Direto -->
+      <div class="grid grid-cols-2 p-1 bg-slate-950 rounded-2xl border border-slate-800 text-xs font-semibold">
+        <button id="modalTabUploadBtn" type="button" class="py-2 rounded-xl bg-sky-600 text-white transition flex items-center justify-center space-x-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+          <span>Upload de Arquivo</span>
+        </button>
+        <button id="modalTabUrlBtn" type="button" class="py-2 rounded-xl text-slate-400 hover:text-white transition flex items-center justify-center space-x-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+          <span>Inserir Link Direto</span>
+        </button>
+      </div>
+
+      <!-- Formulário 1: Upload Direto no Supabase -->
+      <form id="uploadForm" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">Nome do Vídeo *</label>
+          <input
+            type="text"
+            id="videoTitleInput"
+            placeholder="Ex: Comercial Arena Novembro"
+            required
+            class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs placeholder-slate-500 focus:ring-2 focus:ring-sky-500 outline-none"
+          >
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">Arquivo de Vídeo (.mp4, .webm, .mov) *</label>
+          <input
+            type="file"
+            id="videoFileInput"
+            accept="video/*"
+            required
+            class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-sky-600 file:text-white hover:file:bg-sky-500 cursor-pointer"
+          >
+        </div>
+
+        <!-- Barra de Progresso -->
+        <div id="progressContainer" class="space-y-1 hidden">
+          <div class="flex justify-between text-[11px] text-slate-400">
+            <span id="progressStatusText">Enviando...</span>
+            <span id="progressPercentText" class="font-bold text-white">0%</span>
+          </div>
+          <div class="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+            <div id="progressBar" class="h-full bg-gradient-to-r from-sky-500 to-blue-600 transition-all duration-200" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <button
+          type="submit"
+          id="startUploadBtn"
+          class="w-full py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs shadow-lg transition"
+        >
+          Fazer Upload e Salvar Vídeo
+        </button>
+      </form>
+
+      <!-- Formulário 2: Inserir Link Direto -->
+      <form id="directUrlForm" class="space-y-4 hidden">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">Nome do Vídeo *</label>
+          <input
+            type="text"
+            id="urlVideoTitleInput"
+            placeholder="Ex: Vídeo Promocional 4K"
+            class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs placeholder-slate-500 focus:ring-2 focus:ring-sky-500 outline-none"
+          >
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">Link Direto (Google Drive, Dropbox ou .mp4) *</label>
+          <input
+            type="url"
+            id="directVideoUrlInput"
+            placeholder="https://drive.google.com/file/d/... ou link .mp4"
+            class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs font-mono placeholder-slate-500 focus:ring-2 focus:ring-sky-500 outline-none"
+          >
+        </div>
+
+        <button
+          type="submit"
+          id="submitUrlBtn"
+          class="w-full py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs shadow-lg transition"
+        >
+          Salvar Link de Vídeo
+        </button>
+      </form>
+
+    </div>
+  </div>
 
   <!-- ========================================================================= -->
   <!-- MODAL: ADICIONAR TELA COM CÓDIGO DE EMPARELHAMENTO (ESTILO IMAGEM 2)      -->
@@ -625,6 +679,7 @@
     document.addEventListener('click', (e) => {
       if (!e.target.closest('.relative')) {
         document.querySelectorAll('[id^="dropdown-"]').forEach(d => d.classList.add('hidden'));
+        document.querySelectorAll('[id^="videoDropdown-"]').forEach(d => d.classList.add('hidden'));
       }
     });
 
@@ -803,57 +858,231 @@
       }
     };
 
-    // 4. BIBLIOTECA DE VÍDEOS (ABA CONTEÚDO)
+    // 4. BIBLIOTECA DE VÍDEOS & UPLOAD MODAL (ABA CONTEÚDO)
     let currentVideos = [];
+    let videoSortOrder = 'newest'; // 'newest' | 'az' | 'oldest'
+    let videoSearchQuery = '';
+
     const catalogGrid = document.getElementById('catalogGrid');
+    const contentCountBadge = document.getElementById('contentCountBadge');
+    const searchVideosInput = document.getElementById('searchVideosInput');
+    const sortVideosBtn = document.getElementById('sortVideosBtn');
+
+    // Modal de Upload (Setinha pra Cima)
+    const uploadModal = document.getElementById('uploadModal');
+    const openUploadModalBtn = document.getElementById('openUploadModalBtn');
+    const closeUploadModalBtn = document.getElementById('closeUploadModalBtn');
+    const modalTabUploadBtn = document.getElementById('modalTabUploadBtn');
+    const modalTabUrlBtn = document.getElementById('modalTabUrlBtn');
+
+    if (openUploadModalBtn) {
+      openUploadModalBtn.addEventListener('click', () => {
+        uploadModal.classList.remove('hidden');
+      });
+    }
+
+    if (closeUploadModalBtn) {
+      closeUploadModalBtn.addEventListener('click', () => {
+        uploadModal.classList.add('hidden');
+      });
+    }
+
+    if (uploadModal) {
+      uploadModal.addEventListener('click', (e) => {
+        if (e.target === uploadModal) uploadModal.classList.add('hidden');
+      });
+    }
+
+    if (modalTabUploadBtn && modalTabUrlBtn) {
+      modalTabUploadBtn.addEventListener('click', () => {
+        modalTabUploadBtn.className = 'py-2 rounded-xl bg-sky-600 text-white transition flex items-center justify-center space-x-1.5';
+        modalTabUrlBtn.className = 'py-2 rounded-xl text-slate-400 hover:text-white transition flex items-center justify-center space-x-1.5';
+        uploadForm.classList.remove('hidden');
+        directUrlForm.classList.add('hidden');
+      });
+
+      modalTabUrlBtn.addEventListener('click', () => {
+        modalTabUrlBtn.className = 'py-2 rounded-xl bg-sky-600 text-white transition flex items-center justify-center space-x-1.5';
+        modalTabUploadBtn.className = 'py-2 rounded-xl text-slate-400 hover:text-white transition flex items-center justify-center space-x-1.5';
+        directUrlForm.classList.remove('hidden');
+        uploadForm.classList.add('hidden');
+      });
+    }
+
+    if (searchVideosInput) {
+      searchVideosInput.addEventListener('input', (e) => {
+        videoSearchQuery = e.target.value.toLowerCase().trim();
+        renderCatalogList();
+      });
+    }
+
+    if (sortVideosBtn) {
+      sortVideosBtn.addEventListener('click', () => {
+        if (videoSortOrder === 'newest') videoSortOrder = 'az';
+        else if (videoSortOrder === 'az') videoSortOrder = 'oldest';
+        else videoSortOrder = 'newest';
+
+        const labels = { newest: 'Mais Recentes', az: 'Nome (A-Z)', oldest: 'Mais Antigos' };
+        notify(`Ordenação: ${labels[videoSortOrder]}`);
+        renderCatalogList();
+      });
+    }
+
+    function formatTimeAgo(dateStr) {
+      if (!dateStr) return 'adicionado recentemente';
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return 'adicionado recentemente';
+      const diffMs = Date.now() - d.getTime();
+      const diffMin = Math.floor(diffMs / 60000);
+      if (diffMin < 1) return 'agora há pouco';
+      if (diffMin < 60) return `há ${diffMin} min`;
+      const diffHours = Math.floor(diffMin / 60);
+      if (diffHours < 24) return `há ${diffHours} h`;
+      const diffDays = Math.floor(diffHours / 24);
+      return `há ${diffDays} ${diffDays === 1 ? 'dia' : 'dias'}`;
+    }
 
     function renderCatalog(videos) {
       currentVideos = videos || [];
       renderScreens(currentScreens);
+      renderCatalogList();
+    }
 
-      if (!currentVideos.length) {
+    function renderCatalogList() {
+      if (!catalogGrid) return;
+      let filtered = currentVideos.slice();
+
+      if (videoSearchQuery) {
+        filtered = filtered.filter(v => (v.title || '').toLowerCase().includes(videoSearchQuery));
+      }
+
+      if (videoSortOrder === 'az') {
+        filtered.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+      } else if (videoSortOrder === 'oldest') {
+        filtered.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+      } else {
+        filtered.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+      }
+
+      if (contentCountBadge) {
+        contentCountBadge.textContent = `${currentVideos.length} ${currentVideos.length === 1 ? 'item' : 'itens'}`;
+      }
+
+      if (!filtered.length) {
         catalogGrid.innerHTML = `
-          <div class="col-span-full text-center py-12 text-slate-500 text-sm bg-slate-900/40 rounded-3xl border border-slate-800">
-            Nenhum vídeo salvo ainda. Faça upload acima para cadastrar o primeiro vídeo!
+          <div class="text-center py-16 text-slate-500 text-sm bg-slate-900/40 rounded-3xl border border-slate-800 space-y-3">
+            <div class="w-12 h-12 rounded-2xl bg-slate-800 text-slate-400 mx-auto flex items-center justify-center">
+              <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg>
+            </div>
+            <p class="font-medium text-slate-300">${videoSearchQuery ? 'Nenhum vídeo encontrado para a busca.' : 'Nenhum vídeo cadastrado na biblioteca ainda.'}</p>
+            <p class="text-xs text-slate-500">Clique no botão com a <strong>setinha para cima (⬆️)</strong> acima para fazer upload ou cadastrar links.</p>
           </div>
         `;
         return;
       }
 
-      catalogGrid.innerHTML = currentVideos.map(vid => {
+      catalogGrid.innerHTML = filtered.map(vid => {
         const vidUrl = vid.video_url || vid.url;
+        const timeAgo = formatTimeAgo(vid.created_at);
+        const isPortrait = (vid.title || '').toLowerCase().includes('portrait') || (vid.title || '').toLowerCase().includes('vertical');
+        const orientationLabel = isPortrait ? 'portrait' : 'landscape';
+
         return `
-          <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-lg flex flex-col justify-between">
-            <div class="relative aspect-video bg-black flex items-center justify-center">
-              <video src="${vidUrl}" class="w-full h-full object-contain" muted preload="metadata"></video>
-            </div>
-
-            <div class="p-4 space-y-3">
-              <div>
-                <h4 class="font-bold text-white text-sm truncate" title="${escapeHtml(vid.title)}">${escapeHtml(vid.title)}</h4>
-                <p class="text-[11px] text-slate-400 font-mono mt-0.5">${vid.file_size_mb || vid.fileSizeMb || 'Vídeo'}</p>
+          <div class="bg-slate-900/90 border border-slate-800 hover:border-slate-700 rounded-2xl p-2.5 sm:p-3 flex items-center justify-between gap-3 transition shadow-sm group">
+            
+            <!-- Miniatura do Vídeo (Esquerda) -->
+            <div class="flex items-center space-x-3.5 min-w-0">
+              <div class="relative ${isPortrait ? 'w-14 sm:w-16 h-16 sm:h-20' : 'w-24 sm:w-32 h-14 sm:h-18'} rounded-xl bg-black overflow-hidden flex-shrink-0 flex items-center justify-center border border-slate-800/80">
+                <video src="${vidUrl}" class="w-full h-full object-cover" muted preload="metadata"></video>
+                <div class="absolute inset-0 bg-black/30 group-hover:bg-transparent transition flex items-center justify-center">
+                  <div class="w-6 h-6 rounded-full bg-black/60 text-sky-400 flex items-center justify-center shadow">
+                    <svg class="w-3 h-3 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                  </div>
+                </div>
               </div>
 
-              <div class="flex items-center space-x-2 pt-2 border-t border-slate-800">
-                <button
-                  onclick="transmitToAllScreens('${vid.id}')"
-                  class="flex-1 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition"
-                >
-                  ⚡ Exibir em Todas as Telas
-                </button>
-                <button
-                  onclick="deleteVideo('${vid.id}', '${vid.storage_path || ''}')"
-                  class="p-1.5 rounded-xl bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition"
-                  title="Excluir Vídeo"
-                >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                </button>
+              <!-- Informações do Vídeo (Centro) -->
+              <div class="min-w-0">
+                <h4 class="font-bold text-white text-sm sm:text-base truncate" title="${escapeHtml(vid.title)}">
+                  ${escapeHtml(vid.title)}
+                </h4>
+                <div class="flex items-center space-x-2 text-xs text-slate-400 mt-1">
+                  <span>Vídeo</span>
+                  <span>•</span>
+                  <span class="capitalize">${orientationLabel}</span>
+                  <span>•</span>
+                  <span>${timeAgo}</span>
+                </div>
               </div>
             </div>
+
+            <!-- Ações e Menu 3 Pontos (Direita) -->
+            <div class="flex items-center space-x-2 flex-shrink-0">
+              <button
+                onclick="transmitToAllScreens('${vid.id}')"
+                class="hidden md:inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs transition shadow active:scale-95"
+                title="Transmitir para todas as telas vinculadas"
+              >
+                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                <span>Transmitir a Todos</span>
+              </button>
+
+              <div class="relative">
+                <button
+                  onclick="toggleVideoDropdown('${vid.id}', event)"
+                  class="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                  title="Mais opções"
+                >
+                  <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <circle cx="12" cy="5" r="2"></circle>
+                    <circle cx="12" cy="12" r="2"></circle>
+                    <circle cx="12" cy="19" r="2"></circle>
+                  </svg>
+                </button>
+
+                <div id="videoDropdown-${vid.id}" class="hidden absolute right-0 mt-1 w-52 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl py-1 z-20 text-xs text-left">
+                  <button onclick="transmitToAllScreens('${vid.id}')" class="w-full text-left px-4 py-2 hover:bg-slate-800 text-sky-400 font-semibold flex items-center space-x-2">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    <span>Transmitir para Todos</span>
+                  </button>
+                  <button onclick="copyVideoLink('${vidUrl}')" class="w-full text-left px-4 py-2 hover:bg-slate-800 text-slate-300 flex items-center space-x-2">
+                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+                    <span>Copiar Link do Vídeo</span>
+                  </button>
+                  <a href="${vidUrl}" target="_blank" class="w-full text-left px-4 py-2 hover:bg-slate-800 text-slate-300 flex items-center space-x-2 block">
+                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                    <span>Abrir em Nova Aba</span>
+                  </a>
+                  <div class="border-t border-slate-800 my-1"></div>
+                  <button onclick="deleteVideo('${vid.id}', '${vid.storage_path || ''}')" class="w-full text-left px-4 py-2 hover:bg-rose-500/20 text-rose-400 flex items-center space-x-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    <span>Excluir Vídeo</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
           </div>
         `;
       }).join('');
     }
+
+    window.toggleVideoDropdown = function(vidId, e) {
+      if (e) e.stopPropagation();
+      const drop = document.getElementById(`videoDropdown-${vidId}`);
+      document.querySelectorAll('[id^="videoDropdown-"]').forEach(d => {
+        if (d !== drop) d.classList.add('hidden');
+      });
+      if (drop) drop.classList.toggle('hidden');
+    };
+
+    window.copyVideoLink = function(url) {
+      navigator.clipboard.writeText(url).then(() => {
+        notify('Link do vídeo copiado para a área de transferência!');
+      }).catch(() => {
+        prompt('Copie o link do vídeo:', url);
+      });
+    };
 
     window.transmitToAllScreens = async function(videoId) {
       const vid = currentVideos.find(v => v.id === videoId);
@@ -911,6 +1140,7 @@
         notify(`✅ Vídeo "${title}" cadastrado com sucesso!`);
         uploadForm.reset();
         progressContainer.classList.add('hidden');
+        if (uploadModal) uploadModal.classList.add('hidden');
         await window.totemCentral.refreshCatalog();
       } catch (err) {
         alert('Erro no upload: ' + err.message);
@@ -936,6 +1166,7 @@
         await window.totemCentral.addVideoByUrl(title, url);
         notify(`✅ Link "${title}" cadastrado com sucesso!`);
         directUrlForm.reset();
+        if (uploadModal) uploadModal.classList.add('hidden');
         await window.totemCentral.refreshCatalog();
       } catch (err) {
         alert('Erro ao salvar link: ' + err.message);
