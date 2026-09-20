@@ -65,12 +65,6 @@
           <button id="navBtnScreens" class="py-4 border-b-2 active-nav-tab font-semibold transition">
             Telas
           </button>
-          <button id="navBtnGroups" class="py-4 border-b-2 border-transparent text-slate-400 hover:text-white transition">
-            Grupos
-          </button>
-          <button id="navBtnWeb" class="py-4 border-b-2 border-transparent text-slate-400 hover:text-white transition">
-            Sites Da Web
-          </button>
         </nav>
       </div>
 
@@ -284,44 +278,6 @@
       </div>
     </section>
 
-    <!-- ========================================== -->
-    <!-- ABA 3: GRUPOS (PLACEHOLDER DE ORGANIZAÇÃO) -->
-    <!-- ========================================== -->
-    <section id="tabContentGroups" class="space-y-6 hidden">
-      <div class="flex items-center justify-between">
-        <div>
-          <h1 class="text-2xl font-bold text-white tracking-tight">Grupos de Telas</h1>
-          <p class="text-xs text-slate-400">Organize múltiplos totens em grupos (ex: Loja Shopping, Recepção, Totens Externos).</p>
-        </div>
-      </div>
-      <div class="text-center py-16 bg-slate-900/40 rounded-3xl border border-slate-800 p-8 space-y-3">
-        <div class="w-12 h-12 rounded-2xl bg-indigo-500/20 text-indigo-400 mx-auto flex items-center justify-center">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
-        </div>
-        <h3 class="text-base font-bold text-white">Todas as Telas Estão Sincronizadas</h3>
-        <p class="text-xs text-slate-400 max-w-md mx-auto">Você pode transmitir qualquer vídeo para telas individuais na aba <strong>Telas</strong> ou transmitir para todos os totens simultaneamente na aba <strong>Conteúdo</strong>.</p>
-      </div>
-    </section>
-
-    <!-- ========================================== -->
-    <!-- ABA 4: SITES DA WEB                        -->
-    <!-- ========================================== -->
-    <section id="tabContentWeb" class="space-y-6 hidden">
-      <div class="flex items-center justify-between">
-        <div>
-          <h1 class="text-2xl font-bold text-white tracking-tight">Sites Da Web</h1>
-          <p class="text-xs text-slate-400">Exiba páginas da web interativas ou dashboards nas suas telas.</p>
-        </div>
-      </div>
-      <div class="text-center py-16 bg-slate-900/40 rounded-3xl border border-slate-800 p-8 space-y-3">
-        <div class="w-12 h-12 rounded-2xl bg-blue-500/20 text-blue-400 mx-auto flex items-center justify-center">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/></svg>
-        </div>
-        <h3 class="text-base font-bold text-white">Transmissão de URLs</h3>
-        <p class="text-xs text-slate-400 max-w-md mx-auto">Em breve: suporte para URLs com auto-atualização para cardápios digitais e dashboards.</p>
-      </div>
-    </section>
-
   </main>
 
   <!-- ========================================================================= -->
@@ -503,19 +459,15 @@
     // Gerenciamento de Abas
     const navBtnContent = document.getElementById('navBtnContent');
     const navBtnScreens = document.getElementById('navBtnScreens');
-    const navBtnGroups = document.getElementById('navBtnGroups');
-    const navBtnWeb = document.getElementById('navBtnWeb');
 
     const tabContentScreens = document.getElementById('tabContentScreens');
     const tabContentContent = document.getElementById('tabContentContent');
-    const tabContentGroups = document.getElementById('tabContentGroups');
-    const tabContentWeb = document.getElementById('tabContentWeb');
 
     function setTab(tab) {
-      [navBtnContent, navBtnScreens, navBtnGroups, navBtnWeb].forEach(b => {
+      [navBtnContent, navBtnScreens].forEach(b => {
         b.className = 'py-4 border-b-2 border-transparent text-slate-400 hover:text-white transition';
       });
-      [tabContentScreens, tabContentContent, tabContentGroups, tabContentWeb].forEach(c => c.classList.add('hidden'));
+      [tabContentScreens, tabContentContent].forEach(c => c.classList.add('hidden'));
 
       if (tab === 'screens') {
         navBtnScreens.className = 'py-4 border-b-2 active-nav-tab font-semibold transition';
@@ -523,19 +475,11 @@
       } else if (tab === 'content') {
         navBtnContent.className = 'py-4 border-b-2 active-nav-tab font-semibold transition';
         tabContentContent.classList.remove('hidden');
-      } else if (tab === 'groups') {
-        navBtnGroups.className = 'py-4 border-b-2 active-nav-tab font-semibold transition';
-        tabContentGroups.classList.remove('hidden');
-      } else if (tab === 'web') {
-        navBtnWeb.className = 'py-4 border-b-2 active-nav-tab font-semibold transition';
-        tabContentWeb.classList.remove('hidden');
       }
     }
 
     navBtnScreens.addEventListener('click', () => setTab('screens'));
     navBtnContent.addEventListener('click', () => setTab('content'));
-    navBtnGroups.addEventListener('click', () => setTab('groups'));
-    navBtnWeb.addEventListener('click', () => setTab('web'));
 
     // Toast
     const toast = document.getElementById('toast');
