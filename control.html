@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#020617">
-  <title>Totem Control - Controle Remoto</title>
+  <meta name="theme-color" content="#0f172a">
+  <title>AbleSign - Gerenciador de Telas & Totens</title>
 
   <!-- PWA Manifest Exclusivo do App de Controle -->
   <link rel="manifest" href="manifest-control.json">
@@ -15,405 +15,443 @@
 
   <!-- Supabase JS CDN Oficial -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="totem-central.js"></script>
+
+  <style>
+    .active-nav-tab {
+      color: #bf4080 !important;
+      border-bottom-color: #bf4080 !important;
+    }
+    .tv-frame {
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.6);
+    }
+  </style>
 </head>
 <body class="min-h-full flex flex-col font-sans bg-slate-950 text-slate-100">
 
-  <!-- Cabeçalho Principal -->
-  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-30">
-    <div class="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
-      <div class="flex items-center space-x-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
-          </svg>
+  <!-- BARRA DE NAVEGAÇÃO SUPERIOR (ESTILO ABLESIGN - IMAGEM 1) -->
+  <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between">
+      
+      <div class="flex items-center space-x-8">
+        <!-- Logo AbleSign -->
+        <div class="flex items-center space-x-2 py-3.5 cursor-pointer" onclick="setTab('screens')">
+          <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-purple-700 to-pink-600 flex items-center justify-center shadow-md">
+            <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <rect x="2" y="3" width="20" height="14" rx="2"></rect>
+              <line x1="8" y1="21" x2="16" y2="21"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+          </div>
+          <span class="text-xl font-bold text-white tracking-tight flex items-center">
+            Able<span class="text-[#bf4080]">Sign</span>
+          </span>
         </div>
-        <div>
-          <h1 class="text-base sm:text-lg font-bold text-white">Totem Control</h1>
-          <p id="cloudStatusBadge" class="text-xs text-slate-400 flex items-center space-x-1.5">
-            <span class="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse"></span>
-            <span>Modo Local / Supabase</span>
-          </p>
-        </div>
+
+        <!-- Links de Navegação das Abas -->
+        <nav class="flex items-center space-x-6 text-sm font-medium">
+          <button id="navBtnContent" class="py-4 border-b-2 border-transparent text-slate-400 hover:text-white transition">
+            Conteúdo
+          </button>
+          <button id="navBtnScreens" class="py-4 border-b-2 active-nav-tab font-semibold transition">
+            Telas
+          </button>
+          <button id="navBtnGroups" class="py-4 border-b-2 border-transparent text-slate-400 hover:text-white transition">
+            Grupos
+          </button>
+          <button id="navBtnWeb" class="py-4 border-b-2 border-transparent text-slate-400 hover:text-white transition">
+            Sites Da Web
+          </button>
+        </nav>
       </div>
 
-      <div class="flex items-center space-x-2">
-        <!-- Botão Conectar Supabase Cloud -->
+      <!-- Ações da Direita -->
+      <div class="flex items-center space-x-3">
+        <a href="/screen" target="_blank" class="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition">
+          <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+          <span>Abrir Tela (/screen)</span>
+        </a>
         <button id="openSupabaseModalBtn" class="px-3 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-semibold flex items-center space-x-1.5 transition">
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M11.996 0C5.372 0 0 5.373 0 12s5.372 12 11.996 12C18.627 12 24 18.627 24 12S18.627 0 11.996 0zm-1.8 17.5v-5.2h-3.4l7-8.3v5.2h3.4l-7 8.3z"/>
-          </svg>
-          <span class="hidden sm:inline">Conectar Supabase</span>
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="hidden sm:inline">Supabase Nuvem</span>
         </button>
       </div>
+
     </div>
   </header>
 
-  <!-- BANNER DE ALERTA: Novo Totem Detectado na Rede Wi-Fi -->
-  <div id="pendingDeviceAlert" class="bg-gradient-to-r from-amber-600 to-orange-600 text-white p-4 shadow-lg transition-all hidden">
-    <div class="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-      <div class="flex items-center space-x-3 text-center sm:text-left">
-        <div class="p-2 bg-black/20 rounded-xl">
-          <svg class="w-6 h-6 text-white animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
-          </svg>
-        </div>
-        <div>
-          <h4 class="font-bold text-sm">Dispositivo detectado querendo se conectar!</h4>
-          <p id="pendingDeviceDetails" class="text-xs text-amber-100">
-            Dispositivo "Modelo Totem" (IP: 192.168.1.50) solicitando pareamento.
-          </p>
-        </div>
-      </div>
-      <div class="flex items-center space-x-2">
-        <button id="rejectDeviceBtn" class="px-3.5 py-1.5 rounded-lg bg-black/30 hover:bg-black/40 text-xs font-semibold transition">
-          Recusar
-        </button>
-        <button id="approveDeviceBtn" class="px-4 py-1.5 rounded-lg bg-white text-slate-900 hover:bg-slate-100 text-xs font-bold shadow transition">
-          Autorizar Acesso
-        </button>
-      </div>
-    </div>
-  </div>
+  <!-- CONTEÚDO PRINCIPAL -->
+  <main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6">
 
-  <!-- Navegação de Abas -->
-  <div class="border-b border-slate-800 bg-slate-900/40">
-    <div class="max-w-5xl mx-auto px-4 sm:px-6 flex space-x-6 text-sm">
-      <button id="tabBtnDevices" class="py-3.5 border-b-2 border-indigo-500 text-indigo-400 font-semibold flex items-center space-x-2">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-        </svg>
-        <span>1. Telas & Totens</span>
-        <span id="devicesCountBadge" class="px-1.5 py-0.5 rounded-full text-[10px] bg-indigo-500/20 text-indigo-300">0</span>
-      </button>
-
-      <button id="tabBtnUpload" class="py-3.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 font-medium flex items-center space-x-2">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-        </svg>
-        <span>2. Upar Vídeo no Supabase</span>
-      </button>
-
-      <button id="tabBtnCatalog" class="py-3.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 font-medium flex items-center space-x-2">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
-        </svg>
-        <span>3. Galeria & Transmissão</span>
-      </button>
-    </div>
-  </div>
-
-  <!-- Conteúdo Principal -->
-  <main class="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-8">
-
-    <!-- ABA 1: TELAS E TOTENS (Descoberta e Pareamento) -->
-    <section id="tabContentDevices" class="space-y-6">
-
-      <!-- CARD: VINCULAR TOTEM POR IDENTIFICADOR (ID) -->
-      <div class="bg-gradient-to-br from-indigo-950/70 via-slate-900 to-slate-900 border border-indigo-500/40 rounded-3xl p-5 sm:p-7 shadow-2xl space-y-4">
-        <div class="flex items-center space-x-3.5">
-          <div class="w-11 h-11 rounded-2xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0 shadow-lg shadow-indigo-500/10">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
-            </svg>
-          </div>
-          <div>
-            <h3 class="text-base sm:text-lg font-black text-white">Vincular Totem por Identificador (ID)</h3>
-            <p class="text-xs text-slate-300">
-              Copie o ID que aparece no aplicativo do Totem (<a href="/screen" target="_blank" class="text-indigo-400 hover:underline font-bold">/screen</a>) e cole aqui para autorizar o acesso na hora.
-            </p>
-          </div>
-        </div>
-
-        <form id="bindTotemForm" class="grid grid-cols-1 sm:grid-cols-12 gap-3.5 pt-1">
-          <div class="sm:col-span-6">
-            <label class="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-              Identificador (ID do Totem) *
-            </label>
-            <input
-              type="text"
-              id="manualTotemId"
-              placeholder="Ex: totem-w7q4v1z"
-              required
-              class="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-          </div>
-
-          <div class="sm:col-span-6">
-            <label class="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-              Nome / Identificação do Totem (Opcional)
-            </label>
-            <input
-              type="text"
-              id="manualTotemName"
-              placeholder="Ex: Totem Entrada / Recepção"
-              class="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-          </div>
-
-          <div class="sm:col-span-12 flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-slate-800">
-            <div class="text-[11px] text-slate-400 flex items-center space-x-1.5">
-              <span class="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse"></span>
-              <span>Ao autorizar, o Totem desbloqueará imediatamente e iniciará a exibição contínua.</span>
-            </div>
-
-            <button
-              type="submit"
-              id="btnBindTotem"
-              class="w-full sm:w-auto px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs sm:text-sm flex items-center justify-center space-x-2 shadow-lg shadow-emerald-600/25 transition shrink-0"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
-              <span>Vincular e Autorizar Totem</span>
-            </button>
-          </div>
-        </form>
-      </div>
-
-      <div class="flex items-center justify-between pt-2">
-        <div>
-          <h2 class="text-lg font-bold text-white">Totens Vinculados & Detectados</h2>
-          <p class="text-xs text-slate-400">Telas autorizadas no banco de dados e prontas para receber vídeos.</p>
-        </div>
-        <button id="refreshDevicesBtn" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 font-semibold flex items-center space-x-1.5 border border-slate-700 transition">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-          </svg>
-          <span>Atualizar Lista</span>
-        </button>
-      </div>
-
-      <div id="devicesList" class="space-y-3">
-        <!-- Lista de Totens -->
-        <div class="text-center py-12 text-slate-500 text-sm bg-slate-900/40 rounded-2xl border border-slate-800">
-          Nenhum totem cadastrado ainda. Use o formulário acima para vincular pelo ID da tela.
-        </div>
-      </div>
-    </section>
-
-    <!-- ABA 2: UPLOAD DE VÍDEOS PARA O SUPABASE -->
-    <section id="tabContentUpload" class="space-y-6 hidden">
-      <div>
-        <h2 class="text-lg font-bold text-white">Fazer Upload de Vídeo</h2>
-        <p class="text-xs text-slate-400">Selecione o arquivo do celular, defina um nome para identificá-lo e envie direto para o banco de dados.</p>
-      </div>
-
-      <!-- AVISO DE CONFIGURAÇÃO DO BUCKET DO SUPABASE -->
-      <div id="bucketNotice" class="bg-gradient-to-r from-amber-950/40 via-slate-900 to-slate-900 border border-amber-500/30 rounded-2xl p-4 sm:p-5 text-amber-200 text-xs space-y-3 max-w-xl mx-auto shadow-lg">
-        <div class="flex items-start space-x-3">
-          <div class="p-2 rounded-xl bg-amber-500/20 text-amber-400 shrink-0">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
-          </div>
-          <div class="space-y-1">
-            <h4 class="font-bold text-white text-sm">Configuração do Armazenamento de Vídeos</h4>
-            <p class="text-slate-300 text-[11px] leading-relaxed">
-              Se for a primeira vez fazendo upload, o Supabase precisa do bucket <strong>"videos"</strong> ativo. Clique em <strong>Copiar Script SQL</strong> e execute no <strong>SQL Editor</strong> do seu Supabase para ativar em 5 segundos.
-            </p>
-          </div>
-        </div>
-
-        <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-amber-500/20">
-          <a
-            href="https://supabase.com/dashboard/project/qvnsahvdjhimlmtqrnif/sql/new"
-            target="_blank"
-            class="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center space-x-1.5 transition shadow"
-          >
-            <span>Abrir SQL Editor no Supabase</span>
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
-            </svg>
-          </a>
-
+    <!-- ========================================== -->
+    <!-- ABA 1: TELAS (ESTILO ABLESIGN - IMAGEM 1)   -->
+    <!-- ========================================== -->
+    <section id="tabContentScreens" class="space-y-6">
+      
+      <!-- Cabeçalho da Aba Telas -->
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-4">
+          <h1 class="text-2xl font-bold text-white tracking-tight">Telas</h1>
           <button
-            type="button"
-            id="copySqlSetupBtn"
-            class="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs border border-slate-700 flex items-center space-x-1.5 transition"
+            id="openAddScreenBtn"
+            class="px-4 py-1.5 rounded-xl border border-blue-500/60 bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white font-medium text-xs sm:text-sm flex items-center space-x-2 transition shadow-sm"
           >
-            <svg class="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+            <span>Adicionar Tela</span>
+          </button>
+        </div>
+
+        <div class="flex items-center space-x-3">
+          <button
+            id="refreshScreensBtn"
+            class="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            title="Atualizar Telas"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
             </svg>
-            <span id="copySqlBtnText">Copiar Código SQL</span>
           </button>
         </div>
       </div>
 
-      <div class="max-w-xl mx-auto space-y-6">
-        <!-- OPÇÃO 1: UPLOAD DE ARQUIVO (ATÉ 50 MB NO PLANO GRÁTIS) -->
-        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 sm:p-8 space-y-5 shadow-xl">
-          <div class="flex items-center justify-between pb-3 border-b border-slate-800">
-            <h3 class="text-sm font-bold text-white flex items-center space-x-2">
-              <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
-              <span>Opção 1: Upload Direto para o Supabase Storage</span>
-            </h3>
-            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-              Até 50 MB (Plano Grátis)
-            </span>
-          </div>
-
-          <p class="text-xs text-slate-400">
-            O arquivo é enviado diretamente para o <strong>Supabase Storage</strong> e fica disponível na galeria para tocar na tela do cliente. <em>(Para vídeos maiores que 50 MB como 98 MB+, use a Opção 2 abaixo).</em>
-          </p>
-
-          <form id="uploadForm" class="space-y-5">
-            <!-- Campo: Nome do Vídeo -->
+      <!-- Banner de Telas Aguardando Emparelhamento na Rede Wi-Fi -->
+      <div id="pendingScreensAlert" class="p-4 rounded-2xl bg-gradient-to-r from-purple-950/80 to-slate-900 border border-[#bf4080]/50 shadow-xl hidden">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-[#bf4080]/20 text-[#bf4080] flex items-center justify-center shrink-0">
+              <svg class="w-5 h-5 animate-pulse" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <rect x="2" y="3" width="20" height="14" rx="2"></rect>
+                <line x1="8" y1="21" x2="16" y2="21"></line>
+                <line x1="12" y1="17" x2="12" y2="21"></line>
+              </svg>
+            </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                Nome do Vídeo (Para identificação) *
-              </label>
+              <h4 class="font-bold text-sm text-white flex items-center space-x-2">
+                <span>Tela detectada na sua rede aguardando conexão!</span>
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+              </h4>
+              <p id="pendingScreenDetailsText" class="text-xs text-slate-300">
+                Código exibido na tela: <strong class="font-mono text-emerald-400 text-sm" id="pendingScreenCodeBadge">------</strong>
+              </p>
+            </div>
+          </div>
+          <button
+            id="quickPairDetectedBtn"
+            class="px-4 py-2 rounded-xl bg-[#bf4080] hover:bg-[#a6306c] active:scale-95 text-white font-bold text-xs shadow-lg transition"
+          >
+            ⚡ Emparelhar Esta Tela Agora
+          </button>
+        </div>
+      </div>
+
+      <!-- Grade de Telas (Cards Estilo AbleSign) -->
+      <div id="screensGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Preenchido via JavaScript -->
+        <div class="col-span-full text-center py-16 text-slate-500 text-sm bg-slate-900/30 rounded-3xl border border-slate-800/80">
+          <svg class="w-12 h-12 mx-auto text-slate-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <rect x="2" y="3" width="20" height="14" rx="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+          <p class="font-medium text-slate-400">Nenhuma tela vinculada ainda.</p>
+          <p class="text-xs mt-1">Abra o app no Totem/celular ou clique em <strong>"Adicionar Tela"</strong> acima para emparelhar com o código.</p>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ========================================== -->
+    <!-- ABA 2: CONTEÚDO (VÍDEOS & UPLOADS)         -->
+    <!-- ========================================== -->
+    <section id="tabContentContent" class="space-y-6 hidden">
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-2xl font-bold text-white tracking-tight">Conteúdo & Biblioteca de Vídeos</h1>
+          <p class="text-xs text-slate-400">Faça upload de novos vídeos ou adicione links para transmissão nas telas.</p>
+        </div>
+      </div>
+
+      <!-- Formulários de Adição de Conteúdo -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- Opção 1: Upload Direto no Supabase -->
+        <div class="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-xl">
+          <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+            <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+            <span>Upload de Arquivo (Supabase Storage)</span>
+          </h3>
+
+          <form id="uploadForm" class="space-y-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Nome do Vídeo *</label>
               <input
                 type="text"
                 id="videoTitleInput"
-                placeholder="Ex: Comercial Vitrine / Promoção da Semana"
+                placeholder="Ex: Comercial Arena Novembro"
                 required
-                class="w-full px-4 py-3 rounded-xl bg-slate-800/90 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs placeholder-slate-500 focus:ring-2 focus:ring-[#bf4080] outline-none"
               >
             </div>
 
-            <!-- Seletor de Arquivo de Vídeo -->
             <div>
-              <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                Arquivo de Vídeo (.mp4, .webm, .mov) *
-              </label>
-              <div class="border-2 border-dashed border-slate-700 hover:border-indigo-500 rounded-xl p-6 text-center cursor-pointer transition bg-slate-800/40" id="dropZone">
-                <input type="file" id="videoFileInput" accept="video/mp4,video/webm,video/quicktime" class="hidden" required>
-                <div class="space-y-2 flex flex-col items-center">
-                  <div class="w-12 h-12 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-                    </svg>
-                  </div>
-                  <div class="text-xs text-slate-300 font-medium" id="fileChosenText">
-                    Toque para escolher o vídeo no celular ou PC (Até 50 MB)
-                  </div>
-                  <p class="text-[11px] text-slate-500">Envio direto ao Supabase Storage (.mp4, .webm, .mov)</p>
-                </div>
-              </div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Arquivo de Vídeo (.mp4, .webm, .mov)</label>
+              <input
+                type="file"
+                id="videoFileInput"
+                accept="video/*"
+                required
+                class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-slate-400 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-500 cursor-pointer"
+              >
             </div>
 
-            <!-- Barra de Progresso de Upload -->
-            <div id="progressContainer" class="space-y-2 hidden">
-              <div class="flex justify-between text-xs text-slate-300">
-                <span id="progressStatusText">Enviando para o Supabase...</span>
-                <span id="progressPercentText" class="font-bold text-indigo-400">0%</span>
+            <!-- Barra de Progresso -->
+            <div id="progressContainer" class="space-y-1 hidden">
+              <div class="flex justify-between text-[11px] text-slate-400">
+                <span id="progressStatusText">Enviando...</span>
+                <span id="progressPercentText" class="font-bold text-white">0%</span>
               </div>
-              <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
-                <div id="progressBar" class="bg-gradient-to-r from-indigo-500 to-purple-500 h-full w-0 transition-all duration-200"></div>
+              <div class="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                <div id="progressBar" class="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-200" style="width: 0%"></div>
               </div>
             </div>
-
-            <!-- Opção de transmissão imediata -->
-            <label class="flex items-center space-x-2.5 cursor-pointer bg-slate-800/60 p-3 rounded-xl border border-slate-700 hover:border-indigo-500/40 transition">
-              <input type="checkbox" id="autoTransmitAfterUpload" checked class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-700 bg-slate-800">
-              <span class="text-xs text-slate-200 font-medium">⚡ Colocar no Totem automaticamente assim que o envio terminar</span>
-            </label>
 
             <button
               type="submit"
               id="startUploadBtn"
-              class="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-[0.99] text-white font-bold text-sm transition shadow-lg shadow-indigo-600/25 flex items-center justify-center space-x-2"
+              class="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-lg transition"
             >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-              </svg>
-              <span>Fazer Upload e Salvar Vídeo</span>
+              Fazer Upload e Salvar Vídeo
             </button>
           </form>
         </div>
 
-        <!-- OPÇÃO 2: INSERIR LINK DIRETO (SEM LIMITE DE TAMANHO) -->
-        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 sm:p-8 space-y-5 shadow-xl">
-          <div class="flex items-center justify-between pb-3 border-b border-slate-800">
-            <h3 class="text-sm font-bold text-white flex items-center space-x-2">
-              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
-              <span>Opção 2: Inserir Link (Google Drive, YouTube ou Direto)</span>
-            </h3>
-            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-              Sem limite de tamanho
-            </span>
-          </div>
+        <!-- Opção 2: Inserir Link Direto -->
+        <div class="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-xl">
+          <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+            <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+            <span>Inserir Link Direto (Sem Limite de Tamanho)</span>
+          </h3>
 
-          <p class="text-xs text-slate-400">
-            Aceita links públicos de vídeos do <strong>Google Drive (qualquer tamanho, 100 MB, 500 MB+)</strong>, links do <strong>YouTube</strong>, Dropbox ou qualquer link direto .mp4.
-          </p>
-
-          <form id="linkVideoForm" class="space-y-4">
+          <form id="directUrlForm" class="space-y-4">
             <div>
-              <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                Nome do Vídeo *
-              </label>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Nome do Vídeo *</label>
               <input
                 type="text"
-                id="linkVideoTitle"
-                placeholder="Ex: Comercial Totem 4K"
+                id="urlVideoTitleInput"
+                placeholder="Ex: Vídeo Promocional 4K"
                 required
-                class="w-full px-4 py-3 rounded-xl bg-slate-800/90 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs placeholder-slate-500 focus:ring-2 focus:ring-blue-500 outline-none"
               >
             </div>
 
             <div>
-              <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                URL / Link do Vídeo (Drive, YouTube, .mp4) *
-              </label>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Link Direto (Google Drive, Dropbox ou .mp4)</label>
               <input
                 type="url"
-                id="linkVideoUrl"
-                placeholder="https://drive.google.com/file/d/... ou https://youtu.be/..."
+                id="directVideoUrlInput"
+                placeholder="https://drive.google.com/file/d/... ou link .mp4"
                 required
-                class="w-full px-4 py-3 rounded-xl bg-slate-800/90 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono text-xs"
+                class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs font-mono placeholder-slate-500 focus:ring-2 focus:ring-blue-500 outline-none"
               >
             </div>
-
-            <label class="flex items-center space-x-2.5 cursor-pointer bg-slate-800/60 p-3 rounded-xl border border-slate-700 hover:border-emerald-500/40 transition">
-              <input type="checkbox" id="autoTransmitAfterLink" checked class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-700 bg-slate-800">
-              <span class="text-xs text-slate-200 font-medium">⚡ Colocar no Totem automaticamente ao adicionar</span>
-            </label>
 
             <button
               type="submit"
-              id="linkVideoBtn"
-              class="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white font-bold text-sm transition shadow-lg shadow-emerald-600/25 flex items-center justify-center space-x-2"
+              id="submitUrlBtn"
+              class="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-lg transition"
             >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
-              </svg>
-              <span>Adicionar Vídeo por Link</span>
+              Salvar Link de Vídeo
             </button>
           </form>
+        </div>
+
+      </div>
+
+      <!-- Galeria de Vídeos Cadastrados -->
+      <div class="space-y-4 pt-4">
+        <h2 class="text-lg font-bold text-white">Biblioteca de Vídeos Cadastrados</h2>
+        <div id="catalogGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <!-- Renderizado via JS -->
         </div>
       </div>
     </section>
 
-    <!-- ABA 3: GALERIA E TRANSMISSÃO EM TEMPO REAL -->
-    <section id="tabContentCatalog" class="space-y-6 hidden">
+    <!-- ========================================== -->
+    <!-- ABA 3: GRUPOS (PLACEHOLDER DE ORGANIZAÇÃO) -->
+    <!-- ========================================== -->
+    <section id="tabContentGroups" class="space-y-6 hidden">
       <div class="flex items-center justify-between">
         <div>
-          <h2 class="text-lg font-bold text-white">Biblioteca de Vídeos Gravados</h2>
-          <p class="text-xs text-slate-400">Clique em "Transmitir para o Totem" para trocar o vídeo na tela imediatamente.</p>
+          <h1 class="text-2xl font-bold text-white tracking-tight">Grupos de Telas</h1>
+          <p class="text-xs text-slate-400">Organize múltiplos totens em grupos (ex: Loja Shopping, Recepção, Totens Externos).</p>
         </div>
       </div>
+      <div class="text-center py-16 bg-slate-900/40 rounded-3xl border border-slate-800 p-8 space-y-3">
+        <div class="w-12 h-12 rounded-2xl bg-indigo-500/20 text-indigo-400 mx-auto flex items-center justify-center">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+        </div>
+        <h3 class="text-base font-bold text-white">Todas as Telas Estão Sincronizadas</h3>
+        <p class="text-xs text-slate-400 max-w-md mx-auto">Você pode transmitir qualquer vídeo para telas individuais na aba <strong>Telas</strong> ou transmitir para todos os totens simultaneamente na aba <strong>Conteúdo</strong>.</p>
+      </div>
+    </section>
 
-      <!-- Grade dos Vídeos Salvos -->
-      <div id="catalogGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <!-- Renderizado dinamicamente -->
+    <!-- ========================================== -->
+    <!-- ABA 4: SITES DA WEB                        -->
+    <!-- ========================================== -->
+    <section id="tabContentWeb" class="space-y-6 hidden">
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-2xl font-bold text-white tracking-tight">Sites Da Web</h1>
+          <p class="text-xs text-slate-400">Exiba páginas da web interativas ou dashboards nas suas telas.</p>
+        </div>
+      </div>
+      <div class="text-center py-16 bg-slate-900/40 rounded-3xl border border-slate-800 p-8 space-y-3">
+        <div class="w-12 h-12 rounded-2xl bg-blue-500/20 text-blue-400 mx-auto flex items-center justify-center">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/></svg>
+        </div>
+        <h3 class="text-base font-bold text-white">Transmissão de URLs</h3>
+        <p class="text-xs text-slate-400 max-w-md mx-auto">Em breve: suporte para URLs com auto-atualização para cardápios digitais e dashboards.</p>
       </div>
     </section>
 
   </main>
 
+  <!-- ========================================================================= -->
+  <!-- MODAL: ADICIONAR TELA COM CÓDIGO DE EMPARELHAMENTO (ESTILO IMAGEM 2)      -->
+  <!-- ========================================================================= -->
+  <div id="addScreenModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-6 shadow-2xl relative text-center">
+      
+      <!-- Cabeçalho com Ícone de Monitor -->
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div class="flex items-center space-x-2 text-white font-bold text-lg">
+          <svg class="w-6 h-6 text-slate-200" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <rect x="2" y="3" width="20" height="14" rx="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+          <span>Adicionar tela</span>
+        </div>
+        <button id="closeAddScreenModalBtn" class="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Texto e Badges de Lojas / Plataformas -->
+      <div class="space-y-3.5">
+        <p class="text-xs sm:text-sm text-slate-300 font-medium">
+          Baixe o aplicativo AbleSign para o seu dispositivo.
+        </p>
+
+        <!-- Plataformas Suportadas (Imagem 2) -->
+        <div class="flex flex-wrap items-center justify-center gap-2.5 py-1">
+          <div class="px-3 py-1.5 rounded-lg bg-black border border-slate-700 text-[11px] font-semibold flex items-center space-x-2 text-white">
+            <svg class="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="currentColor"><path d="M3 20.5v-17c0-.83.67-1.5 1.5-1.5.37 0 .72.13 1 .37l12.5 8.5c.62.42.62 1.34 0 1.76l-12.5 8.5c-.28.24-.63.37-1 .37-.83 0-1.5-.67-1.5-1.5z"/></svg>
+            <div class="text-left leading-tight"><span class="text-[8px] text-slate-400 block">DISPONÍVEL NO</span>Google Play</div>
+          </div>
+
+          <div class="px-3 py-1.5 rounded-lg bg-black border border-slate-700 text-[11px] font-semibold flex items-center space-x-2 text-white">
+            <span class="text-amber-400 font-black text-xs">a</span>
+            <div class="text-left leading-tight"><span class="text-[8px] text-slate-400 block">available at</span>amazon appstore</div>
+          </div>
+
+          <a href="/screen" target="_blank" class="px-3 py-1.5 rounded-lg bg-purple-950/60 border border-purple-500/40 text-[11px] font-semibold flex items-center space-x-2 text-purple-200 hover:bg-purple-900/60 transition">
+            <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/></svg>
+            <div class="text-left leading-tight"><span class="text-[8px] text-purple-400 block">ABRIR NA WEB</span>Web / TV / PC</div>
+          </a>
+        </div>
+
+        <p class="text-xs sm:text-sm text-slate-300">
+          Ao ser iniciado pela primeira vez, o aplicativo exibirá um código de emparelhamento.<br>
+          <span class="text-slate-400 text-xs">Por favor, insira esse código aqui:</span>
+        </p>
+      </div>
+
+      <!-- Formulário de Código de Emparelhamento -->
+      <form id="pairScreenForm" class="space-y-4 text-left">
+        <div>
+          <label class="block text-xs font-bold text-blue-400 uppercase tracking-wider mb-1.5">
+            Código de emparelhamento *
+          </label>
+          <input
+            type="text"
+            id="pairCodeInput"
+            placeholder="Ex: 887876"
+            maxlength="8"
+            required
+            class="w-full px-5 py-3 rounded-2xl bg-slate-950 border-2 border-blue-500 text-white font-mono text-2xl text-center tracking-widest placeholder-slate-600 focus:outline-none focus:ring-4 focus:ring-blue-500/20"
+          >
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+            Nome da tela (opcional)
+          </label>
+          <input
+            type="text"
+            id="pairScreenNameInput"
+            placeholder="Ex: Celular, Totem Entrada, Tela de demonstração"
+            class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-[#bf4080]"
+          >
+        </div>
+
+        <!-- Telas Detectadas Automaticamente na Rede -->
+        <div id="modalDetectedListContainer" class="p-3 rounded-xl bg-purple-950/40 border border-purple-500/30 space-y-2 hidden">
+          <span class="text-[11px] font-bold text-purple-300 uppercase tracking-wider flex items-center space-x-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>Tela aguardando na sua rede Wi-Fi:</span>
+          </span>
+          <div id="modalDetectedList" class="space-y-1.5"></div>
+        </div>
+
+        <!-- Botões -->
+        <div class="flex items-center justify-end space-x-3 pt-4 border-t border-slate-800">
+          <button
+            type="button"
+            id="cancelPairBtn"
+            class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            id="submitPairBtn"
+            class="px-6 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-95 text-white text-xs font-bold shadow-lg transition flex items-center space-x-2"
+          >
+            <span>Emparelhar Tela</span>
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- MODAL DE RENOMEAR TELA -->
+  <div id="renameScreenModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
+      <h3 class="text-base font-bold text-white">Renomear Tela</h3>
+      <input
+        type="text"
+        id="newScreenNameInput"
+        placeholder="Novo nome da tela"
+        class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs focus:ring-2 focus:ring-[#bf4080] outline-none"
+      >
+      <div class="flex items-center justify-end space-x-2 pt-2 border-t border-slate-800">
+        <button id="cancelRenameBtn" class="px-3.5 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs">Cancelar</button>
+        <button id="saveRenameBtn" class="px-4 py-2 rounded-xl bg-[#bf4080] hover:bg-[#a6306c] text-white font-bold text-xs">Salvar Nome</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL DE CONFIGURAÇÃO DO SUPABASE -->
   <div id="supabaseModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
         <h3 class="text-base font-bold text-white flex items-center space-x-2">
           <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
           <span>Configuração do Supabase Cloud</span>
         </h3>
         <button id="closeSupabaseModalBtn" class="text-slate-400 hover:text-white">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-          </svg>
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
 
@@ -423,8 +461,7 @@
           <input
             type="text"
             id="supabaseUrlInput"
-            placeholder="https://xyzcompany.supabase.co"
-            class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white font-mono text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white font-mono text-xs focus:ring-1 focus:ring-emerald-500"
           >
         </div>
 
@@ -433,92 +470,67 @@
           <textarea
             id="supabaseKeyInput"
             rows="3"
-            placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-            class="w-full p-3 rounded-lg bg-slate-950 border border-slate-700 text-white font-mono text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            class="w-full p-3 rounded-lg bg-slate-950 border border-slate-700 text-white font-mono text-xs focus:ring-1 focus:ring-emerald-500"
           ></textarea>
-        </div>
-
-        <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1 text-slate-400">
-          <p class="font-semibold text-slate-200">Como obter no Supabase:</p>
-          <p>No painel do seu projeto no Supabase > <strong>Project Settings</strong> > <strong>API</strong>. Copie a Project URL e a anon/public key.</p>
         </div>
       </div>
 
-      <div class="flex items-center justify-between border-t border-slate-800 pt-3">
-        <button id="clearSupabaseBtn" class="text-xs text-rose-400 hover:underline">
-          Restaurar Modo Local
-        </button>
-        <div class="flex space-x-2">
-          <button id="cancelSupabaseModalBtn" class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 text-xs">
-            Cancelar
-          </button>
-          <button id="saveSupabaseBtn" class="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs">
-            Salvar e Conectar
-          </button>
-        </div>
+      <div class="flex items-center justify-end space-x-2 border-t border-slate-800 pt-3">
+        <button id="cancelSupabaseModalBtn" class="px-3.5 py-1.5 rounded-lg bg-slate-800 text-slate-300 text-xs">Cancelar</button>
+        <button id="saveSupabaseBtn" class="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs">Salvar</button>
       </div>
     </div>
   </div>
 
   <!-- Toast Flutuante -->
-  <div id="toast" class="fixed bottom-6 right-6 bg-indigo-600 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center space-x-2.5 z-50 transition-all duration-300 opacity-0 translate-y-4 pointer-events-none">
-    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-    </svg>
+  <div id="toast" class="fixed bottom-6 right-6 bg-[#bf4080] text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center space-x-2.5 z-50 transition-all duration-300 opacity-0 translate-y-4 pointer-events-none">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
     <span id="toastMsg" class="text-sm font-medium">Sucesso</span>
   </div>
 
-  <!-- Scripts -->
+  <!-- SCRIPTS DE CONTROLE & ENGINE -->
   <script src="supabase-client.js"></script>
   <script>
-    // Abas
-    const tabBtnDevices = document.getElementById('tabBtnDevices');
-    const tabBtnUpload = document.getElementById('tabBtnUpload');
-    const tabBtnCatalog = document.getElementById('tabBtnCatalog');
-    const tabContentDevices = document.getElementById('tabContentDevices');
-    const tabContentUpload = document.getElementById('tabContentUpload');
-    const tabContentCatalog = document.getElementById('tabContentCatalog');
+    // Gerenciamento de Abas
+    const navBtnContent = document.getElementById('navBtnContent');
+    const navBtnScreens = document.getElementById('navBtnScreens');
+    const navBtnGroups = document.getElementById('navBtnGroups');
+    const navBtnWeb = document.getElementById('navBtnWeb');
 
-    // Elementos de Notificação de Novo Totem
-    const pendingDeviceAlert = document.getElementById('pendingDeviceAlert');
-    const pendingDeviceDetails = document.getElementById('pendingDeviceDetails');
-    const approveDeviceBtn = document.getElementById('approveDeviceBtn');
-    const rejectDeviceBtn = document.getElementById('rejectDeviceBtn');
-    let pendingDeviceId = null;
+    const tabContentScreens = document.getElementById('tabContentScreens');
+    const tabContentContent = document.getElementById('tabContentContent');
+    const tabContentGroups = document.getElementById('tabContentGroups');
+    const tabContentWeb = document.getElementById('tabContentWeb');
 
-    // Dispositivos e Catálogo
-    const devicesList = document.getElementById('devicesList');
-    const devicesCountBadge = document.getElementById('devicesCountBadge');
-    const catalogGrid = document.getElementById('catalogGrid');
-    const refreshDevicesBtn = document.getElementById('refreshDevicesBtn');
+    function setTab(tab) {
+      [navBtnContent, navBtnScreens, navBtnGroups, navBtnWeb].forEach(b => {
+        b.className = 'py-4 border-b-2 border-transparent text-slate-400 hover:text-white transition';
+      });
+      [tabContentScreens, tabContentContent, tabContentGroups, tabContentWeb].forEach(c => c.classList.add('hidden'));
 
-    // Upload
-    const uploadForm = document.getElementById('uploadForm');
-    const videoTitleInput = document.getElementById('videoTitleInput');
-    const videoFileInput = document.getElementById('videoFileInput');
-    const dropZone = document.getElementById('dropZone');
-    const fileChosenText = document.getElementById('fileChosenText');
-    const progressContainer = document.getElementById('progressContainer');
-    const progressBar = document.getElementById('progressBar');
-    const progressPercentText = document.getElementById('progressPercentText');
-    const progressStatusText = document.getElementById('progressStatusText');
-    const startUploadBtn = document.getElementById('startUploadBtn');
+      if (tab === 'screens') {
+        navBtnScreens.className = 'py-4 border-b-2 active-nav-tab font-semibold transition';
+        tabContentScreens.classList.remove('hidden');
+      } else if (tab === 'content') {
+        navBtnContent.className = 'py-4 border-b-2 active-nav-tab font-semibold transition';
+        tabContentContent.classList.remove('hidden');
+      } else if (tab === 'groups') {
+        navBtnGroups.className = 'py-4 border-b-2 active-nav-tab font-semibold transition';
+        tabContentGroups.classList.remove('hidden');
+      } else if (tab === 'web') {
+        navBtnWeb.className = 'py-4 border-b-2 active-nav-tab font-semibold transition';
+        tabContentWeb.classList.remove('hidden');
+      }
+    }
 
-    // Modal Supabase
-    const openSupabaseModalBtn = document.getElementById('openSupabaseModalBtn');
-    const closeSupabaseModalBtn = document.getElementById('closeSupabaseModalBtn');
-    const cancelSupabaseModalBtn = document.getElementById('cancelSupabaseModalBtn');
-    const saveSupabaseBtn = document.getElementById('saveSupabaseBtn');
-    const clearSupabaseBtn = document.getElementById('clearSupabaseBtn');
-    const supabaseModal = document.getElementById('supabaseModal');
-    const supabaseUrlInput = document.getElementById('supabaseUrlInput');
-    const supabaseKeyInput = document.getElementById('supabaseKeyInput');
-    const cloudStatusBadge = document.getElementById('cloudStatusBadge');
+    navBtnScreens.addEventListener('click', () => setTab('screens'));
+    navBtnContent.addEventListener('click', () => setTab('content'));
+    navBtnGroups.addEventListener('click', () => setTab('groups'));
+    navBtnWeb.addEventListener('click', () => setTab('web'));
 
     // Toast
     const toast = document.getElementById('toast');
     const toastMsg = document.getElementById('toastMsg');
-
     function notify(msg) {
       toastMsg.textContent = msg;
       toast.classList.remove('opacity-0', 'translate-y-4');
@@ -529,374 +541,381 @@
       }, 3500);
     }
 
-    // Gerenciamento de Abas
-    function setTab(tab) {
-      [tabBtnDevices, tabBtnUpload, tabBtnCatalog].forEach(b => {
-        b.className = 'py-3.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 font-medium flex items-center space-x-2';
-      });
-      [tabContentDevices, tabContentUpload, tabContentCatalog].forEach(c => c.classList.add('hidden'));
-
-      if (tab === 'devices') {
-        tabBtnDevices.className = 'py-3.5 border-b-2 border-indigo-500 text-indigo-400 font-semibold flex items-center space-x-2';
-        tabContentDevices.classList.remove('hidden');
-      } else if (tab === 'upload') {
-        tabBtnUpload.className = 'py-3.5 border-b-2 border-indigo-500 text-indigo-400 font-semibold flex items-center space-x-2';
-        tabContentUpload.classList.remove('hidden');
-      } else if (tab === 'catalog') {
-        tabBtnCatalog.className = 'py-3.5 border-b-2 border-indigo-500 text-indigo-400 font-semibold flex items-center space-x-2';
-        tabContentCatalog.classList.remove('hidden');
-      }
+    function escapeHtml(str) {
+      return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    tabBtnDevices.addEventListener('click', () => setTab('devices'));
-    tabBtnUpload.addEventListener('click', () => setTab('upload'));
-    tabBtnCatalog.addEventListener('click', () => setTab('catalog'));
+    // Formatar "Visto pela última vez..."
+    function formatLastSeen(isoDate) {
+      if (!isoDate) return 'Visto recentemente';
+      const diffMs = Date.now() - new Date(isoDate).getTime();
+      const diffSec = Math.floor(diffMs / 1000);
+      if (diffSec < 45) return 'Visto pela última vez há alguns segundos';
+      const diffMin = Math.floor(diffSec / 60);
+      if (diffMin === 1) return 'Visto pela última vez há um minuto';
+      if (diffMin < 60) return `Visto pela última vez há ${diffMin} minutos`;
+      const diffHours = Math.floor(diffMin / 60);
+      if (diffHours === 1) return 'Visto pela última vez há 1 hora';
+      return `Visto pela última vez há ${diffHours} horas`;
+    }
 
-    // 1. RENDERIZAR DISPOSITIVOS DETECTADOS NA REDE
-    let currentDevices = [];
-    const bindTotemForm = document.getElementById('bindTotemForm');
-    const manualTotemId = document.getElementById('manualTotemId');
-    const manualTotemName = document.getElementById('manualTotemName');
-    const btnBindTotem = document.getElementById('btnBindTotem');
+    // 1. RENDERIZAR TELAS (ESTILO ABLESIGN - IMAGEM 1)
+    let currentScreens = [];
+    const screensGrid = document.getElementById('screensGrid');
 
-    // Formulário de Vinculação Manual por ID
-    if (bindTotemForm) {
-      bindTotemForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const id = manualTotemId.value.trim();
-        const name = manualTotemName.value.trim() || 'Modelo Totem';
-        if (!id) return;
+    function renderScreens(devices) {
+      currentScreens = (devices || []).filter(d => d.status !== 'unlinked' && d.status !== 'pending_pair');
 
-        btnBindTotem.disabled = true;
-        btnBindTotem.classList.add('opacity-75');
-        btnBindTotem.innerHTML = `
-          <svg class="animate-spin w-4 h-4 text-white" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-          </svg>
-          <span>Vinculando Totem...</span>
-        `;
-
-        try {
-          await window.supabaseEngine.bindAndAuthorizeDevice(id, name);
-          notify(`✅ Totem "${name}" (${id}) vinculado e autorizado!`);
-          manualTotemId.value = '';
-          manualTotemName.value = '';
-
-          // Se tiver vídeo na galeria, já transmite o primeiro vídeo para a tela começar a tocar
-          if (currentVideos && currentVideos.length > 0) {
-            await window.supabaseEngine.playVideoOnTotem(currentVideos[0], id);
-            notify(`⚡ Totem liberado e reproduzindo "${currentVideos[0].title}"!`);
-          }
-        } catch (err) {
-          console.error('Erro ao autorizar:', err);
-          alert('Erro ao vincular totem: ' + err.message);
-        } finally {
-          btnBindTotem.disabled = false;
-          btnBindTotem.classList.remove('opacity-75');
-          btnBindTotem.innerHTML = `
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      if (!currentScreens.length) {
+        screensGrid.innerHTML = `
+          <div class="col-span-full text-center py-16 text-slate-500 text-sm bg-slate-900/30 rounded-3xl border border-slate-800/80">
+            <svg class="w-12 h-12 mx-auto text-slate-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <rect x="2" y="3" width="20" height="14" rx="2"></rect>
+              <line x1="8" y1="21" x2="16" y2="21"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
             </svg>
-            <span>Vincular e Autorizar Totem</span>
-          `;
-        }
-      });
-    }
-
-    function renderDevices(devices) {
-      currentDevices = devices || [];
-      devicesCountBadge.textContent = currentDevices.length;
-
-      if (!currentDevices.length) {
-        devicesList.innerHTML = `
-          <div class="text-center py-12 text-slate-500 text-sm bg-slate-900/40 rounded-2xl border border-slate-800 space-y-2">
-            <p class="font-medium text-slate-400">Nenhum totem cadastrado ainda.</p>
-            <p class="text-xs">Digite o ID exibido na tela do Totem no campo acima e clique em <strong>Vincular e Autorizar Totem</strong>.</p>
+            <p class="font-medium text-slate-400">Nenhuma tela vinculada ainda.</p>
+            <p class="text-xs mt-1">Abra o app no Totem ou celular e clique em <strong>"Adicionar Tela"</strong> para emparelhar.</p>
           </div>
         `;
         return;
       }
 
-      devicesList.innerHTML = currentDevices.map(dev => {
-        const isRejected = dev.status === 'rejected' || dev.status === 'unlinked';
-        const isApproved = !isRejected;
+      screensGrid.innerHTML = currentScreens.map(dev => {
+        const lastSeenDate = dev.lastSeen || dev.last_seen;
+        const isOnline = lastSeenDate ? (Date.now() - new Date(lastSeenDate).getTime() < 3 * 60 * 1000) : true;
+        const lastSeenText = formatLastSeen(lastSeenDate);
+        const screenName = escapeHtml(dev.deviceName || dev.device_name || 'Modelo Totem');
 
-        let badgeClass = '';
-        let badgeText = '';
-        let borderClass = '';
-        let iconBg = '';
-
-        if (isApproved) {
-          badgeClass = 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
-          badgeText = 'AUTORIZADO PERMANENTE';
-          borderClass = 'border-emerald-500/40 bg-slate-900';
-          iconBg = 'bg-emerald-500/20 text-emerald-400';
-        } else {
-          badgeClass = 'bg-rose-500/20 text-rose-300 border border-rose-500/30';
-          badgeText = 'ACESSO RECUSADO / BLOQUEADO';
-          borderClass = 'border-rose-500/30 bg-slate-900/60 opacity-80';
-          iconBg = 'bg-rose-500/20 text-rose-400';
-        }
-
-        const activeVid = currentVideos.find(v => v.id === dev.currentVideoId);
-        const activeVidTitle = activeVid ? escapeHtml(activeVid.title) : 'Nenhum vídeo atribuído';
+        const activeVid = currentVideos.find(v => v.id === (dev.currentVideoId || dev.current_video_id));
+        const activeVidUrl = activeVid ? (activeVid.url || activeVid.video_url) : null;
+        const activeVidTitle = activeVid ? escapeHtml(activeVid.title) : 'Nenhum vídeo selecionado';
 
         return `
-          <div class="p-4 sm:p-5 rounded-2xl border ${borderClass} flex flex-col gap-4 shadow-lg transition">
-            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <div class="flex items-center space-x-3.5">
-                <div class="w-11 h-11 rounded-2xl ${iconBg} flex items-center justify-center shrink-0">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl hover:border-slate-700 transition flex flex-col">
+            
+            <!-- Moldura de TV com Prévia do Vídeo (Imagem 1) -->
+            <div class="relative w-full aspect-video bg-black overflow-hidden border-b border-slate-800 flex items-center justify-center">
+              ${activeVidUrl ? `
+                <video src="${activeVidUrl}" class="w-full h-full object-contain pointer-events-none opacity-85" muted preload="metadata"></video>
+              ` : `
+                <!-- Moldura de monitor vazia (preta como na Imagem 1) -->
+                <div class="w-full h-full bg-slate-950 flex flex-col items-center justify-center text-slate-600">
+                  <svg class="w-12 h-12 opacity-30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect x="2" y="3" width="20" height="14" rx="2"></rect>
+                    <line x1="8" y1="21" x2="16" y2="21"></line>
+                    <line x1="12" y1="17" x2="12" y2="21"></line>
                   </svg>
                 </div>
-                <div>
-                  <div class="flex items-center space-x-2 flex-wrap gap-y-1">
-                    <h4 class="text-sm sm:text-base font-bold text-white">${escapeHtml(dev.deviceName || 'Modelo Totem')}</h4>
-                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${badgeClass}">
-                      ${badgeText}
-                    </span>
-                  </div>
-                  <div class="flex items-center space-x-2 text-xs text-slate-400 font-mono mt-0.5">
-                    <span>ID: <strong class="text-slate-200 select-all">${dev.id}</strong></span>
-                    <button onclick="copyDevId('${dev.id}')" class="text-[10px] text-indigo-400 hover:underline">Copiar ID</button>
-                  </div>
-                </div>
+              `}
+
+              <!-- Badge On-line / Off-line no Canto Inferior Direito da Prévia (Imagem 1) -->
+              <span class="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded text-[11px] font-bold tracking-wide shadow ${isOnline ? 'bg-[#43a047] text-white' : 'bg-slate-700 text-slate-300'}">
+                ${isOnline ? 'On-line' : 'Off-line'}
+              </span>
+            </div>
+
+            <!-- Dados da Tela: Nome, Visto por Último e Menu 3 Pontos (Imagem 1) -->
+            <div class="p-4 flex items-center justify-between">
+              <div class="min-w-0 flex-1 pr-2">
+                <h3 class="font-bold text-white text-base leading-snug truncate" title="${screenName}">
+                  ${screenName}
+                </h3>
+                <p class="text-xs text-slate-400 font-normal mt-0.5">
+                  ${lastSeenText}
+                </p>
               </div>
 
-              <div class="flex items-center space-x-2">
-                ${isApproved ? `
-                  <button onclick="rejectAccess('${dev.id}')" class="px-3 py-1.5 text-xs text-rose-400 hover:bg-rose-500/10 rounded-xl transition font-medium" title="Recusar acesso e bloquear tela do Totem">
-                    Recusar Acesso
+              <!-- Menu 3 Pontinhos ⋮ -->
+              <div class="relative">
+                <button
+                  onclick="toggleScreenDropdown('${dev.id}')"
+                  class="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition"
+                  title="Opções da Tela"
+                >
+                  <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                  </svg>
+                </button>
+
+                <!-- Dropdown de Ações -->
+                <div id="dropdown-${dev.id}" class="absolute right-0 bottom-full mb-1 w-48 rounded-xl bg-slate-900 border border-slate-700 shadow-2xl p-1.5 text-xs text-slate-200 z-30 hidden space-y-1">
+                  <button onclick="promptRenameScreen('${dev.id}', '${screenName}')" class="w-full px-3 py-2 text-left rounded-lg hover:bg-slate-800 flex items-center space-x-2">
+                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                    <span>Renomear Tela</span>
                   </button>
-                ` : `
-                  <button onclick="authorize('${dev.id}', true)" class="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow transition">
-                    Permitir Acesso
+                  <button onclick="reloadScreenRemotely('${dev.id}')" class="w-full px-3 py-2 text-left rounded-lg hover:bg-slate-800 flex items-center space-x-2">
+                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    <span>Recarregar Tela</span>
                   </button>
-                  <button onclick="deleteDevice('${dev.id}')" class="px-3 py-1.5 text-xs text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition">
-                    Remover
+                  <button onclick="unlinkScreen('${dev.id}', '${screenName}')" class="w-full px-3 py-2 text-left rounded-lg hover:bg-rose-500/20 text-rose-400 flex items-center space-x-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    <span>Desvincular Tela</span>
                   </button>
-                `}
+                </div>
               </div>
             </div>
 
-            <!-- Seletor Direto de Vídeo para Este Totem -->
-            ${isApproved ? `
-              <div class="pt-3 border-t border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-slate-950/60 p-3.5 rounded-xl">
-                <div class="flex-1 min-w-0">
-                  <div class="text-[11px] text-slate-400 mb-1 flex items-center space-x-1.5">
-                    <span class="w-2 h-2 rounded-full ${activeVid ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}"></span>
-                    <span>Em reprodução no Totem:</span>
-                    <strong class="text-emerald-300 truncate max-w-[280px]">
-                      ${activeVid ? activeVidTitle : 'Nenhum vídeo transmitido ainda'}
-                    </strong>
-                  </div>
-                  <select id="select-video-${dev.id}" class="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-2.5 py-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
-                    <option value="">-- Selecione o vídeo que deseja colocar no Totem --</option>
-                    ${currentVideos.map(v => `
-                      <option value="${v.id}" ${v.id === dev.currentVideoId ? 'selected' : ''}>
-                        ${escapeHtml(v.title)} (${v.fileSizeMb || 'Vídeo'})
-                      </option>
-                    `).join('')}
-                  </select>
-                </div>
+            <!-- Seletor Rápido de Vídeo no Próprio Cartão -->
+            <div class="px-4 pb-4 pt-1 border-t border-slate-800/80 bg-slate-950/40 mt-auto space-y-2">
+              <div class="text-[11px] text-slate-400 flex items-center space-x-1.5 truncate">
+                <span class="w-1.5 h-1.5 rounded-full ${activeVid ? 'bg-emerald-400' : 'bg-slate-600'}"></span>
+                <span class="truncate">Reproduzindo: <strong class="text-white">${activeVidTitle}</strong></span>
+              </div>
+              <div class="flex items-center space-x-2">
+                <select id="card-select-video-${dev.id}" class="flex-1 bg-slate-800 border border-slate-700 text-white rounded-xl px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-500">
+                  <option value="">-- Trocar Vídeo --</option>
+                  ${currentVideos.map(v => `
+                    <option value="${v.id}" ${v.id === (dev.currentVideoId || dev.current_video_id) ? 'selected' : ''}>
+                      ${escapeHtml(v.title)}
+                    </option>
+                  `).join('')}
+                </select>
                 <button
-                  onclick="transmitSelectedToDev('${dev.id}')"
-                  class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs flex items-center justify-center space-x-1.5 shadow-md shadow-emerald-600/20 transition shrink-0 self-end sm:self-auto"
+                  onclick="changeVideoForScreen('${dev.id}')"
+                  class="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-bold text-xs shrink-0 transition"
+                  title="Aplicar vídeo nesta tela"
                 >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
-                  </svg>
-                  <span>Colocar no Totem</span>
+                  Trocar
                 </button>
               </div>
-            ` : ''}
+            </div>
+
           </div>
         `;
       }).join('');
     }
 
-    window.copyDevId = function(id) {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(id);
-      }
-      notify(`ID ${id} copiado!`);
+    window.toggleScreenDropdown = function(devId) {
+      const drop = document.getElementById(`dropdown-${devId}`);
+      if (drop) drop.classList.toggle('hidden');
     };
 
-    window.transmitSelectedToDev = async function(deviceId) {
-      if (!currentVideos || !currentVideos.length) {
-        alert('Nenhum vídeo cadastrado na galeria. Faça upload de um vídeo primeiro na aba 2!');
-        setTab('upload');
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.relative')) {
+        document.querySelectorAll('[id^="dropdown-"]').forEach(d => d.classList.add('hidden'));
+      }
+    });
+
+    window.changeVideoForScreen = async function(deviceId) {
+      const sel = document.getElementById(`card-select-video-${deviceId}`);
+      const vidId = sel ? sel.value : null;
+      if (!vidId) {
+        alert('Selecione um vídeo no menu primeiro.');
         return;
       }
-      const sel = document.getElementById(`select-video-${deviceId}`);
-      const selectedVideoId = sel ? sel.value : null;
-      if (!selectedVideoId) {
-        alert('Por favor, selecione qual vídeo deseja colocar no Totem.');
-        return;
-      }
-      const vid = currentVideos.find(v => v.id === selectedVideoId);
+      const vid = currentVideos.find(v => v.id === vidId);
       if (!vid) return;
 
       try {
-        await window.supabaseEngine.playVideoOnTotem(vid, deviceId);
-        notify(`⚡ Vídeo "${vid.title}" colocado no Totem com sucesso!`);
-        await window.supabaseEngine.fetchDevicesFromSupabase();
+        await window.totemCentral.playVideoOnTotem(vid, deviceId);
+        notify(`⚡ Vídeo "${vid.title}" colocado na tela com sucesso!`);
+        await window.totemCentral.refreshDevices();
+      } catch (e) {
+        notify('Erro ao transmitir: ' + e.message);
+      }
+    };
+
+    // 2. MODAL ADICIONAR TELA COM CÓDIGO (ESTILO IMAGEM 2)
+    const addScreenModal = document.getElementById('addScreenModal');
+    const openAddScreenBtn = document.getElementById('openAddScreenBtn');
+    const closeAddScreenModalBtn = document.getElementById('closeAddScreenModalBtn');
+    const cancelPairBtn = document.getElementById('cancelPairBtn');
+    const pairScreenForm = document.getElementById('pairScreenForm');
+    const pairCodeInput = document.getElementById('pairCodeInput');
+    const pairScreenNameInput = document.getElementById('pairScreenNameInput');
+    const submitPairBtn = document.getElementById('submitPairBtn');
+
+    const pendingScreensAlert = document.getElementById('pendingScreensAlert');
+    const pendingScreenCodeBadge = document.getElementById('pendingScreenCodeBadge');
+    const quickPairDetectedBtn = document.getElementById('quickPairDetectedBtn');
+    const modalDetectedListContainer = document.getElementById('modalDetectedListContainer');
+    const modalDetectedList = document.getElementById('modalDetectedList');
+
+    let latestPendingScreen = null;
+
+    openAddScreenBtn.addEventListener('click', () => {
+      pairCodeInput.value = '';
+      pairScreenNameInput.value = '';
+      addScreenModal.classList.remove('hidden');
+      pairCodeInput.focus();
+      checkPendingScreensOnNetwork();
+    });
+
+    closeAddScreenModalBtn.addEventListener('click', () => addScreenModal.classList.add('hidden'));
+    cancelPairBtn.addEventListener('click', () => addScreenModal.classList.add('hidden'));
+
+    // Submissão do Emparelhamento por Código
+    pairScreenForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const code = pairCodeInput.value.trim();
+      const name = pairScreenNameInput.value.trim();
+      if (!code) return;
+
+      submitPairBtn.disabled = true;
+      submitPairBtn.innerHTML = `
+        <svg class="animate-spin w-4 h-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+        <span>Emparelhando...</span>
+      `;
+
+      try {
+        const dev = await window.totemCentral.pairScreenByCode(code, name);
+        notify(`✅ Tela "${dev.device_name || 'Totem'}" emparelhada com sucesso!`);
+        addScreenModal.classList.add('hidden');
+        pendingScreensAlert.classList.add('hidden');
+
+        // Se houver vídeo na biblioteca, envia o primeiro vídeo imediatamente
+        if (currentVideos.length > 0) {
+          await window.totemCentral.playVideoOnTotem(currentVideos[0], dev.id);
+          notify(`⚡ Reproduzindo "${currentVideos[0].title}" no novo dispositivo!`);
+        }
       } catch (err) {
-        notify('Erro: ' + err.message);
+        alert('Erro no emparelhamento: ' + err.message);
+      } finally {
+        submitPairBtn.disabled = false;
+        submitPairBtn.innerHTML = `<span>Emparelhar Tela</span>`;
+      }
+    });
+
+    // Verificação de Telas Aguardando Emparelhamento na Rede / Wi-Fi
+    async function checkPendingScreensOnNetwork() {
+      if (!window.totemCentral || !window.totemCentral.client) return;
+      try {
+        const pendings = await window.totemCentral.getPendingScreens();
+        if (pendings && pendings.length > 0) {
+          latestPendingScreen = pendings[0];
+          pendingScreenCodeBadge.textContent = latestPendingScreen.pair_code;
+          pendingScreensAlert.classList.remove('hidden');
+
+          // No modal:
+          modalDetectedListContainer.classList.remove('hidden');
+          modalDetectedList.innerHTML = pendings.map(p => `
+            <div class="flex items-center justify-between p-2 rounded-lg bg-black/40 border border-purple-500/20 text-xs">
+              <div>
+                <span class="font-bold text-white">${escapeHtml(p.device_name || 'Totem')}</span>
+                <span class="text-purple-300 font-mono ml-2">Código: <strong>${p.pair_code}</strong></span>
+              </div>
+              <button
+                type="button"
+                onclick="autoFillPairCode('${p.pair_code}', '${escapeHtml(p.device_name || '')}')"
+                class="px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white font-bold text-[11px]"
+              >
+                Conectar
+              </button>
+            </div>
+          `).join('');
+        } else {
+          pendingScreensAlert.classList.add('hidden');
+          modalDetectedListContainer.classList.add('hidden');
+        }
+      } catch (e) {}
+    }
+
+    window.autoFillPairCode = function(code, name) {
+      pairCodeInput.value = code;
+      if (name) pairScreenNameInput.value = name;
+      pairCodeInput.focus();
+    };
+
+    if (quickPairDetectedBtn) {
+      quickPairDetectedBtn.addEventListener('click', () => {
+        if (latestPendingScreen) {
+          pairCodeInput.value = latestPendingScreen.pair_code;
+          pairScreenNameInput.value = latestPendingScreen.device_name || '';
+          addScreenModal.classList.remove('hidden');
+        }
+      });
+    }
+
+    // Polling a cada 6 segundos para detectar telas novas na rede
+    setInterval(checkPendingScreensOnNetwork, 6000);
+
+    // 3. RENOMEAR E DESVINCULAR TELA
+    const renameScreenModal = document.getElementById('renameScreenModal');
+    const newScreenNameInput = document.getElementById('newScreenNameInput');
+    const cancelRenameBtn = document.getElementById('cancelRenameBtn');
+    const saveRenameBtn = document.getElementById('saveRenameBtn');
+    let screenToRenameId = null;
+
+    window.promptRenameScreen = function(id, currentName) {
+      screenToRenameId = id;
+      newScreenNameInput.value = currentName;
+      renameScreenModal.classList.remove('hidden');
+      newScreenNameInput.focus();
+    };
+
+    cancelRenameBtn.addEventListener('click', () => renameScreenModal.classList.add('hidden'));
+    saveRenameBtn.addEventListener('click', async () => {
+      const newName = newScreenNameInput.value.trim();
+      if (!newName || !screenToRenameId) return;
+      try {
+        await window.totemCentral.renameDevice(screenToRenameId, newName);
+        notify('Tela renomeada com sucesso!');
+        renameScreenModal.classList.add('hidden');
+      } catch (e) {
+        notify('Erro ao renomear: ' + e.message);
+      }
+    });
+
+    window.reloadScreenRemotely = async function(id) {
+      await window.totemCentral.reloadScreen(id);
+      notify('Comando de recarregamento enviado para a tela!');
+    };
+
+    window.unlinkScreen = async function(id, name) {
+      if (!confirm(`Deseja realmente desvincular a tela "${name}"?\nEla voltará a exibir o código de emparelhamento.`)) return;
+      try {
+        await window.totemCentral.deleteDevice(id);
+        notify('Tela desvinculada. O aparelho voltou à tela de emparelhamento.');
+      } catch (e) {
+        notify('Erro ao desvincular: ' + e.message);
       }
     };
 
-    window.authorize = async function(deviceId, approve) {
-      await window.supabaseEngine.authorizeDevice(deviceId, approve);
-      pendingDeviceAlert.classList.add('hidden');
-      notify(approve ? '✅ Dispositivo autorizado e mantido permanentemente!' : '⛔ Acesso do Totem recusado. Tela bloqueada.');
-    };
-
-    window.rejectAccess = async function(deviceId) {
-      if (!confirm('Deseja recusar o acesso deste Totem? A tela será bloqueada imediatamente.')) return;
-      await window.supabaseEngine.authorizeDevice(deviceId, false);
-      notify('⛔ Acesso ao Totem recusado. A tela foi bloqueada.');
-    };
-
-    window.deleteDevice = async function(deviceId) {
-      if (!confirm('Deseja remover este Totem da lista?')) return;
-      await window.supabaseEngine.deleteDevice(deviceId);
-      pendingDeviceAlert.classList.add('hidden');
-      notify('Totem removido com sucesso.');
-    };
-
-    // Dispositivo conectado: autorização permanente automática
-    window.supabaseEngine.listeners.onNewDevicePending = async (device) => {
-      if (device.status === 'pending') {
-        try {
-          await window.supabaseEngine.authorizeDevice(device.id, true);
-        } catch (e) {}
-      }
-    };
-
-    approveDeviceBtn.addEventListener('click', () => {
-      if (pendingDeviceId) authorize(pendingDeviceId, true);
-    });
-    rejectDeviceBtn.addEventListener('click', () => {
-      if (pendingDeviceId) authorize(pendingDeviceId, false);
-    });
-
-    // 2. RENDERIZAR GALERIA DE VÍDEOS SALVOS NO BANCO
+    // 4. BIBLIOTECA DE VÍDEOS (ABA CONTEÚDO)
     let currentVideos = [];
-
-    function getYouTubeId(url) {
-      if (!url) return null;
-      const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/))([\w-]{11})/);
-      return match ? match[1] : null;
-    }
-
-    function getDriveId(url) {
-      if (!url) return null;
-      const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-      return match ? match[1] : null;
-    }
+    const catalogGrid = document.getElementById('catalogGrid');
 
     function renderCatalog(videos) {
       currentVideos = videos || [];
+      renderScreens(currentScreens);
 
       if (!currentVideos.length) {
         catalogGrid.innerHTML = `
-          <div class="col-span-full text-center py-12 text-slate-500 text-sm bg-slate-900/40 rounded-2xl border border-slate-800">
-            Nenhum vídeo salvo ainda.<br>Vá na aba <strong>"2. Upar Vídeo no Supabase"</strong> para subir o primeiro arquivo!
+          <div class="col-span-full text-center py-12 text-slate-500 text-sm bg-slate-900/40 rounded-3xl border border-slate-800">
+            Nenhum vídeo salvo ainda. Faça upload acima para cadastrar o primeiro vídeo!
           </div>
         `;
         return;
       }
 
       catalogGrid.innerHTML = currentVideos.map(vid => {
-        const ytId = getYouTubeId(vid.url);
-        const driveId = getDriveId(vid.url);
-
-        let mediaPreviewHtml = '';
-        let badgeHtml = '';
-
-        if (ytId) {
-          mediaPreviewHtml = `
-            <img src="https://img.youtube.com/vi/${ytId}/hqdefault.jpg" class="w-full h-full object-cover" alt="${escapeHtml(vid.title)}" />
-            <div class="absolute inset-0 bg-black/30 flex items-center justify-center pointer-events-none">
-              <div class="w-10 h-10 rounded-full bg-red-600 text-white flex items-center justify-center shadow-lg">
-                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M8 5v14l11-7z"/>
-                </svg>
-              </div>
-            </div>
-          `;
-          badgeHtml = `<span class="absolute top-2 right-2 px-2 py-0.5 rounded text-[10px] font-bold bg-red-600 text-white shadow backdrop-blur">YouTube</span>`;
-        } else if (driveId) {
-          mediaPreviewHtml = `
-            <img src="https://lh3.googleusercontent.com/d/${driveId}" class="w-full h-full object-cover" onerror="this.style.opacity='0.3'" alt="${escapeHtml(vid.title)}" />
-            <div class="absolute inset-0 bg-black/30 flex items-center justify-center pointer-events-none">
-              <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg">
-                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M8 5v14l11-7z"/>
-                </svg>
-              </div>
-            </div>
-          `;
-          badgeHtml = `<span class="absolute top-2 right-2 px-2 py-0.5 rounded text-[10px] font-bold bg-blue-600 text-white shadow backdrop-blur">Google Drive</span>`;
-        } else {
-          mediaPreviewHtml = `
-            <video src="${vid.url}" class="w-full h-full object-cover" muted preload="metadata"></video>
-            <div class="absolute inset-0 bg-black/40 flex items-center justify-center pointer-events-none">
-              <div class="w-10 h-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
-                <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M8 5v14l11-7z"/>
-                </svg>
-              </div>
-            </div>
-          `;
-          badgeHtml = `<span class="absolute top-2 right-2 px-2 py-0.5 rounded text-[10px] font-bold bg-black/70 text-white backdrop-blur">
-            ${vid.fileSizeMb ? (String(vid.fileSizeMb).includes('MB') || String(vid.fileSizeMb).includes('GB') || String(vid.fileSizeMb).includes('Link') ? vid.fileSizeMb : vid.fileSizeMb + ' MB') : 'Vídeo'}
-          </span>`;
-        }
-
-        const isPlaying = currentDevices.some(d => d.currentVideoId === vid.id);
-
+        const vidUrl = vid.video_url || vid.url;
         return `
-          <div class="bg-slate-900 border ${isPlaying ? 'border-2 border-emerald-500 shadow-xl shadow-emerald-500/10' : 'border border-slate-800 hover:border-indigo-500/50'} rounded-2xl overflow-hidden shadow-lg transition flex flex-col justify-between relative">
-            <div class="aspect-video bg-black relative flex items-center justify-center overflow-hidden">
-              ${mediaPreviewHtml}
-              ${badgeHtml}
-              ${isPlaying ? `
-                <span class="absolute top-2 left-2 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-600 text-white shadow-lg flex items-center space-x-1 animate-pulse">
-                  <span class="w-1.5 h-1.5 rounded-full bg-white"></span>
-                  <span>EM EXIBIÇÃO NO TOTEM</span>
-                </span>
-              ` : ''}
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-lg flex flex-col justify-between">
+            <div class="relative aspect-video bg-black flex items-center justify-center">
+              <video src="${vidUrl}" class="w-full h-full object-contain" muted preload="metadata"></video>
             </div>
 
-            <div class="p-4 space-y-3 flex-1 flex flex-col justify-between">
+            <div class="p-4 space-y-3">
               <div>
-                <h4 class="font-bold text-white text-sm line-clamp-1">${escapeHtml(vid.title)}</h4>
-                <p class="text-[11px] text-slate-500 font-mono truncate mt-0.5">${escapeHtml(vid.url)}</p>
+                <h4 class="font-bold text-white text-sm truncate" title="${escapeHtml(vid.title)}">${escapeHtml(vid.title)}</h4>
+                <p class="text-[11px] text-slate-400 font-mono mt-0.5">${vid.file_size_mb || vid.fileSizeMb || 'Vídeo'}</p>
               </div>
 
-              <div class="pt-2 border-t border-slate-800 flex items-center justify-between">
+              <div class="flex items-center space-x-2 pt-2 border-t border-slate-800">
                 <button
-                  onclick="transmitToTotem('${vid.id}')"
-                  class="flex-1 py-2 rounded-lg ${isPlaying ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-indigo-600 hover:bg-indigo-500'} active:scale-95 text-white font-bold text-xs transition shadow-md flex items-center justify-center space-x-1.5 mr-2"
+                  onclick="transmitToAllScreens('${vid.id}')"
+                  class="flex-1 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition"
                 >
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
-                  </svg>
-                  <span>${isPlaying ? '✓ Transmitindo (Reenviar)' : '⚡ Colocar no Totem'}</span>
+                  ⚡ Exibir em Todas as Telas
                 </button>
-
                 <button
-                  onclick="deleteVideo('${vid.id}')"
-                  class="p-2 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition"
-                  title="Excluir vídeo"
+                  onclick="deleteVideo('${vid.id}', '${vid.storage_path || ''}')"
+                  class="p-1.5 rounded-xl bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition"
+                  title="Excluir Vídeo"
                 >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                  </svg>
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                 </button>
               </div>
             </div>
@@ -905,204 +924,106 @@
       }).join('');
     }
 
-    function escapeHtml(str) {
-      if (!str) return '';
-      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
-
-    window.transmitToTotem = async function(videoId) {
+    window.transmitToAllScreens = async function(videoId) {
       const vid = currentVideos.find(v => v.id === videoId);
       if (!vid) return;
       try {
-        await window.supabaseEngine.playVideoOnTotem(vid);
-        notify(`⚡ Vídeo "${vid.title}" colocado no Totem com sucesso!`);
-        await window.supabaseEngine.fetchDevicesFromSupabase();
-      } catch (err) {
-        notify('Erro: ' + err.message);
+        await window.totemCentral.playVideoOnTotem(vid, null);
+        notify(`⚡ Vídeo "${vid.title}" enviado para todas as telas!`);
+        await window.totemCentral.refreshDevices();
+      } catch (e) {
+        notify('Erro ao transmitir: ' + e.message);
       }
     };
 
-    window.deleteVideo = async function(videoId) {
+    window.deleteVideo = async function(videoId, storagePath) {
       if (!confirm('Deseja excluir este vídeo da biblioteca?')) return;
-      await window.supabaseEngine.deleteVideo(videoId);
-      notify('Vídeo excluído com sucesso.');
+      try {
+        await window.totemCentral.deleteVideo(videoId, storagePath);
+        notify('Vídeo excluído com sucesso.');
+      } catch (e) {
+        notify('Erro ao excluir: ' + e.message);
+      }
     };
 
-    // 3. UPLOAD DE ARQUIVOS COM BARRA DE PROGRESSO (ATÉ 200 MB)
-    const MAX_UPLOAD_BYTES = 209715200; // 200 MB em bytes
-
-    dropZone.addEventListener('click', () => videoFileInput.click());
-
-    videoFileInput.addEventListener('change', () => {
-      if (videoFileInput.files.length > 0) {
-        const file = videoFileInput.files[0];
-        const sizeMb = file.size / (1024 * 1024);
-        const formattedSize = file.size >= 1024 * 1024 * 1024
-          ? (file.size / (1024 * 1024 * 1024)).toFixed(2) + ' GB'
-          : sizeMb.toFixed(1) + ' MB';
-
-        if (file.size > MAX_UPLOAD_BYTES) {
-          fileChosenText.innerHTML = `
-            <span class="text-amber-400 font-bold">${escapeHtml(file.name)}</span> (${formattedSize})
-            <span class="block text-rose-400 text-xs font-semibold mt-1">⚠️ Este arquivo tem ${formattedSize}. O limite máximo para upload direto de arquivos é 200 MB. Envie um arquivo de até 200 MB ou use a Opção 2 (Link Direto).</span>
-          `;
-        } else {
-          fileChosenText.innerHTML = `<span class="text-indigo-400 font-bold">${escapeHtml(file.name)}</span> (${formattedSize})`;
-        }
-        if (!videoTitleInput.value) {
-          videoTitleInput.value = file.name.replace(/\.[^/.]+$/, "");
-        }
-      }
-    });
+    // Upload Direto
+    const uploadForm = document.getElementById('uploadForm');
+    const videoTitleInput = document.getElementById('videoTitleInput');
+    const videoFileInput = document.getElementById('videoFileInput');
+    const progressContainer = document.getElementById('progressContainer');
+    const progressBar = document.getElementById('progressBar');
+    const progressPercentText = document.getElementById('progressPercentText');
+    const progressStatusText = document.getElementById('progressStatusText');
+    const startUploadBtn = document.getElementById('startUploadBtn');
 
     uploadForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const file = videoFileInput.files[0];
       const title = videoTitleInput.value.trim();
+      if (!file || !title) return;
 
-      if (!file) {
-        alert('Por favor, selecione um arquivo de vídeo.');
-        return;
-      }
-
-      if (file.size > MAX_UPLOAD_BYTES) {
-        const formattedSize = (file.size / (1024 * 1024)).toFixed(1) + ' MB';
-        alert(`⚠️ O vídeo selecionado possui ${formattedSize}.\n\nO limite máximo para upload direto de arquivos é de 200 MB.\n\nPara arquivos maiores, por favor utilize a Opção 2: "Inserir Link Direto do Vídeo".`);
-        return;
-      }
-
-      progressContainer.classList.remove('hidden');
       startUploadBtn.disabled = true;
-      startUploadBtn.classList.add('opacity-50');
+      progressContainer.classList.remove('hidden');
+      progressBar.style.width = '0%';
+      progressPercentText.textContent = '0%';
+      progressStatusText.textContent = 'Iniciando upload...';
 
       try {
-        const uploaded = await window.supabaseEngine.uploadVideo(file, title, (percent) => {
-          progressBar.style.width = percent + '%';
-          progressPercentText.textContent = percent + '%';
-          if (percent === 100) {
-            progressStatusText.textContent = 'Salvando no banco de dados...';
-          }
+        const vid = await window.totemCentral.uploadVideo(file, title, (pct) => {
+          progressBar.style.width = pct + '%';
+          progressPercentText.textContent = pct + '%';
+          if (pct < 70) progressStatusText.textContent = 'Enviando arquivo...';
+          else if (pct < 95) progressStatusText.textContent = 'Gravando no banco...';
+          else progressStatusText.textContent = 'Concluído!';
         });
 
-        const shouldTransmit = document.getElementById('autoTransmitAfterUpload')?.checked;
-        if (shouldTransmit && uploaded) {
-          await window.supabaseEngine.playVideoOnTotem(uploaded);
-          notify(`⚡ Vídeo "${title}" enviado e já transmitido para o Totem!`);
-        } else {
-          notify(`✅ Vídeo "${title}" enviado com sucesso!`);
-        }
-
+        notify(`✅ Vídeo "${title}" cadastrado com sucesso!`);
         uploadForm.reset();
-        fileChosenText.textContent = 'Toque para escolher o vídeo no celular ou PC (Até 200 MB)';
         progressContainer.classList.add('hidden');
-        progressBar.style.width = '0%';
-
-        await window.supabaseEngine.fetchDevicesFromSupabase();
-        setTab('catalog');
+        await window.totemCentral.refreshCatalog();
       } catch (err) {
-        console.error('Erro no upload:', err);
-        alert('Aviso no envio do vídeo:\n\n' + err.message);
+        alert('Erro no upload: ' + err.message);
       } finally {
         startUploadBtn.disabled = false;
-        startUploadBtn.classList.remove('opacity-50');
       }
     });
 
-    // 4. INSERIR VÍDEO POR LINK DIRETO (SEM LIMITE DE TAMANHO)
-    const linkVideoForm = document.getElementById('linkVideoForm');
-    const linkVideoTitle = document.getElementById('linkVideoTitle');
-    const linkVideoUrl = document.getElementById('linkVideoUrl');
-    const linkVideoBtn = document.getElementById('linkVideoBtn');
+    // Inserir Link Direto
+    const directUrlForm = document.getElementById('directUrlForm');
+    const urlVideoTitleInput = document.getElementById('urlVideoTitleInput');
+    const directVideoUrlInput = document.getElementById('directVideoUrlInput');
+    const submitUrlBtn = document.getElementById('submitUrlBtn');
 
-    if (linkVideoForm) {
-      linkVideoForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const title = linkVideoTitle.value.trim();
-        const url = linkVideoUrl.value.trim();
+    directUrlForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const title = urlVideoTitleInput.value.trim();
+      const url = directVideoUrlInput.value.trim();
+      if (!title || !url) return;
 
-        if (!title || !url) {
-          alert('Por favor, preencha o nome e o link do vídeo.');
-          return;
-        }
+      submitUrlBtn.disabled = true;
+      try {
+        await window.totemCentral.addVideoByUrl(title, url);
+        notify(`✅ Link "${title}" cadastrado com sucesso!`);
+        directUrlForm.reset();
+        await window.totemCentral.refreshCatalog();
+      } catch (err) {
+        alert('Erro ao salvar link: ' + err.message);
+      } finally {
+        submitUrlBtn.disabled = false;
+      }
+    });
 
-        linkVideoBtn.disabled = true;
-        linkVideoBtn.classList.add('opacity-50');
+    // 5. MODAL SUPABASE
+    const openSupabaseModalBtn = document.getElementById('openSupabaseModalBtn');
+    const closeSupabaseModalBtn = document.getElementById('closeSupabaseModalBtn');
+    const cancelSupabaseModalBtn = document.getElementById('cancelSupabaseModalBtn');
+    const saveSupabaseBtn = document.getElementById('saveSupabaseBtn');
+    const supabaseModal = document.getElementById('supabaseModal');
+    const supabaseUrlInput = document.getElementById('supabaseUrlInput');
+    const supabaseKeyInput = document.getElementById('supabaseKeyInput');
 
-        try {
-          const added = await window.supabaseEngine.addVideoByUrl(title, url);
-          const shouldTransmit = document.getElementById('autoTransmitAfterLink')?.checked;
-          if (shouldTransmit && added) {
-            await window.supabaseEngine.playVideoOnTotem(added);
-            notify(`⚡ Vídeo "${title}" adicionado e colocado no Totem!`);
-          } else {
-            notify(`✅ Vídeo "${title}" adicionado com sucesso pelo link!`);
-          }
-          linkVideoForm.reset();
-          await window.supabaseEngine.fetchDevicesFromSupabase();
-          setTab('catalog');
-        } catch (err) {
-          alert('Erro ao adicionar vídeo por link: ' + err.message);
-        } finally {
-          linkVideoBtn.disabled = false;
-          linkVideoBtn.classList.remove('opacity-50');
-        }
-      });
-    }
-
-    // Copiar Script SQL do Supabase
-    const copySqlSetupBtn = document.getElementById('copySqlSetupBtn');
-    const copySqlBtnText = document.getElementById('copySqlBtnText');
-
-    const SQL_SETUP_SCRIPT = `-- CRIAR BUCKET 'videos' PUBLICO COM SUPORTE ATÉ 200 MB E TABELAS
-INSERT INTO storage.buckets (id, name, public, file_size_limit) VALUES ('videos', 'videos', true, 209715200) ON CONFLICT (id) DO UPDATE SET public = true, file_size_limit = 209715200;
-UPDATE storage.buckets SET file_size_limit = 209715200 WHERE id = 'videos';
-DROP POLICY IF EXISTS "Permitir leitura publica no bucket videos" ON storage.objects;
-DROP POLICY IF EXISTS "Permitir upload publico no bucket videos" ON storage.objects;
-DROP POLICY IF EXISTS "Permitir delecao no bucket videos" ON storage.objects;
-CREATE POLICY "Permitir leitura publica no bucket videos" ON storage.objects FOR SELECT USING (bucket_id = 'videos');
-CREATE POLICY "Permitir upload publico no bucket videos" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'videos');
-CREATE POLICY "Permitir delecao no bucket videos" ON storage.objects FOR DELETE USING (bucket_id = 'videos');
-CREATE TABLE IF NOT EXISTS public.devices (id TEXT PRIMARY KEY, device_name TEXT NOT NULL DEFAULT 'Modelo Totem', pair_code TEXT, user_id UUID, ip_address TEXT, status TEXT NOT NULL DEFAULT 'pending', current_video_id UUID, last_seen TIMESTAMPTZ DEFAULT now(), created_at TIMESTAMPTZ DEFAULT now());
-CREATE TABLE IF NOT EXISTS public.videos (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID, title TEXT NOT NULL, storage_path TEXT NOT NULL, video_url TEXT NOT NULL, file_size_mb NUMERIC(10, 2), created_at TIMESTAMPTZ DEFAULT now());
-ALTER TABLE public.devices ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.videos ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Acesso aos dispositivos" ON public.devices;
-DROP POLICY IF EXISTS "Acesso aos vídeos" ON public.videos;
-CREATE POLICY "Acesso aos dispositivos" ON public.devices FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Acesso aos vídeos" ON public.videos FOR ALL USING (true) WITH CHECK (true);
-DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'devices') THEN
-    ALTER PUBLICATION supabase_realtime ADD TABLE public.devices;
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'videos') THEN
-    ALTER PUBLICATION supabase_realtime ADD TABLE public.videos;
-  END IF;
-END $$;`;
-
-    if (copySqlSetupBtn) {
-      copySqlSetupBtn.addEventListener('click', () => {
-        const doCopy = () => {
-          copySqlBtnText.textContent = 'Código Copiado!';
-          notify('✅ Script SQL copiado! Cole no SQL Editor do Supabase.');
-          setTimeout(() => { copySqlBtnText.textContent = 'Copiar Código SQL'; }, 2500);
-        };
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(SQL_SETUP_SCRIPT).then(doCopy).catch(() => {
-            const ta = document.createElement('textarea');
-            ta.value = SQL_SETUP_SCRIPT;
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand('copy');
-            document.body.removeChild(ta);
-            doCopy();
-          });
-        }
-      });
-    }
-
-    // 4. MODAL SUPABASE
     openSupabaseModalBtn.addEventListener('click', () => {
-      const cfg = window.supabaseEngine.config;
+      const cfg = window.totemCentral.config;
       if (cfg) {
         supabaseUrlInput.value = cfg.url || '';
         supabaseKeyInput.value = cfg.anonKey || '';
@@ -1112,79 +1033,44 @@ END $$;`;
 
     closeSupabaseModalBtn.addEventListener('click', () => supabaseModal.classList.add('hidden'));
     cancelSupabaseModalBtn.addEventListener('click', () => supabaseModal.classList.add('hidden'));
-
     saveSupabaseBtn.addEventListener('click', () => {
       const url = supabaseUrlInput.value.trim();
       const key = supabaseKeyInput.value.trim();
-      if (!url || !key) {
-        alert('Informe a URL e a Anon Key do Supabase.');
-        return;
-      }
-      window.supabaseEngine.saveSupabaseConfig(url, key);
+      if (!url || !key) return;
+      window.totemCentral.saveConfig(url, key);
       supabaseModal.classList.add('hidden');
-      cloudStatusBadge.innerHTML = `
-        <span class="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse"></span>
-        <span class="text-emerald-400 font-semibold">Conectado ao Supabase</span>
-      `;
-      notify('Conectado ao Supabase!');
-      setTimeout(() => window.location.reload(), 800);
+      notify('Credenciais salvas!');
+      setTimeout(() => window.location.reload(), 600);
     });
 
-    clearSupabaseBtn.addEventListener('click', () => {
-      if (confirm('Deseja limpar as chaves do Supabase e voltar para o servidor local?')) {
-        window.supabaseEngine.clearSupabaseConfig();
-        supabaseModal.classList.add('hidden');
-        notify('Restaurado para o modo local.');
-      }
+    // 6. INICIALIZAÇÃO & LISTENERS
+    document.getElementById('refreshScreensBtn').addEventListener('click', async () => {
+      await window.totemCentral.refreshDevices();
+      await window.totemCentral.refreshCatalog();
+      checkPendingScreensOnNetwork();
+      notify('Telas e vídeos atualizados!');
     });
 
-    // 5. LISTENERS GLOBAIS E INICIALIZAÇÃO
-    window.supabaseEngine.listeners.onDevicesUpdated = (devices) => {
-      renderDevices(devices);
+    window.totemCentral.listeners.onDevicesChanged = (devices) => {
+      renderScreens(devices);
+      checkPendingScreensOnNetwork();
     };
 
-    window.supabaseEngine.listeners.onCatalogUpdated = (videos) => {
+    window.totemCentral.listeners.onCatalogChanged = (videos) => {
       renderCatalog(videos);
     };
 
-    // Atualizar dados ao clicar no botão
-    refreshDevicesBtn.addEventListener('click', async () => {
-      if (window.supabaseEngine && window.supabaseEngine.client) {
-        await window.supabaseEngine.fetchDevicesFromSupabase();
-        await window.supabaseEngine.fetchVideosFromSupabase();
-      }
-      try {
-        const r = await fetch('/api/devices');
-        if (r.ok) {
-          const devs = await r.json();
-          renderDevices(devs);
-        }
-      } catch (e) {}
-      notify('Lista de totens atualizada!');
-    });
-
-    // Ao carregar a página: verificar conexão Supabase e sincronizar
+    // Inicialização ao carregar
     document.addEventListener('DOMContentLoaded', () => {
-      if (window.supabaseEngine) {
-        if (window.supabaseEngine.isSupabaseConnected) {
-          cloudStatusBadge.innerHTML = `
-            <span class="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse"></span>
-            <span class="text-emerald-400 font-semibold">Conectado ao Supabase Cloud</span>
-          `;
-        }
-        window.supabaseEngine.fetchDevicesFromSupabase();
-        window.supabaseEngine.fetchVideosFromSupabase();
-      }
+      window.totemCentral.refreshDevices();
+      window.totemCentral.refreshCatalog();
+      checkPendingScreensOnNetwork();
     });
 
-    // Se já carregou
-    if (window.supabaseEngine && window.supabaseEngine.isSupabaseConnected) {
-      cloudStatusBadge.innerHTML = `
-        <span class="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse"></span>
-        <span class="text-emerald-400 font-semibold">Conectado ao Supabase Cloud</span>
-      `;
-      window.supabaseEngine.fetchDevicesFromSupabase();
-      window.supabaseEngine.fetchVideosFromSupabase();
+    if (window.totemCentral && window.totemCentral.client) {
+      window.totemCentral.refreshDevices();
+      window.totemCentral.refreshCatalog();
+      checkPendingScreensOnNetwork();
     }
   </script>
 </body>

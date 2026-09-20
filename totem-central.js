@@ -377,6 +377,211 @@ class TotemCentralEngine {
     this.refreshDevices();
   }
 
+  // --- SISTEMA DE EMPARELHAMENTO POR CÓDIGO (ESTILO ABLESIGN) ---
+
+  generatePairCode() {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  }
+
+  // Registrar tela aguardando emparelhamento (chamado pela tela /screen)
+  async registerPendingScreen(pairCode, deviceName = 'Modelo Totem') {
+    let deviceId = localStorage.getItem('totem_screen_device_id');
+    if (!deviceId) {
+      deviceId = 'totem-' + Math.random().toString(36).substring(2, 9);
+      localStorage.setItem('totem_screen_device_id', deviceId);
+    }
+
+    if (!this.client) return { id: deviceId, pair_code: pairCode, status: 'pending_pair' };
+
+    try {
+      // Verificar se já existe registro
+      const { data: existing } = await this.client
+        .from('devices')
+        .select('*')
+        .eq('id', deviceId)
+        .maybeSingle();
+
+      // Se já estava aprovado antes, manter aprovado!
+      if (existing && existing.status === 'approved') {
+        await this.client.from('devices').update({
+          device_name: existing.device_name || deviceName,
+          last_seen: new Date().toISOString()
+        }).eq('id', deviceId);
+
+        if (this.listeners.onDeviceApproved) {
+          this.listeners.onDeviceApproved(existing);
+        }
+        return existing;
+      }
+
+      // Senão, registra como pending_pair com o código de 6 dígitos
+      const { data: saved, error } = await this.client
+        .from('devices')
+        .upsert({
+          id: deviceId,
+          device_name: deviceName,
+          pair_code: pairCode,
+          status: 'pending_pair',
+          last_seen: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      // Ouvir canal individual do Totem para aprovação instantânea
+      const screenChannel = this.client.channel(`device-${deviceId}`);
+      screenChannel
+        .on('broadcast', { event: 'AUTHORIZATION' }, payload => {
+          if (this.listeners.onDeviceApproved) {
+            this.listeners.onDeviceApproved(payload.payload);
+          }
+        })
+        .on('broadcast', { event: 'PLAY_VIDEO' }, payload => {
+          if (this.listeners.onVideoCommandReceived) {
+            this.listeners.onVideoCommandReceived(payload.payload);
+          }
+        })
+        .on('broadcast', { event: 'RELOAD' }, () => {
+          window.location.reload();
+        })
+        .subscribe();
+
+      // Ouvir canais globais
+      const globalChannel = this.client.channel('totem-global-channel');
+      globalChannel
+        .on('broadcast', { event: 'DEVICE_STATUS' }, payload => {
+          if (this.listeners.onDeviceApproved && payload.payload && payload.payload.id === deviceId) {
+            this.listeners.onDeviceApproved(payload.payload);
+          }
+        })
+        .on('broadcast', { event: 'PLAY_VIDEO' }, payload => {
+          if (this.listeners.onVideoCommandReceived) {
+            this.listeners.onVideoCommandReceived(payload.payload);
+          }
+        })
+        .subscribe();
+
+      return saved || { id: deviceId, pair_code: pairCode, status: 'pending_pair' };
+    } catch (e) {
+      console.warn('Erro ao registrar tela pendente:', e);
+      return { id: deviceId, pair_code: pairCode, status: 'pending_pair' };
+    }
+  }
+
+  // Buscar telas que estão na rede aguardando emparelhamento
+  async getPendingScreens() {
+    if (!this.client) return [];
+    try {
+      // Telas atualizadas nos últimos 10 minutos com status pending_pair
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+      const { data, error } = await this.client
+        .from('devices')
+        .select('*')
+        .eq('status', 'pending_pair')
+        .gte('last_seen', tenMinutesAgo)
+        .order('last_seen', { ascending: false });
+
+      if (!error && data) {
+        return data.filter(d => d.pair_code);
+      }
+    } catch (e) {}
+    return [];
+  }
+
+  // Emparelhar tela pelo código de 6 dígitos (inserido no painel de controle)
+  async pairScreenByCode(pairCode, customName = null) {
+    if (!this.client) throw new Error('Supabase não inicializado.');
+    if (!pairCode) throw new Error('Digite o código de emparelhamento.');
+
+    const cleanCode = String(pairCode).trim().replace(/\s+/g, '');
+    if (cleanCode.length < 4) throw new Error('O código deve ter 6 dígitos.');
+
+    // 1. Procurar dispositivo pelo pair_code
+    const { data: matched, error: findError } = await this.client
+      .from('devices')
+      .select('*')
+      .eq('pair_code', cleanCode)
+      .maybeSingle();
+
+    if (findError) throw findError;
+    if (!matched) {
+      throw new Error(`Código ${cleanCode} não encontrado. Verifique se o aplicativo está aberto e exibindo esse mesmo código na tela.`);
+    }
+
+    const finalName = customName && customName.trim() ? customName.trim() : (matched.device_name || 'Modelo Totem');
+
+    // 2. Atualizar status para 'approved'
+    const { data: updated, error: updateError } = await this.client
+      .from('devices')
+      .update({
+        device_name: finalName,
+        status: 'approved',
+        user_id: this.currentUser ? this.currentUser.id : null,
+        last_seen: new Date().toISOString()
+      })
+      .eq('id', matched.id)
+      .select()
+      .single();
+
+    if (updateError) throw updateError;
+
+    // 3. Notificar a tela em tempo real via Broadcast
+    try {
+      const channel = this.client.channel(`device-${matched.id}`);
+      await channel.send({
+        type: 'broadcast',
+        event: 'AUTHORIZATION',
+        payload: { id: matched.id, status: 'approved', deviceName: finalName }
+      });
+
+      const globalChannel = this.client.channel('totem-global-channel');
+      await globalChannel.send({
+        type: 'broadcast',
+        event: 'DEVICE_STATUS',
+        payload: { id: matched.id, status: 'approved', deviceName: finalName }
+      });
+
+      const broadChannel = this.client.channel('totem-broadcast');
+      await broadChannel.send({
+        type: 'broadcast',
+        event: 'DEVICE_AUTHORIZED',
+        payload: { id: matched.id, status: 'approved', deviceName: finalName }
+      });
+    } catch (e) {
+      console.warn('Aviso broadcast ao emparelhar:', e);
+    }
+
+    await this.refreshDevices();
+    return updated || matched;
+  }
+
+  // Renomear tela
+  async renameDevice(deviceId, newName) {
+    if (!this.client || !deviceId || !newName) return;
+    try {
+      await this.client
+        .from('devices')
+        .update({ device_name: newName.trim(), last_seen: new Date().toISOString() })
+        .eq('id', deviceId);
+      await this.refreshDevices();
+    } catch (e) {
+      console.warn('Erro ao renomear dispositivo:', e);
+    }
+  }
+
+  // Recarregar tela remotamente
+  async reloadScreen(deviceId) {
+    if (!this.client || !deviceId) return;
+    try {
+      const channel = this.client.channel(`device-${deviceId}`);
+      await channel.send({
+        type: 'broadcast',
+        event: 'RELOAD',
+        payload: { id: deviceId }
+      });
+    } catch (e) {}
+  }
+
+  // Desvincular e Excluir Tela
   async deleteDevice(deviceId) {
     if (!this.client) return;
     deviceId = String(deviceId).trim();
@@ -397,10 +602,13 @@ class TotemCentralEngine {
         payload: { id: deviceId, status: 'unlinked' }
       });
 
-      // 2. Remover do banco de dados
-      await this.client.from('devices').delete().eq('id', deviceId);
+      // 2. Atualizar para status unlinked no banco
+      await this.client
+        .from('devices')
+        .update({ status: 'unlinked', pair_code: null })
+        .eq('id', deviceId);
     } catch (e) {
-      console.warn('Erro ao deletar device:', e);
+      console.warn('Erro ao desvincular device:', e);
     }
 
     this.refreshDevices();
