@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="format-detection" content="telephone=no">
+  <title>Totem Screen - Tela Base</title>
+
+  <!-- PWA Manifest & Icons -->
+  <link rel="manifest" href="/manifest-screen.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+
+  <!-- Supabase JS CDN Oficial (com fallback REST nativo garantido) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- ESTILOS 100% PUROS E EMBUTIDOS (Sem dependência do Tailwind Play CDN, compatível com Android 6.0.1) -->
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      background-color: #000000;
+      color: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .hidden {
+      display: none !important;
+    }
+    .video-fade {
+      transition: opacity 0.5s ease-in-out;
+    }
+
+    /* Ocultar 100% de qualquer controle nativo de vídeo */
+    video::-webkit-media-controls,
+    video::-webkit-media-controls-enclosure,
+    video::-webkit-media-controls-panel,
+    video::-webkit-media-controls-play-button,
+    video::-webkit-media-controls-start-playback-button,
+    video::-webkit-media-controls-current-time-display,
+    video::-webkit-media-controls-time-remaining-display,
+    video::-webkit-media-controls-timeline,
+    video::-webkit-media-controls-volume-slider,
+    video::-webkit-media-controls-mute-button,
+    video::-webkit-media-controls-fullscreen-button,
+    video::-webkit-media-controls-toggle-closed-captions-button,
+    video::-webkit-media-controls-overlay-enclosure,
+    video::-webkit-media-controls-overlay-play-button {
+      display: none !important;
+      -webkit-appearance: none !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+    #playerBox {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+      z-index: 10;
+    }
+    #videoElem {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      pointer-events: none !important;
+      user-select: none !important;
+      -webkit-user-select: none !important;
+      outline: none !important;
+    }
+    #iframeElem {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      pointer-events: none !important;
+    }
+
+    /* Tela de Emparelhamento Kiosk Profissional */
+    #waitScreen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+      background: #0a1120;
+      background: radial-gradient(ellipse at center, #172a4d 0%, #0a1120 100%);
+    }
+    .wait-box {
+      max-width: 640px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .logo-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+    }
+    .logo-icon {
+      width: 56px;
+      height: 56px;
+      max-width: 56px;
+      max-height: 56px;
+      min-width: 56px;
+      min-height: 56px;
+      border-radius: 14px;
+      overflow: hidden;
+      margin-right: 12px;
+      box-shadow: 0 10px 25px rgba(37, 99, 235, 0.4);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .logo-icon svg {
+      width: 56px !important;
+      height: 56px !important;
+      max-width: 56px !important;
+      max-height: 56px !important;
+      display: block;
+    }
+    .logo-text {
+      font-size: 30px;
+      font-weight: 900;
+      color: #ffffff;
+      letter-spacing: -0.5px;
+    }
+    .logo-text-sky {
+      color: #38bdf8;
+    }
+    .code-label {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: #7dd3fc;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .code-display {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 64px;
+      font-size: clamp(52px, 12vw, 88px);
+      font-weight: 900;
+      color: #ffffff;
+      letter-spacing: 8px;
+      text-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+      line-height: 1.1;
+      margin-bottom: 18px;
+      user-select: all;
+    }
+    .instruction-pt {
+      font-size: 19px;
+      font-weight: 500;
+      color: #f8fafc;
+      line-height: 1.5;
+      margin-bottom: 8px;
+      max-width: 560px;
+    }
+    .instruction-pt strong {
+      color: #ffffff;
+    }
+    .link-highlight {
+      color: #38bdf8;
+      text-decoration: underline;
+      font-weight: 700;
+    }
+    .instruction-en {
+      font-size: 13px;
+      color: #94a3b8;
+      font-family: monospace;
+      margin-bottom: 20px;
+      max-width: 560px;
+    }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 18px;
+      border-radius: 9999px;
+      background: #0f172a;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.85);
+    }
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #22c55e;
+      margin-right: 8px;
+      flex-shrink: 0;
+    }
+    .footer-bar {
+      position: absolute;
+      bottom: 16px;
+      left: 24px;
+      right: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.4);
+      font-family: monospace;
+    }
+    .bypass-btn {
+      background: none;
+      border: none;
+      color: rgba(255, 255, 255, 0.6);
+      text-decoration: underline;
+      cursor: pointer;
+      font-size: 11px;
+    }
+    .bypass-btn:hover {
+      color: #ffffff;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 1. TELA DE EMPARELHAMENTO PROFISSIONAL (TOTEMSCREEN) -->
+  <div id="waitScreen">
+    <div class="wait-box">
+      
+      <!-- Logo Oficial TotemScreen -->
+      <div class="logo-container">
+        <div class="logo-icon" style="width:56px;height:56px;max-width:56px;max-height:56px;">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="56" height="56" style="width:56px;height:56px;display:block;">
+            <defs>
+              <linearGradient id="screenLogoGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#2563eb;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#1d4ed8;stop-opacity:1" />
+              </linearGradient>
+            </defs>
+            <rect width="512" height="512" rx="120" fill="url(#screenLogoGrad2)" />
+            <rect x="96" y="116" width="320" height="220" rx="20" fill="#0f172a" stroke="#ffffff" stroke-width="16" />
+            <rect x="236" y="336" width="40" height="60" fill="#ffffff" />
+            <rect x="196" y="396" width="120" height="16" rx="8" fill="#ffffff" />
+            <polygon points="236,186 306,226 236,266" fill="#38bdf8" />
+            <circle cx="396" cy="136" r="18" fill="#22c55e" stroke="#ffffff" stroke-width="5" />
+          </svg>
+        </div>
+        <span class="logo-text">
+          Totem<span class="logo-text-sky">Screen</span>
+        </span>
+      </div>
+
+      <!-- Código de Emparelhamento Gigante de 6 Dígitos -->
+      <div style="width:100%; text-align:center;">
+        <div class="code-label">Código de Emparelhamento</div>
+        <div id="screenPairCode" class="code-display">------</div>
+        <script>
+          (function() {
+            try {
+              var c = localStorage.getItem('totem_pair_code');
+              if (!c || c.length !== 6 || !/^\d{6}$/.test(c)) {
+                c = String(Math.floor(100000 + Math.random() * 900000));
+                localStorage.setItem('totem_pair_code', c);
+              }
+              var el = document.getElementById('screenPairCode');
+              if (el) el.textContent = c;
+            } catch(e) {}
+          })();
+        </script>
+      </div>
+
+      <!-- Instruções Claras e Elegantes -->
+      <p class="instruction-pt">
+        Para começar, acesse <strong class="link-highlight">totemarena.vercel.app/control</strong><br>
+        clique em <strong>"Adicionar tela"</strong> e digite o código acima.
+      </p>
+      <p class="instruction-en">
+        To get started, login at totemarena.vercel.app, click 'Adicionar tela' and enter the pairing code.
+      </p>
+
+      <!-- Barra de Status com Dispositivo na Rede Wi-Fi -->
+      <div class="status-pill">
+        <span class="status-dot"></span>
+        <span id="screenPairStatus">Conectado à rede • Aguardando emparelhamento no painel...</span>
+      </div>
+    </div>
+
+    <!-- Rodapé Discreto -->
+    <div class="footer-bar">
+      <span id="screenDeviceId">totem-...</span>
+      <div>
+        <button id="screenNewCodeBtn" class="bypass-btn" style="margin-right:16px;">Novo Código</button>
+        <button id="screenDirectBypassBtn" class="bypass-btn">Testar Sem Emparelhar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. PLAYER DE VÍDEO KIOSK (Tela Cheia, WakeLock e Loop) -->
+  <div id="playerBox">
+    <video
+      id="videoElem"
+      class="video-fade"
+      autoplay
+      loop
+      playsinline
+      webkit-playsinline
+      muted
+      preload="auto"
+      disablepictureinpicture
+      disableremoteplayback
+      controlslist="nodownload nofullscreen noremoteplayback noplaybackrate"
+      tabindex="-1"
+      oncontextmenu="return false;"
+    ></video>
+
+    <iframe
+      id="iframeElem"
+      class="video-fade hidden"
+      allow="autoplay; encrypted-media; picture-in-picture"
+      allowfullscreen
+    ></iframe>
+  </div>
+
+  <!-- SCRIPTS COM COMPATIBILIDADE TOTAL (ES5/ES6 Promises - SEM ASYNC/AWAIT PARA TABLETS ANTIGOS) -->
+  <script>
+    // Elementos DOM
+    var waitScreen = document.getElementById('waitScreen');
+    var screenPairCode = document.getElementById('screenPairCode');
+    var screenPairStatus = document.getElementById('screenPairStatus');
+    var screenDeviceId = document.getElementById('screenDeviceId');
+    var screenDirectBypassBtn = document.getElementById('screenDirectBypassBtn');
+    var screenNewCodeBtn = document.getElementById('screenNewCodeBtn');
+
+    var videoElem = document.getElementById('videoElem');
+    var iframeElem = document.getElementById('iframeElem');
+    var playerBox = document.getElementById('playerBox');
+
+    // Função utilitária de busca de parâmetros na URL 100% segura para Android 6.0 (sem URLSearchParams)
+    function getQueryParam(name) {
+      try {
+        var pattern = '[?&]' + name + '=([^&#]*)';
+        var regex = new RegExp(pattern);
+        var results = regex.exec(window.location.search);
+        return results ? decodeURIComponent(results[1].replace(/\+/g, ' ')) : null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    // Configuração Supabase REST nativa
+    var SUPABASE_URL = 'https://qvnsahvdjhimlmtqrnif.supabase.co';
+    var SUPABASE_ANON_KEY = 'sb_publishable_vvqh9vB0Dr0EqR9JGhy4kA_XnJ-9h0z';
+
+    // Estado da Tela
+    var currentUrl = null;
+    var currentPlayingVideoId = null;
+    var isPaired = false;
+    var currentPairCode = null;
+    var pollPairTimer = null;
+    var heartbeatTimer = null;
+    var isMuted = true;
+
+    // Gerador / Recuperador de ID Persistente
+    function getStoredDeviceId() {
+      try {
+        var urlId = getQueryParam('id') || getQueryParam('totem_id');
+        if (urlId && urlId.trim()) {
+          saveDeviceId(urlId.trim());
+          return urlId.trim();
+        }
+      } catch (e) {}
+
+      try {
+        var stored = localStorage.getItem('totem_screen_device_id');
+        if (stored && stored.trim()) {
+          saveDeviceId(stored.trim());
+          return stored.trim();
+        }
+      } catch (e) {}
+
+      try {
+        var match = document.cookie.match(/(?:^|;\s*)totem_screen_device_id=([^;]+)/);
+        if (match && match[1] && match[1].trim()) {
+          saveDeviceId(match[1].trim());
+          return match[1].trim();
+        }
+      } catch (e) {}
+
+      var newId = 'totem-' + Math.random().toString(36).substring(2, 9);
+      saveDeviceId(newId);
+      return newId;
+    }
+
+    function saveDeviceId(id) {
+      if (!id) return;
+      try { localStorage.setItem('totem_screen_device_id', id); } catch (e) {}
+      try { document.cookie = 'totem_screen_device_id=' + id + '; path=/; max-age=315360000; SameSite=Lax'; } catch (e) {}
+    }
+
+    // Chamadas REST diretas e infalíveis ao Supabase (Zero dependência de bibliotecas externas)
+    function supabaseQuery(path, method, body) {
+      return new Promise(function(resolve, reject) {
+        try {
+          var xhr = new XMLHttpRequest();
+          xhr.open(method || 'GET', SUPABASE_URL + '/rest/v1/' + path, true);
+          xhr.setRequestHeader('apikey', SUPABASE_ANON_KEY);
+          xhr.setRequestHeader('Authorization', 'Bearer ' + SUPABASE_ANON_KEY);
+          xhr.setRequestHeader('Content-Type', 'application/json');
+          if (method === 'PATCH' || method === 'POST') {
+            xhr.setRequestHeader('Prefer', 'return=representation');
+          }
+          xhr.onload = function() {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                resolve(JSON.parse(xhr.responseText));
+              } catch(e) {
+                resolve(xhr.responseText);
+              }
+            } else {
+              reject(new Error('HTTP ' + xhr.status));
+            }
+          };
+          xhr.onerror = function() { reject(new Error('Network error')); };
+          xhr.send(body ? JSON.stringify(body) : null);
+        } catch(err) {
+          reject(err);
+        }
+      });
+    }
+
+    // WakeLock para manter tela acesa 24/7
+    function initWakeLock() {
+      try {
+        if ('wakeLock' in navigator) {
+          navigator.wakeLock.request('screen').catch(function() {});
+        }
+      } catch (e) {}
+    }
+
+    // Bloqueia gestos e botão voltar acidental
+    document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+    try {
+      history.pushState(null, null, location.href);
+      window.addEventListener('popstate', function() {
+        history.pushState(null, null, location.href);
+      });
+    } catch (e) {}
+
+    // Exibir Tela de Emparelhamento
+    function showPairingScreen(code) {
+      isPaired = false;
+      try { localStorage.removeItem('totem_screen_paired'); } catch (e) {}
+
+      if (videoElem) {
+        try { videoElem.pause(); } catch (e) {}
+        videoElem.classList.add('hidden');
+      }
+      if (iframeElem) {
+        iframeElem.classList.add('hidden');
+        iframeElem.src = 'about:blank';
+      }
+
+      currentPairCode = code || localStorage.getItem('totem_pair_code');
+      if (!currentPairCode) {
+        currentPairCode = String(Math.floor(100000 + Math.random() * 900000));
+        try { localStorage.setItem('totem_pair_code', currentPairCode); } catch (e) {}
+      }
+
+      if (screenPairCode) screenPairCode.textContent = currentPairCode;
+      if (screenPairStatus) screenPairStatus.textContent = 'Conectado à rede • Aguardando emparelhamento no painel...';
+      if (screenDeviceId) screenDeviceId.textContent = 'ID: ' + getStoredDeviceId();
+
+      if (waitScreen) waitScreen.classList.remove('hidden');
+
+      // Registrar dispositivo no Supabase via REST
+      var devId = getStoredDeviceId();
+      supabaseQuery('devices?id=eq.' + devId, 'GET').then(function(devs) {
+        if (!devs || devs.length === 0) {
+          return supabaseQuery('devices', 'POST', {
+            id: devId,
+            pair_code: currentPairCode,
+            device_name: 'Modelo Totem',
+            status: 'pending_pair',
+            last_seen: new Date().toISOString()
+          });
+        } else {
+          var currentStatus = devs[0].status;
+          var updateData = {
+            pair_code: currentPairCode,
+            last_seen: new Date().toISOString()
+          };
+          if (currentStatus !== 'approved') {
+            updateData.status = 'pending_pair';
+          }
+          return supabaseQuery('devices?id=eq.' + devId, 'PATCH', updateData);
+        }
+      }).catch(function(err) {
+        console.warn('Registro REST:', err);
+      });
+
+      // Polling a cada 3s para ver se foi aprovado
+      if (pollPairTimer) clearInterval(pollPairTimer);
+      pollPairTimer = setInterval(checkIfApprovedRemotely, 3000);
+
+      // Heartbeat a cada 20s
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
+      heartbeatTimer = setInterval(sendHeartbeat, 20000);
+    }
+
+    // Heartbeat
+    function sendHeartbeat() {
+      var devId = getStoredDeviceId();
+      if (!devId) return;
+      supabaseQuery('devices?id=eq.' + devId, 'PATCH', {
+        last_seen: new Date().toISOString()
+      }).catch(function() {});
+    }
+
+    // Checar se foi aprovado
+    function checkIfApprovedRemotely() {
+      if (isPaired) return;
+      var devId = getStoredDeviceId();
+      supabaseQuery('devices?id=eq.' + devId, 'GET').then(function(devs) {
+        if (devs && devs.length > 0) {
+          var dev = devs[0];
+          if (dev.status === 'approved') {
+            console.log('⚡ Tela aprovada no painel!');
+            unlockPlayer(dev.device_name || 'Modelo Totem');
+            if (dev.current_video_id) {
+              fetchActiveOrLatestVideo(dev.current_video_id);
+            } else if (!currentUrl) {
+              fetchActiveOrLatestVideo();
+            }
+          }
+        }
+      }).catch(function() {});
+    }
+
+    // Desbloquear e entrar no modo player
+    function unlockPlayer(name) {
+      if (isPaired && waitScreen && waitScreen.classList.contains('hidden') && videoElem && !videoElem.classList.contains('hidden')) {
+        return;
+      }
+      isPaired = true;
+      try {
+        localStorage.setItem('totem_screen_paired', 'true');
+        localStorage.removeItem('totem_pair_code');
+      } catch (e) {}
+
+      if (pollPairTimer) {
+        clearInterval(pollPairTimer);
+        pollPairTimer = null;
+      }
+
+      if (waitScreen) waitScreen.classList.add('hidden');
+      if (videoElem) videoElem.classList.remove('hidden');
+
+      initWakeLock();
+      sendHeartbeat();
+    }
+
+    // Botão de teste sem emparelhar
+    if (screenDirectBypassBtn) {
+      screenDirectBypassBtn.addEventListener('click', function() {
+        unlockPlayer('Modo Direto');
+        fetchActiveOrLatestVideo();
+      });
+    }
+
+    // Botão para gerar novo código imediatamente
+    if (screenNewCodeBtn) {
+      screenNewCodeBtn.addEventListener('click', function() {
+        var newCode = String(Math.floor(100000 + Math.random() * 900000));
+        try { localStorage.setItem('totem_pair_code', newCode); } catch (e) {}
+        showPairingScreen(newCode);
+      });
+    }
+
+    // Extrair ID do YouTube
+    function getYouTubeId(url) {
+      if (!url) return null;
+      var match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/))([\w-]{11})/);
+      return match ? match[1] : null;
+    }
+
+    // Reproduzir Vídeo
+    function playVideo(video) {
+      if (!video || (!video.url && !video.video_url)) return;
+
+      var mediaRawUrl = video.url || video.video_url;
+      var newVideoId = video.id || null;
+
+      if (currentUrl === mediaRawUrl && currentPlayingVideoId === newVideoId && videoElem && !videoElem.paused && !videoElem.ended) {
+        return;
+      }
+
+      currentUrl = mediaRawUrl;
+      currentPlayingVideoId = newVideoId;
+
+      var ytId = getYouTubeId(mediaRawUrl);
+
+      if (ytId) {
+        try { videoElem.pause(); } catch (e) {}
+        videoElem.classList.add('hidden');
+        iframeElem.classList.remove('hidden');
+        iframeElem.src = 'https://www.youtube-nocookie.com/embed/' + ytId + '?autoplay=1&mute=1&loop=1&playlist=' + ytId + '&controls=0&modestbranding=1&rel=0&playsinline=1&enablejsapi=1&iv_load_policy=3&disablekb=1&fs=0';
+        initWakeLock();
+        return;
+      }
+
+      iframeElem.classList.add('hidden');
+      iframeElem.src = 'about:blank';
+      videoElem.classList.remove('hidden');
+
+      var targetMediaUrl = mediaRawUrl;
+      if (targetMediaUrl.indexOf('dropbox.com') !== -1) {
+        targetMediaUrl = targetMediaUrl.replace(/[?&]dl=0/, '?raw=1').replace(/[?&]dl=1/, '?raw=1');
+      } else if (targetMediaUrl.indexOf('/') === 0) {
+        targetMediaUrl = window.location.origin + targetMediaUrl;
+      }
+
+      videoElem.muted = isMuted;
+      videoElem.defaultMuted = isMuted;
+      videoElem.volume = 0;
+      videoElem.playsInline = true;
+      videoElem.setAttribute('playsinline', '');
+      videoElem.setAttribute('webkit-playsinline', '');
+      videoElem.setAttribute('x5-playsinline', '');
+      videoElem.setAttribute('x5-video-player-type', 'h5');
+      videoElem.setAttribute('x5-video-player-fullscreen', 'true');
+      videoElem.preload = 'auto';
+
+      videoElem.controls = false;
+      videoElem.removeAttribute('controls');
+      videoElem.setAttribute('controlslist', 'nodownload nofullscreen noremoteplayback noplaybackrate');
+      videoElem.setAttribute('disablepictureinpicture', 'true');
+      videoElem.setAttribute('disableremoteplayback', 'true');
+
+      videoElem.loop = true;
+      videoElem.setAttribute('loop', 'true');
+      videoElem.onended = function() {
+        videoElem.currentTime = 0;
+        videoElem.play().catch(function() {});
+      };
+
+      videoElem.onerror = function() {
+        console.warn('Erro ao reproduzir mídia, tentando novamente em 3s...');
+        setTimeout(function() {
+          if (currentUrl === mediaRawUrl) {
+            videoElem.src = targetMediaUrl;
+            videoElem.load();
+            videoElem.play().catch(function() {});
+          }
+        }, 3000);
+      };
+
+      videoElem.src = targetMediaUrl;
+      videoElem.load();
+
+      var startPromise = videoElem.play();
+      if (startPromise !== undefined) {
+        startPromise.then(function() {
+          initWakeLock();
+        }).catch(function() {
+          videoElem.muted = true;
+          videoElem.play().catch(function() {});
+        });
+      }
+    }
+
+    // Buscar vídeo ativo ou o mais recente
+    function fetchActiveOrLatestVideo(preferredVideoId, retries) {
+      if (retries === undefined) retries = 8;
+      
+      if (preferredVideoId) {
+        supabaseQuery('videos?id=eq.' + preferredVideoId, 'GET').then(function(videos) {
+          if (videos && videos.length > 0) {
+            var v = videos[0];
+            if (v.video_url || v.url) {
+              playVideo({ id: v.id, title: v.title, url: v.video_url || v.url });
+              return;
+            }
+          }
+          fetchLatestVideo();
+        }).catch(function() {
+          fetchLatestVideo();
+        });
+      } else {
+        var myDevId = getStoredDeviceId();
+        supabaseQuery('devices?id=eq.' + myDevId, 'GET').then(function(devs) {
+          if (devs && devs.length > 0 && devs[0].current_video_id) {
+            fetchActiveOrLatestVideo(devs[0].current_video_id);
+          } else {
+            fetchLatestVideo();
+          }
+        }).catch(function() {
+          fetchLatestVideo();
+        });
+      }
+    }
+
+    function fetchLatestVideo() {
+      supabaseQuery('videos?order=created_at.desc&limit=1', 'GET').then(function(videos) {
+        if (videos && videos.length > 0) {
+          var v = videos[0];
+          if (v.video_url || v.url) {
+            playVideo({ id: v.id, title: v.title, url: v.video_url || v.url });
+          }
+        }
+      }).catch(function(err) {
+        console.warn('Erro ao carregar último vídeo:', err);
+      });
+    }
+
+    // Checagem periódica contínua (Hot-Swap)
+    function checkApprovalStatus() {
+      var devId = getStoredDeviceId();
+      if (!devId) return;
+
+      supabaseQuery('devices?id=eq.' + devId, 'GET').then(function(devs) {
+        if (devs && devs.length > 0) {
+          var data = devs[0];
+          if (data.status === 'rejected' || data.status === 'unlinked') {
+            if (isPaired) {
+              showPairingScreen();
+            }
+            return;
+          }
+          if (data.status === 'approved') {
+            if (!isPaired) {
+              unlockPlayer(data.device_name || 'Modelo Totem');
+            }
+            if (data.current_video_id && data.current_video_id !== currentPlayingVideoId) {
+              console.log('⚡ Hot-swap de vídeo detectado:', data.current_video_id);
+              fetchActiveOrLatestVideo(data.current_video_id);
+            } else if (!currentUrl) {
+              fetchActiveOrLatestVideo(data.current_video_id);
+            }
+          }
+        }
+      }).catch(function() {});
+    }
+
+    // Watchdog de Loop Perpétuo (a cada 1.5s)
+    setInterval(function() {
+      if (waitScreen && !waitScreen.classList.contains('hidden')) return;
+      if (currentUrl && videoElem && !videoElem.classList.contains('hidden')) {
+        if (videoElem.ended) {
+          videoElem.currentTime = 0;
+          videoElem.play().catch(function() {});
+        } else if (videoElem.paused && !document.hidden) {
+          videoElem.play().catch(function() {});
+        }
+      }
+    }, 1500);
+
+    // Toque na tela para Fullscreen e Unmute
+    function handleScreenTouch() {
+      initWakeLock();
+      if (!document.fullscreenElement) {
+        try { document.documentElement.requestFullscreen().catch(function() {}); } catch (e) {}
+      }
+      if (videoElem && videoElem.paused && isPaired) {
+        videoElem.play().catch(function() {});
+      }
+    }
+    if (playerBox) {
+      playerBox.addEventListener('click', handleScreenTouch);
+      playerBox.addEventListener('touchstart', handleScreenTouch, { passive: true });
+    }
+    window.addEventListener('click', handleScreenTouch, { once: true });
+    window.addEventListener('touchstart', handleScreenTouch, { once: true, passive: true });
+
+    // Inicialização da Tela
+    function initScreen() {
+      var devId = getStoredDeviceId();
+      if (screenDeviceId) screenDeviceId.textContent = 'ID: ' + devId;
+
+      // Código de emparelhamento exibido IMEDIATAMENTE no HTML
+      currentPairCode = localStorage.getItem('totem_pair_code');
+      if (!currentPairCode || currentPairCode.length !== 6 || !/^\d{6}$/.test(currentPairCode)) {
+        currentPairCode = String(Math.floor(100000 + Math.random() * 900000));
+        try { localStorage.setItem('totem_pair_code', currentPairCode); } catch (e) {}
+      }
+      if (screenPairCode) screenPairCode.textContent = currentPairCode;
+
+      // Modo Direto via URL (?direct=1 ou ?autorun=1)
+      var directParam = getQueryParam('direct') || getQueryParam('autorun');
+      if (directParam === '1') {
+        unlockPlayer('Modo Direto');
+        fetchActiveOrLatestVideo();
+        return;
+      }
+
+      // Garante exibição imediata da tela de emparelhamento e registro no banco
+      showPairingScreen(currentPairCode);
+
+      // Verificar status remoto no banco
+      supabaseQuery('devices?id=eq.' + devId, 'GET').then(function(devs) {
+        if (devs && devs.length > 0) {
+          var dev = devs[0];
+          if (dev.status === 'approved') {
+            unlockPlayer(dev.device_name || 'Modelo Totem');
+            fetchActiveOrLatestVideo(dev.current_video_id);
+            return;
+          }
+        }
+      }).catch(function(err) {
+        console.warn('Erro ao consultar status inicial:', err);
+      });
+    }
+
+    // Inicializar assim que o documento carregar
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initScreen);
+    } else {
+      initScreen();
+    }
+
+    // Polling contínuo
+    setInterval(checkApprovalStatus, 3000);
+    setInterval(sendHeartbeat, 20000);
+
+    // Reconexão
+    window.addEventListener('online', function() {
+      console.log('⚡ Conexão restaurada.');
+      sendHeartbeat();
+      checkApprovalStatus();
+    });
+  </script>
+</body>
+</html>

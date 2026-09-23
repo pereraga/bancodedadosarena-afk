@@ -34,7 +34,7 @@ public class MainActivity extends Activity {
     private WebChromeClient.CustomViewCallback customViewCallback;
     private View mCustomView;
 
-    private static final String TARGET_URL = "https://totemarena.vercel.app/screen";
+    private static final String TARGET_URL = "file:///android_asset/screen.html";
     private final Handler handler = new Handler(Looper.getMainLooper());
     private boolean isRetrying = false;
 
@@ -106,6 +106,8 @@ public class MainActivity extends Activity {
         settings.setUseWideViewPort(true);
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
+        settings.setAllowFileAccessFromFileURLs(true);
+        settings.setAllowUniversalAccessFromFileURLs(true);
         settings.setSupportZoom(false);
         settings.setBuiltInZoomControls(false);
         settings.setDisplayZoomControls(false);
