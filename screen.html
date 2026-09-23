@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR" class="h-full bg-black">
+<html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -10,19 +10,22 @@
   <meta name="format-detection" content="telephone=no">
   <title>Totem Screen - Tela Base</title>
 
-  <!-- PWA Manifest & Icons para PWABuilder -->
+  <!-- PWA Manifest & Icons -->
   <link rel="manifest" href="/manifest-screen.json">
   <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
   <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
   <link rel="apple-touch-icon" href="/icon-192.png">
 
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Supabase JS CDN Oficial -->
+  <!-- Supabase JS CDN Oficial (com fallback REST nativo garantido) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
+  <!-- ESTILOS 100% PUROS E EMBUTIDOS (Sem dependência do Tailwind Play CDN, compatível com Android 6.0.1) -->
   <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
     html, body {
       width: 100%;
       height: 100%;
@@ -33,19 +36,19 @@
       user-select: none;
       -webkit-user-select: none;
       -webkit-touch-callout: none;
-      overscroll-behavior: none;
-      background-color: #000;
+      background-color: #000000;
+      color: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .hidden {
+      display: none !important;
     }
     .video-fade {
       transition: opacity 0.5s ease-in-out;
     }
-    /* Ocultar 100% de qualquer controle nativo de vídeo (Chrome, Safari, Android, Edge, Samsung) */
-    video::-webkit-media-controls {
-      display: none !important;
-      -webkit-appearance: none !important;
-      opacity: 0 !important;
-      pointer-events: none !important;
-    }
+
+    /* Ocultar 100% de qualquer controle nativo de vídeo */
+    video::-webkit-media-controls,
     video::-webkit-media-controls-enclosure,
     video::-webkit-media-controls-panel,
     video::-webkit-media-controls-play-button,
@@ -64,28 +67,195 @@
       opacity: 0 !important;
       pointer-events: none !important;
     }
-    /* Bloqueia toque direto no elemento para o navegador mobile não abrir a barra de controles nativa */
+    #playerBox {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+      z-index: 10;
+    }
     #videoElem {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
       pointer-events: none !important;
       user-select: none !important;
       -webkit-user-select: none !important;
       outline: none !important;
     }
     #iframeElem {
+      width: 100%;
+      height: 100%;
+      border: 0;
       pointer-events: none !important;
+    }
+
+    /* Tela de Emparelhamento Kiosk Profissional */
+    #waitScreen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+      background: #0a1120;
+      background: radial-gradient(ellipse at center, #172a4d 0%, #0a1120 100%);
+    }
+    .wait-box {
+      max-width: 640px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .logo-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+    }
+    .logo-icon {
+      width: 56px;
+      height: 56px;
+      max-width: 56px;
+      max-height: 56px;
+      min-width: 56px;
+      min-height: 56px;
+      border-radius: 14px;
+      overflow: hidden;
+      margin-right: 12px;
+      box-shadow: 0 10px 25px rgba(37, 99, 235, 0.4);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .logo-icon svg {
+      width: 56px !important;
+      height: 56px !important;
+      max-width: 56px !important;
+      max-height: 56px !important;
+      display: block;
+    }
+    .logo-text {
+      font-size: 30px;
+      font-weight: 900;
+      color: #ffffff;
+      letter-spacing: -0.5px;
+    }
+    .logo-text-sky {
+      color: #38bdf8;
+    }
+    .code-label {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: #7dd3fc;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .code-display {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: clamp(52px, 12vw, 88px);
+      font-weight: 900;
+      color: #ffffff;
+      letter-spacing: 8px;
+      text-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+      line-height: 1.1;
+      margin-bottom: 18px;
+      user-select: all;
+    }
+    .instruction-pt {
+      font-size: 19px;
+      font-weight: 500;
+      color: #f8fafc;
+      line-height: 1.5;
+      margin-bottom: 8px;
+      max-width: 560px;
+    }
+    .instruction-pt strong {
+      color: #ffffff;
+    }
+    .link-highlight {
+      color: #38bdf8;
+      text-decoration: underline;
+      font-weight: 700;
+    }
+    .instruction-en {
+      font-size: 13px;
+      color: #94a3b8;
+      font-family: monospace;
+      margin-bottom: 20px;
+      max-width: 560px;
+    }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 18px;
+      border-radius: 9999px;
+      background: #0f172a;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.85);
+    }
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #22c55e;
+      margin-right: 8px;
+      flex-shrink: 0;
+    }
+    .footer-bar {
+      position: absolute;
+      bottom: 16px;
+      left: 24px;
+      right: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.4);
+      font-family: monospace;
+    }
+    .bypass-btn {
+      background: none;
+      border: none;
+      color: rgba(255, 255, 255, 0.6);
+      text-decoration: underline;
+      cursor: pointer;
+      font-size: 11px;
+    }
+    .bypass-btn:hover {
+      color: #ffffff;
     }
   </style>
 </head>
-<body class="h-full w-full flex items-center justify-center bg-black text-white relative font-sans">
+<body>
 
   <!-- 1. TELA DE EMPARELHAMENTO PROFISSIONAL (TOTEMSCREEN) -->
-  <div id="waitScreen" class="absolute inset-0 z-50 flex flex-col items-center justify-center p-6 text-center select-none transition-opacity duration-500 hidden" style="background: radial-gradient(ellipse at center, #172a4d 0%, #0a1120 100%);">
-    <div class="max-w-2xl w-full flex flex-col items-center justify-center space-y-5 sm:space-y-7">
+  <div id="waitScreen" class="hidden">
+    <div class="wait-box">
       
       <!-- Logo Oficial TotemScreen -->
-      <div class="flex items-center space-x-3 justify-center">
-        <div class="w-12 h-12 rounded-2xl overflow-hidden shadow-2xl shadow-blue-500/40 shrink-0">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="w-full h-full">
+      <div class="logo-container">
+        <div class="logo-icon" style="width:56px;height:56px;max-width:56px;max-height:56px;">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="56" height="56" style="width:56px;height:56px;display:block;">
             <defs>
               <linearGradient id="screenLogoGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%" style="stop-color:#2563eb;stop-opacity:1" />
@@ -100,49 +270,45 @@
             <circle cx="396" cy="136" r="18" fill="#22c55e" stroke="#ffffff" stroke-width="5" />
           </svg>
         </div>
-        <span class="text-2xl sm:text-3xl font-black text-white tracking-tight">
-          Totem<span class="text-sky-400">Screen</span>
+        <span class="logo-text">
+          Totem<span class="logo-text-sky">Screen</span>
         </span>
       </div>
 
       <!-- Código de Emparelhamento Gigante de 6 Dígitos -->
-      <div class="w-full text-center">
-        <span class="text-xs uppercase tracking-widest text-sky-300/80 font-semibold block mb-1">Código de Emparelhamento</span>
-        <div id="screenPairCode" class="font-mono text-7xl sm:text-8xl md:text-9xl font-black text-white tracking-widest drop-shadow-2xl select-all">
-          ------
-        </div>
+      <div style="width:100%; text-align:center;">
+        <div class="code-label">Código de Emparelhamento</div>
+        <div id="screenPairCode" class="code-display">------</div>
       </div>
 
       <!-- Instruções Claras e Elegantes -->
-      <div class="space-y-2 text-white/95 max-w-xl mx-auto px-4">
-        <p class="text-base sm:text-xl md:text-2xl font-medium leading-relaxed">
-          Para começar, acesse <strong class="font-bold underline decoration-sky-400 text-sky-300">totemarena.vercel.app/control</strong><br>
-          clique em <strong class="font-bold text-white">"Adicionar tela"</strong> e digite o código de emparelhamento acima.
-        </p>
-        <p class="text-xs sm:text-sm text-slate-400 pt-1 font-mono">
-          To get started, login at app.totemarena.vercel.app, click 'add screen' and enter the pairing code above.
-        </p>
-      </div>
+      <p class="instruction-pt">
+        Para começar, acesse <strong class="link-highlight">totemarena.vercel.app/control</strong><br>
+        clique em <strong>"Adicionar tela"</strong> e digite o código acima.
+      </p>
+      <p class="instruction-en">
+        To get started, login at totemarena.vercel.app, click 'Adicionar tela' and enter the pairing code.
+      </p>
 
       <!-- Barra de Status com Dispositivo na Rede Wi-Fi -->
-      <div class="inline-flex items-center space-x-2 px-4 py-2 rounded-full bg-slate-900 border border-blue-500/20 text-xs text-white/80">
-        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+      <div class="status-pill">
+        <span class="status-dot"></span>
         <span id="screenPairStatus">Conectado à rede • Aguardando emparelhamento no painel...</span>
       </div>
     </div>
 
     <!-- Rodapé Discreto -->
-    <div class="absolute bottom-4 inset-x-0 flex items-center justify-between px-6 text-[11px] text-white/40 font-mono">
+    <div class="footer-bar">
       <span id="screenDeviceId">totem-...</span>
-      <button id="screenDirectBypassBtn" class="hover:text-white/80 transition underline">Testar Sem Emparelhar</button>
+      <button id="screenDirectBypassBtn" class="bypass-btn">Testar Sem Emparelhar</button>
     </div>
   </div>
 
   <!-- 2. PLAYER DE VÍDEO KIOSK (Tela Cheia, WakeLock e Loop) -->
-  <div id="playerBox" class="w-full h-full relative overflow-hidden flex items-center justify-center bg-black cursor-none">
+  <div id="playerBox">
     <video
       id="videoElem"
-      class="w-full h-full object-contain video-fade"
+      class="video-fade"
       autoplay
       loop
       playsinline
@@ -158,96 +324,51 @@
 
     <iframe
       id="iframeElem"
-      class="w-full h-full object-contain video-fade hidden border-0 pointer-events-none"
+      class="video-fade hidden"
       allow="autoplay; encrypted-media; picture-in-picture"
       allowfullscreen
     ></iframe>
-
-    <!-- Overlay de Carregamento (Oculto por padrão, sem prender a tela) -->
-    <div id="loaderOverlay" class="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-20 transition-opacity duration-300 cursor-pointer select-none opacity-0 pointer-events-none hidden">
-      <div class="animate-spin rounded-full h-14 w-14 border-t-4 border-b-4 border-blue-500 mb-3"></div>
-      <p id="loaderMsg" class="text-slate-300 text-sm font-medium">Carregando totem...</p>
-    </div>
-
-    <!-- Barra Oculta (sem controles visíveis na tela do totem) -->
-    <header id="screenHeader" class="hidden"></header>
-
   </div>
 
-  <!-- SCRIPTS -->
-  <script src="totem-central.js"></script>
+  <!-- SCRIPTS COM COMPATIBILIDADE TOTAL (ES5/ES6 Promises - SEM ASYNC/AWAIT PARA TABLETS ANTIGOS) -->
   <script>
     // Elementos DOM
-    const waitScreen = document.getElementById('waitScreen');
-    const screenPairCode = document.getElementById('screenPairCode');
-    const screenPairStatus = document.getElementById('screenPairStatus');
-    const screenDeviceId = document.getElementById('screenDeviceId');
-    const screenDirectBypassBtn = document.getElementById('screenDirectBypassBtn');
+    var waitScreen = document.getElementById('waitScreen');
+    var screenPairCode = document.getElementById('screenPairCode');
+    var screenPairStatus = document.getElementById('screenPairStatus');
+    var screenDeviceId = document.getElementById('screenDeviceId');
+    var screenDirectBypassBtn = document.getElementById('screenDirectBypassBtn');
 
-    const videoElem = document.getElementById('videoElem');
-    const iframeElem = document.getElementById('iframeElem');
-    const loaderOverlay = document.getElementById('loaderOverlay');
-    const loaderMsg = document.getElementById('loaderMsg');
-    const playerBox = document.getElementById('playerBox');
+    var videoElem = document.getElementById('videoElem');
+    var iframeElem = document.getElementById('iframeElem');
+    var playerBox = document.getElementById('playerBox');
+
+    // Configuração Supabase REST nativa
+    var SUPABASE_URL = 'https://qvnsahvdjhimlmtqrnif.supabase.co';
+    var SUPABASE_ANON_KEY = 'sb_publishable_vvqh9vB0Dr0EqR9JGhy4kA_XnJ-9h0z';
 
     // Estado da Tela
-    let currentUrl = null;
-    let currentPlayingVideoId = null;
-    let wakeLock = null;
-    let isPaired = false;
-    let currentPairCode = null;
-    let heartbeatTimer = null;
-    let pollPairTimer = null;
-    let isMuted = true;
-    let loaderTimer = null;
+    var currentUrl = null;
+    var currentPlayingVideoId = null;
+    var isPaired = false;
+    var currentPairCode = null;
+    var pollPairTimer = null;
+    var heartbeatTimer = null;
+    var isMuted = true;
 
-    // Log silencioso (sem popups na tela do totem)
-    function toast(text) {
-      console.log('[TotemScreen]', text);
-    }
-
-    // Bloqueia menu de contexto e gestos do sistema Android
-    document.addEventListener('contextmenu', (e) => e.preventDefault());
-
-    // Prevenção de fechamento acidental no botão voltar do Android (Hardware Back Button)
-    try {
-      history.pushState(null, null, location.href);
-      window.addEventListener('popstate', () => {
-        history.pushState(null, null, location.href);
-      });
-    } catch (e) {}
-
-    // Wake Lock: Mantém a tela acesa 24 horas por dia no tablet / totem
-    async function initWakeLock() {
-      try {
-        if ('wakeLock' in navigator) {
-          wakeLock = await navigator.wakeLock.request('screen');
-        }
-      } catch (e) {}
-    }
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') {
-        initWakeLock();
-        if (isPaired && videoElem && currentUrl && videoElem.paused) {
-          videoElem.play().catch(() => {});
-        }
-      }
-    });
-
-    // 1. GERENCIAMENTO DE IDENTIFICADOR FIXO & PERSISTENTE (Compatível com APK & WebView)
+    // Gerador / Recuperador de ID Persistente
     function getStoredDeviceId() {
       try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const urlId = urlParams.get('id') || urlParams.get('totem_id');
+        var urlParams = new URLSearchParams(window.location.search);
+        var urlId = urlParams.get('id') || urlParams.get('totem_id');
         if (urlId && urlId.trim()) {
-          const cleanId = urlId.trim();
-          saveDeviceId(cleanId);
-          return cleanId;
+          saveDeviceId(urlId.trim());
+          return urlId.trim();
         }
       } catch (e) {}
 
       try {
-        const stored = localStorage.getItem('totem_screen_device_id');
+        var stored = localStorage.getItem('totem_screen_device_id');
         if (stored && stored.trim()) {
           saveDeviceId(stored.trim());
           return stored.trim();
@@ -255,14 +376,14 @@
       } catch (e) {}
 
       try {
-        const match = document.cookie.match(/(?:^|;\s*)totem_screen_device_id=([^;]+)/);
+        var match = document.cookie.match(/(?:^|;\s*)totem_screen_device_id=([^;]+)/);
         if (match && match[1] && match[1].trim()) {
           saveDeviceId(match[1].trim());
           return match[1].trim();
         }
       } catch (e) {}
 
-      const newId = 'totem-' + Math.random().toString(36).substring(2, 9);
+      var newId = 'totem-' + Math.random().toString(36).substring(2, 9);
       saveDeviceId(newId);
       return newId;
     }
@@ -270,11 +391,60 @@
     function saveDeviceId(id) {
       if (!id) return;
       try { localStorage.setItem('totem_screen_device_id', id); } catch (e) {}
-      try { document.cookie = `totem_screen_device_id=${id}; path=/; max-age=315360000; SameSite=Lax`; } catch (e) {}
+      try { document.cookie = 'totem_screen_device_id=' + id + '; path=/; max-age=315360000; SameSite=Lax'; } catch (e) {}
     }
 
-    // 2. FLUXO DE EMPARELHAMENTO POR CÓDIGO DE 6 DÍGITOS
-    function showPairingScreen(code = null) {
+    // Chamadas REST diretas e infalíveis ao Supabase (Zero dependência de bibliotecas externas)
+    function supabaseQuery(path, method, body) {
+      return new Promise(function(resolve, reject) {
+        try {
+          var xhr = new XMLHttpRequest();
+          xhr.open(method || 'GET', SUPABASE_URL + '/rest/v1/' + path, true);
+          xhr.setRequestHeader('apikey', SUPABASE_ANON_KEY);
+          xhr.setRequestHeader('Authorization', 'Bearer ' + SUPABASE_ANON_KEY);
+          xhr.setRequestHeader('Content-Type', 'application/json');
+          if (method === 'PATCH' || method === 'POST') {
+            xhr.setRequestHeader('Prefer', 'return=representation');
+          }
+          xhr.onload = function() {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                resolve(JSON.parse(xhr.responseText));
+              } catch(e) {
+                resolve(xhr.responseText);
+              }
+            } else {
+              reject(new Error('HTTP ' + xhr.status));
+            }
+          };
+          xhr.onerror = function() { reject(new Error('Network error')); };
+          xhr.send(body ? JSON.stringify(body) : null);
+        } catch(err) {
+          reject(err);
+        }
+      });
+    }
+
+    // WakeLock para manter tela acesa 24/7
+    function initWakeLock() {
+      try {
+        if ('wakeLock' in navigator) {
+          navigator.wakeLock.request('screen').catch(function() {});
+        }
+      } catch (e) {}
+    }
+
+    // Bloqueia gestos e botão voltar acidental
+    document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+    try {
+      history.pushState(null, null, location.href);
+      window.addEventListener('popstate', function() {
+        history.pushState(null, null, location.href);
+      });
+    } catch (e) {}
+
+    // Exibir Tela de Emparelhamento
+    function showPairingScreen(code) {
       isPaired = false;
       try { localStorage.removeItem('totem_screen_paired'); } catch (e) {}
 
@@ -287,8 +457,11 @@
         iframeElem.src = 'about:blank';
       }
 
-      currentPairCode = code || localStorage.getItem('totem_pair_code') || (window.totemCentral ? window.totemCentral.generatePairCode() : String(Math.floor(100000 + Math.random() * 900000)));
-      try { localStorage.setItem('totem_pair_code', currentPairCode); } catch (e) {}
+      currentPairCode = code || localStorage.getItem('totem_pair_code');
+      if (!currentPairCode) {
+        currentPairCode = String(Math.floor(100000 + Math.random() * 900000));
+        try { localStorage.setItem('totem_pair_code', currentPairCode); } catch (e) {}
+      }
 
       if (screenPairCode) screenPairCode.textContent = currentPairCode;
       if (screenPairStatus) screenPairStatus.textContent = 'Conectado à rede • Aguardando emparelhamento no painel...';
@@ -296,59 +469,70 @@
 
       if (waitScreen) waitScreen.classList.remove('hidden');
 
-      // Registrar como pendente no Supabase
-      if (window.totemCentral) {
-        window.totemCentral.registerPendingScreen(currentPairCode, 'Modelo Totem');
-      }
+      // Registrar dispositivo no Supabase via REST
+      var devId = getStoredDeviceId();
+      supabaseQuery('devices?id=eq.' + devId, 'GET').then(function(devs) {
+        if (!devs || devs.length === 0) {
+          return supabaseQuery('devices', 'POST', {
+            id: devId,
+            pair_code: currentPairCode,
+            device_name: 'Modelo Totem',
+            status: 'pending_pair',
+            last_seen: new Date().toISOString()
+          });
+        } else {
+          return supabaseQuery('devices?id=eq.' + devId, 'PATCH', {
+            pair_code: currentPairCode,
+            status: devs[0].status === 'approved' ? 'approved' : 'pending_pair',
+            last_seen: new Date().toISOString()
+          });
+        }
+      }).catch(function(err) {
+        console.warn('Registro REST:', err);
+      });
 
-      // Iniciar batimento cardíaco (Heartbeat a cada 20 segundos)
-      if (heartbeatTimer) clearInterval(heartbeatTimer);
-      heartbeatTimer = setInterval(sendHeartbeat, 20000);
-
-      // Polling de aprovação a cada 3 segundos como redundância infalível
+      // Polling a cada 3s para ver se foi aprovado
       if (pollPairTimer) clearInterval(pollPairTimer);
       pollPairTimer = setInterval(checkIfApprovedRemotely, 3000);
+
+      // Heartbeat a cada 20s
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
+      heartbeatTimer = setInterval(sendHeartbeat, 20000);
     }
 
-    async function sendHeartbeat() {
-      const devId = getStoredDeviceId();
-      if (!window.totemCentral || !window.totemCentral.client || !devId) return;
-      try {
-        await window.totemCentral.client
-          .from('devices')
-          .update({ last_seen: new Date().toISOString() })
-          .eq('id', devId);
-      } catch (e) {}
+    // Heartbeat
+    function sendHeartbeat() {
+      var devId = getStoredDeviceId();
+      if (!devId) return;
+      supabaseQuery('devices?id=eq.' + devId, 'PATCH', {
+        last_seen: new Date().toISOString()
+      }).catch(function() {});
     }
 
-    async function checkIfApprovedRemotely() {
+    // Checar se foi aprovado
+    function checkIfApprovedRemotely() {
       if (isPaired) return;
-      const devId = getStoredDeviceId();
-      if (!window.totemCentral || !window.totemCentral.client || !devId) return;
-
-      try {
-        const { data: dev } = await window.totemCentral.client
-          .from('devices')
-          .select('id, device_name, status, current_video_id')
-          .eq('id', devId)
-          .maybeSingle();
-
-        if (dev && dev.status === 'approved') {
-          console.log('⚡ Tela aprovada e emparelhada detectada!');
-          unlockPlayer(dev.device_name || 'Modelo Totem', true);
-          if (dev.current_video_id) {
-            fetchActiveOrLatestVideo(dev.current_video_id);
-          } else if (!currentUrl) {
-            fetchActiveOrLatestVideo();
+      var devId = getStoredDeviceId();
+      supabaseQuery('devices?id=eq.' + devId, 'GET').then(function(devs) {
+        if (devs && devs.length > 0) {
+          var dev = devs[0];
+          if (dev.status === 'approved') {
+            console.log('⚡ Tela aprovada no painel!');
+            unlockPlayer(dev.device_name || 'Modelo Totem');
+            if (dev.current_video_id) {
+              fetchActiveOrLatestVideo(dev.current_video_id);
+            } else if (!currentUrl) {
+              fetchActiveOrLatestVideo();
+            }
           }
         }
-      } catch (e) {}
+      }).catch(function() {});
     }
 
-    // 3. DESBLOQUEAR AO SER EMPARELHADO E AUTORIZADO
-    function unlockPlayer(name = 'Modelo Totem') {
+    // Desbloquear e entrar no modo player
+    function unlockPlayer(name) {
       if (isPaired && waitScreen && waitScreen.classList.contains('hidden') && videoElem && !videoElem.classList.contains('hidden')) {
-        return; // Já está desbloqueado e ativo
+        return;
       }
       isPaired = true;
       try {
@@ -361,64 +545,34 @@
         pollPairTimer = null;
       }
 
-      if (waitScreen && !waitScreen.classList.contains('hidden')) {
-        waitScreen.classList.add('hidden');
-      }
-      if (videoElem) {
-        videoElem.classList.remove('hidden');
-      }
+      if (waitScreen) waitScreen.classList.add('hidden');
+      if (videoElem) videoElem.classList.remove('hidden');
 
-      hideLoader();
       initWakeLock();
       sendHeartbeat();
     }
 
-    // Botão de bypass manual ("Testar Sem Emparelhar")
+    // Botão de teste sem emparelhar
     if (screenDirectBypassBtn) {
-      screenDirectBypassBtn.addEventListener('click', () => {
-        unlockPlayer('Modo Direto', true);
+      screenDirectBypassBtn.addEventListener('click', function() {
+        unlockPlayer('Modo Direto');
         fetchActiveOrLatestVideo();
       });
     }
 
-    // Helpers
+    // Extrair ID do YouTube
     function getYouTubeId(url) {
       if (!url) return null;
-      const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/))([\w-]{11})/);
+      var match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/))([\w-]{11})/);
       return match ? match[1] : null;
     }
 
-    function getDriveId(url) {
-      if (!url) return null;
-      const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-      return match ? match[1] : null;
-    }
-
-    function hideLoader() {
-      if (loaderTimer) clearTimeout(loaderTimer);
-      if (loaderOverlay) {
-        loaderOverlay.classList.add('opacity-0', 'pointer-events-none', 'hidden');
-      }
-      if (videoElem) {
-        videoElem.classList.remove('opacity-0');
-        videoElem.classList.add('opacity-100');
-      }
-      if (iframeElem && !iframeElem.classList.contains('hidden')) {
-        iframeElem.classList.remove('opacity-0');
-        iframeElem.classList.add('opacity-100');
-      }
-    }
-
-    function showLoader(text) {
-      if (loaderTimer) clearTimeout(loaderTimer);
-    }
-
-    // 4. REPRODUZIR VÍDEO (Modo Kiosk: 100% Sem Controles e Loop Eterno)
+    // Reproduzir Vídeo
     function playVideo(video) {
       if (!video || (!video.url && !video.video_url)) return;
 
-      const mediaRawUrl = video.url || video.video_url;
-      const newVideoId = video.id || null;
+      var mediaRawUrl = video.url || video.video_url;
+      var newVideoId = video.id || null;
 
       if (currentUrl === mediaRawUrl && currentPlayingVideoId === newVideoId && videoElem && !videoElem.paused && !videoElem.ended) {
         return;
@@ -427,42 +581,28 @@
       currentUrl = mediaRawUrl;
       currentPlayingVideoId = newVideoId;
 
-      const ytId = getYouTubeId(mediaRawUrl);
-      const driveId = getDriveId(mediaRawUrl);
+      var ytId = getYouTubeId(mediaRawUrl);
 
       if (ytId) {
-        // Reprodução via YouTube Iframe Embed Kiosk
         try { videoElem.pause(); } catch (e) {}
-        videoElem.classList.add('hidden', 'opacity-0');
+        videoElem.classList.add('hidden');
         iframeElem.classList.remove('hidden');
-        iframeElem.classList.remove('opacity-0');
-        iframeElem.classList.add('opacity-100');
-
-        iframeElem.src = `https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&mute=1&loop=1&playlist=${ytId}&controls=0&modestbranding=1&rel=0&playsinline=1&enablejsapi=1&iv_load_policy=3&disablekb=1&fs=0`;
-
-        iframeElem.onload = () => {
-          hideLoader();
-          initWakeLock();
-        };
-        setTimeout(hideLoader, 1200);
+        iframeElem.src = 'https://www.youtube-nocookie.com/embed/' + ytId + '?autoplay=1&mute=1&loop=1&playlist=' + ytId + '&controls=0&modestbranding=1&rel=0&playsinline=1&enablejsapi=1&iv_load_policy=3&disablekb=1&fs=0';
+        initWakeLock();
         return;
       }
 
-      // Se for Google Drive, Dropbox ou arquivo MP4/WebM direto
-      iframeElem.classList.add('hidden', 'opacity-0');
+      iframeElem.classList.add('hidden');
       iframeElem.src = 'about:blank';
       videoElem.classList.remove('hidden');
 
-      let targetMediaUrl = mediaRawUrl;
-      if (driveId) {
-        targetMediaUrl = window.location.origin + `/api/stream?id=${driveId}`;
-      } else if (targetMediaUrl.includes('dropbox.com')) {
+      var targetMediaUrl = mediaRawUrl;
+      if (targetMediaUrl.indexOf('dropbox.com') !== -1) {
         targetMediaUrl = targetMediaUrl.replace(/[?&]dl=0/, '?raw=1').replace(/[?&]dl=1/, '?raw=1');
-      } else if (targetMediaUrl.startsWith('/')) {
+      } else if (targetMediaUrl.indexOf('/') === 0) {
         targetMediaUrl = window.location.origin + targetMediaUrl;
       }
 
-      // Configurações críticas para Android APK / WebView Autoplay
       videoElem.muted = isMuted;
       videoElem.defaultMuted = isMuted;
       videoElem.volume = 0;
@@ -474,222 +614,140 @@
       videoElem.setAttribute('x5-video-player-fullscreen', 'true');
       videoElem.preload = 'auto';
 
-      // Garantia de nenhum controle de mídia na tela
       videoElem.controls = false;
       videoElem.removeAttribute('controls');
       videoElem.setAttribute('controlslist', 'nodownload nofullscreen noremoteplayback noplaybackrate');
       videoElem.setAttribute('disablepictureinpicture', 'true');
       videoElem.setAttribute('disableremoteplayback', 'true');
 
-      // Loop Eterno: recomeça instantaneamente ao terminar
       videoElem.loop = true;
       videoElem.setAttribute('loop', 'true');
-      videoElem.onended = () => {
+      videoElem.onended = function() {
         videoElem.currentTime = 0;
-        videoElem.play().catch(() => {});
+        videoElem.play().catch(function() {});
       };
 
-      // Eventos de reprodução suave
-      videoElem.onplaying = hideLoader;
-      videoElem.onloadeddata = hideLoader;
-      videoElem.ontimeupdate = () => {
-        if (videoElem.currentTime > 0) hideLoader();
-      };
-
-      videoElem.oncanplay = () => {
-        hideLoader();
-        videoElem.play().catch(() => {
-          videoElem.muted = true;
-          videoElem.play().catch(() => {});
-        });
-      };
-
-      videoElem.onerror = () => {
-        console.warn('Erro ou reconexão no vídeo direto:', videoElem.error);
-        hideLoader();
-        setTimeout(() => {
+      videoElem.onerror = function() {
+        console.warn('Erro ao reproduzir mídia, tentando novamente em 3s...');
+        setTimeout(function() {
           if (currentUrl === mediaRawUrl) {
             videoElem.src = targetMediaUrl;
             videoElem.load();
-            videoElem.play().catch(() => {});
+            videoElem.play().catch(function() {});
           }
-        }, 2000);
+        }, 3000);
       };
 
       videoElem.src = targetMediaUrl;
       videoElem.load();
 
-      // Disparar reprodução imediatamente
-      const startPromise = videoElem.play();
+      var startPromise = videoElem.play();
       if (startPromise !== undefined) {
-        startPromise.then(() => {
-          hideLoader();
+        startPromise.then(function() {
           initWakeLock();
-        }).catch(() => {
+        }).catch(function() {
           videoElem.muted = true;
-          videoElem.play().then(hideLoader).catch(hideLoader);
+          videoElem.play().catch(function() {});
         });
       }
     }
 
-    // Buscar vídeo ativo ou o mais recente da biblioteca
-    async function fetchActiveOrLatestVideo(preferredVideoId = null, retries = 8) {
-      if (!window.totemCentral || !window.totemCentral.client) {
-        if (retries > 0) {
-          setTimeout(() => fetchActiveOrLatestVideo(preferredVideoId, retries - 1), 350);
-        }
-        return;
-      }
-      try {
-        if (preferredVideoId) {
-          const { data: v } = await window.totemCentral.client
-            .from('videos')
-            .select('*')
-            .eq('id', preferredVideoId)
-            .maybeSingle();
-          if (v && (v.video_url || v.url)) {
-            playVideo({ id: v.id, title: v.title, url: v.video_url || v.url });
-            return;
-          }
-        }
-
-        const myDevId = getStoredDeviceId();
-        if (myDevId) {
-          const { data: dev } = await window.totemCentral.client
-            .from('devices')
-            .select('current_video_id')
-            .eq('id', myDevId)
-            .maybeSingle();
-          if (dev && dev.current_video_id) {
-            const { data: v } = await window.totemCentral.client
-              .from('videos')
-              .select('*')
-              .eq('id', dev.current_video_id)
-              .maybeSingle();
-            if (v && (v.video_url || v.url)) {
+    // Buscar vídeo ativo ou o mais recente
+    function fetchActiveOrLatestVideo(preferredVideoId, retries) {
+      if (retries === undefined) retries = 8;
+      
+      if (preferredVideoId) {
+        supabaseQuery('videos?id=eq.' + preferredVideoId, 'GET').then(function(videos) {
+          if (videos && videos.length > 0) {
+            var v = videos[0];
+            if (v.video_url || v.url) {
               playVideo({ id: v.id, title: v.title, url: v.video_url || v.url });
               return;
             }
           }
-        }
-
-        // Busca o vídeo mais recente cadastrado
-        const { data: videos } = await window.totemCentral.client
-          .from('videos')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(1);
-
-        if (videos && videos.length > 0 && (videos[0].video_url || videos[0].url)) {
-          playVideo({ id: videos[0].id, title: videos[0].title, url: videos[0].video_url || videos[0].url });
-        }
-      } catch (err) {
-        console.warn('Aviso ao carregar vídeo inicial:', err);
+          fetchLatestVideo();
+        }).catch(function() {
+          fetchLatestVideo();
+        });
+      } else {
+        var myDevId = getStoredDeviceId();
+        supabaseQuery('devices?id=eq.' + myDevId, 'GET').then(function(devs) {
+          if (devs && devs.length > 0 && devs[0].current_video_id) {
+            fetchActiveOrLatestVideo(devs[0].current_video_id);
+          } else {
+            fetchLatestVideo();
+          }
+        }).catch(function() {
+          fetchLatestVideo();
+        });
       }
     }
 
-    // 5. REGISTRAR LISTENERS EM TEMPO REAL NO TOTEM CENTRAL ENGINE
-    function setupEngineListeners() {
-      if (!window.totemCentral || !window.totemCentral.listeners) return;
-
-      window.totemCentral.listeners.onDeviceApproved = (device) => {
-        console.log('⚡ Evento onDeviceApproved recebido:', device);
-        const myId = getStoredDeviceId();
-        if (!device || (device.id && device.id !== myId)) return;
-
-        if (device.status === 'unlinked' || device.status === 'rejected') {
-          console.log('⚠️ Dispositivo desvinculado no painel');
-          showPairingScreen();
-        } else if (device.status === 'approved') {
-          unlockPlayer(device.device_name || 'Modelo Totem', true);
-          const nextVidId = device.currentVideoId || device.current_video_id;
-          if (nextVidId && nextVidId !== currentPlayingVideoId) {
-            fetchActiveOrLatestVideo(nextVidId);
-          } else if (!currentUrl) {
-            fetchActiveOrLatestVideo();
+    function fetchLatestVideo() {
+      supabaseQuery('videos?order=created_at.desc&limit=1', 'GET').then(function(videos) {
+        if (videos && videos.length > 0) {
+          var v = videos[0];
+          if (v.video_url || v.url) {
+            playVideo({ id: v.id, title: v.title, url: v.video_url || v.url });
           }
         }
-      };
-
-      window.totemCentral.listeners.onVideoCommandReceived = (payload) => {
-        console.log('⚡ Ordem de vídeo recebida:', payload);
-        const myId = getStoredDeviceId();
-        if (payload.targetDeviceId && payload.targetDeviceId !== myId) {
-          return;
-        }
-        if (payload.url || payload.video_url) {
-          unlockPlayer('Modelo Totem', false);
-          playVideo(payload);
-        }
-      };
+      }).catch(function(err) {
+        console.warn('Erro ao carregar último vídeo:', err);
+      });
     }
 
-    // 6. POLLING PERIÓDICO & HOT-SWAP AUTOMÁTICO (Infalível em APK / Android TV)
-    async function checkApprovalStatus() {
-      const deviceId = getStoredDeviceId();
-      if (!deviceId || !window.totemCentral || !window.totemCentral.client) return;
+    // Checagem periódica contínua (Hot-Swap)
+    function checkApprovalStatus() {
+      var devId = getStoredDeviceId();
+      if (!devId) return;
 
-      try {
-        const { data, error } = await window.totemCentral.client
-          .from('devices')
-          .select('id, device_name, status, current_video_id')
-          .eq('id', deviceId)
-          .maybeSingle();
-
-        if (!error && data) {
+      supabaseQuery('devices?id=eq.' + devId, 'GET').then(function(devs) {
+        if (devs && devs.length > 0) {
+          var data = devs[0];
           if (data.status === 'rejected' || data.status === 'unlinked') {
             if (isPaired) {
-              console.log('⚠️ Status alterado para desvinculado.');
               showPairingScreen();
             }
             return;
           }
-
           if (data.status === 'approved') {
             if (!isPaired) {
-              unlockPlayer(data.device_name || 'Modelo Totem', true);
+              unlockPlayer(data.device_name || 'Modelo Totem');
             }
-
-            // HOT-SWAP AUTOMÁTICO: troca NA HORA sem precisar revincular
             if (data.current_video_id && data.current_video_id !== currentPlayingVideoId) {
-              console.log('⚡ Hot-swap: novo vídeo detectado no painel:', data.current_video_id);
+              console.log('⚡ Hot-swap de vídeo detectado:', data.current_video_id);
               fetchActiveOrLatestVideo(data.current_video_id);
             } else if (!currentUrl) {
               fetchActiveOrLatestVideo(data.current_video_id);
             }
           }
         }
-      } catch (e) {
-        console.warn('Aviso ao checar status:', e);
-      }
+      }).catch(function() {});
     }
 
-    // Watchdog / Loop Perpétuo: Garante que o vídeo NUNCA pare
-    setInterval(() => {
+    // Watchdog de Loop Perpétuo (a cada 1.5s)
+    setInterval(function() {
       if (waitScreen && !waitScreen.classList.contains('hidden')) return;
       if (currentUrl && videoElem && !videoElem.classList.contains('hidden')) {
         if (videoElem.ended) {
           videoElem.currentTime = 0;
-          videoElem.play().catch(() => {});
+          videoElem.play().catch(function() {});
         } else if (videoElem.paused && !document.hidden) {
-          videoElem.play().catch(() => {});
+          videoElem.play().catch(function() {});
         }
       }
     }, 1500);
 
-    // Toque na tela do totem / APK: entra em tela cheia e garante reprodução (útil para política de autoplay)
+    // Toque na tela para Fullscreen e Unmute
     function handleScreenTouch() {
       initWakeLock();
       if (!document.fullscreenElement) {
-        try {
-          document.documentElement.requestFullscreen().catch(() => {});
-        } catch (e) {}
+        try { document.documentElement.requestFullscreen().catch(function() {}); } catch (e) {}
       }
       if (videoElem && videoElem.paused && isPaired) {
-        videoElem.play().catch(() => {});
+        videoElem.play().catch(function() {});
       }
     }
-
     if (playerBox) {
       playerBox.addEventListener('click', handleScreenTouch);
       playerBox.addEventListener('touchstart', handleScreenTouch, { passive: true });
@@ -698,84 +756,73 @@
     window.addEventListener('touchstart', handleScreenTouch, { once: true, passive: true });
 
     // Inicialização da Tela
-    async function initScreen() {
-      const devId = getStoredDeviceId();
+    function initScreen() {
+      var devId = getStoredDeviceId();
       if (screenDeviceId) screenDeviceId.textContent = 'ID: ' + devId;
 
-      const urlParams = new URLSearchParams(window.location.search);
+      // Código de emparelhamento exibido IMEDIATAMENTE no HTML
+      currentPairCode = localStorage.getItem('totem_pair_code');
+      if (!currentPairCode) {
+        currentPairCode = String(Math.floor(100000 + Math.random() * 900000));
+        try { localStorage.setItem('totem_pair_code', currentPairCode); } catch (e) {}
+      }
+      if (screenPairCode) screenPairCode.textContent = currentPairCode;
+
+      var urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get('direct') === '1' || urlParams.get('autorun') === '1') {
-        unlockPlayer('Modo Direto', false);
+        unlockPlayer('Modo Direto');
         fetchActiveOrLatestVideo();
         return;
       }
 
-      const locallyPaired = localStorage.getItem('totem_screen_paired') === 'true';
+      var locallyPaired = localStorage.getItem('totem_screen_paired') === 'true';
 
-      // Aguardar cliente Supabase carregar
-      let checks = 0;
-      while ((!window.totemCentral || !window.totemCentral.client) && checks < 20) {
-        await new Promise(r => setTimeout(r, 150));
-        checks++;
-      }
-
-      setupEngineListeners();
-
-      if (window.totemCentral && window.totemCentral.client) {
-        try {
-          const { data: dev } = await window.totemCentral.client
-            .from('devices')
-            .select('*')
-            .eq('id', devId)
-            .maybeSingle();
-
-          if (dev && dev.status === 'approved') {
-            unlockPlayer(dev.device_name || 'Modelo Totem', false);
+      // Verificar status remoto no banco
+      supabaseQuery('devices?id=eq.' + devId, 'GET').then(function(devs) {
+        if (devs && devs.length > 0) {
+          var dev = devs[0];
+          if (dev.status === 'approved') {
+            unlockPlayer(dev.device_name || 'Modelo Totem');
             fetchActiveOrLatestVideo(dev.current_video_id);
             return;
-          } else if (dev && (dev.status === 'unlinked' || dev.status === 'rejected')) {
+          } else if (dev.status === 'unlinked' || dev.status === 'rejected') {
             showPairingScreen();
             return;
           }
-        } catch (e) {
-          console.warn('Erro ao verificar dispositivo no banco:', e);
         }
-      }
-
-      if (locallyPaired) {
-        unlockPlayer('Modelo Totem', false);
-        fetchActiveOrLatestVideo();
-      } else {
-        showPairingScreen();
-      }
+        if (locallyPaired) {
+          unlockPlayer('Modelo Totem');
+          fetchActiveOrLatestVideo();
+        } else {
+          showPairingScreen(currentPairCode);
+        }
+      }).catch(function(err) {
+        if (locallyPaired) {
+          unlockPlayer('Modelo Totem');
+          fetchActiveOrLatestVideo();
+        } else {
+          showPairingScreen(currentPairCode);
+        }
+      });
     }
 
-    // Inicialização ao carregar o DOM
+    // Inicializar assim que o documento carregar
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', initScreen);
     } else {
       initScreen();
     }
 
-    // Polling contínuo de verificação a cada 3 segundos
+    // Polling contínuo
     setInterval(checkApprovalStatus, 3000);
-
-    // Heartbeat contínuo a cada 20 segundos
     setInterval(sendHeartbeat, 20000);
 
-    // Reconexão ao voltar a internet
-    window.addEventListener('online', () => {
-      console.log('⚡ Rede reconectada.');
+    // Reconexão
+    window.addEventListener('online', function() {
+      console.log('⚡ Conexão restaurada.');
       sendHeartbeat();
       checkApprovalStatus();
-      if (window.totemCentral) window.totemCentral.setupRealtimeSubscriptions();
     });
-
-    // Registro do Service Worker para o PWABuilder / WebAPK
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js', { scope: '/' })
-        .then(() => console.log('Service Worker ativo para Totem Screen.'))
-        .catch(console.warn);
-    }
   </script>
 </body>
 </html>
