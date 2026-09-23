@@ -3,3 +3,9 @@
 node_modules
 uploads
 database.json
+.idea
+*.iml
+android/.gradle
+android/build
+android/app/build
+android/local.properties

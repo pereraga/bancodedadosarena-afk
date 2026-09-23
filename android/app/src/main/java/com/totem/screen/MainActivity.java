@@ -113,18 +113,8 @@ public class MainActivity extends Activity {
         // Permite autoplay sem exigir toque físico na tela
         settings.setMediaPlaybackRequiresUserGesture(false);
 
-        // Prioridade de renderização alta no Android 6.0.1 (API 23)
-        try {
-            settings.setRenderPriority(WebSettings.RenderPriority.HIGH);
-        } catch (Exception ignored) {}
-
         // Otimização de Cache e Memória (1GB RAM)
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
-        try {
-            settings.setAppCacheEnabled(true);
-            settings.setAppCachePath(getApplicationContext().getCacheDir().getAbsolutePath());
-            settings.setAppCacheMaxSize(25 * 1024 * 1024); // Limite de 25MB para não sobrecarregar
-        } catch (Exception ignored) {}
 
         // Desativa recursos desnecessários para economizar memória e ciclos de CPU A83T
         settings.setGeolocationEnabled(false);
