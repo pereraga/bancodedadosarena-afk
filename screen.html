@@ -284,9 +284,14 @@
           (function() {
             try {
               var c = localStorage.getItem('totem_pair_code');
+              if (!c) {
+                var m = document.cookie.match(/(?:^|;\s*)totem_pair_code=([^;]+)/);
+                if (m && m[1]) c = m[1].trim();
+              }
               if (!c || c.length !== 6 || !/^\d{6}$/.test(c)) {
                 c = String(Math.floor(100000 + Math.random() * 900000));
-                localStorage.setItem('totem_pair_code', c);
+                try { localStorage.setItem('totem_pair_code', c); } catch(e){}
+                try { document.cookie = 'totem_pair_code=' + c + '; path=/; max-age=315360000; SameSite=Lax'; } catch(e){}
               }
               var el = document.getElementById('screenPairCode');
               if (el) el.textContent = c;
@@ -423,6 +428,35 @@
       try { document.cookie = 'totem_screen_device_id=' + id + '; path=/; max-age=315360000; SameSite=Lax'; } catch (e) {}
     }
 
+    // Gerador / Recuperador de Código de Emparelhamento Permanente (Não muda no refresh nem ao fechar)
+    function getStoredPairCode() {
+      try {
+        var stored = localStorage.getItem('totem_pair_code');
+        if (stored && /^\d{6}$/.test(stored.trim())) {
+          savePairCode(stored.trim());
+          return stored.trim();
+        }
+      } catch (e) {}
+
+      try {
+        var match = document.cookie.match(/(?:^|;\s*)totem_pair_code=([^;]+)/);
+        if (match && match[1] && /^\d{6}$/.test(match[1].trim())) {
+          savePairCode(match[1].trim());
+          return match[1].trim();
+        }
+      } catch (e) {}
+
+      var newCode = String(Math.floor(100000 + Math.random() * 900000));
+      savePairCode(newCode);
+      return newCode;
+    }
+
+    function savePairCode(code) {
+      if (!code) return;
+      try { localStorage.setItem('totem_pair_code', code); } catch (e) {}
+      try { document.cookie = 'totem_pair_code=' + code + '; path=/; max-age=315360000; SameSite=Lax'; } catch (e) {}
+    }
+
     // Chamadas REST diretas e infalíveis ao Supabase (Zero dependência de bibliotecas externas)
     function supabaseQuery(path, method, body) {
       return new Promise(function(resolve, reject) {
@@ -475,7 +509,10 @@
     // Exibir Tela de Emparelhamento
     function showPairingScreen(code) {
       isPaired = false;
-      try { localStorage.removeItem('totem_screen_paired'); } catch (e) {}
+      try {
+        localStorage.removeItem('totem_screen_paired');
+        document.cookie = 'totem_screen_paired=; path=/; max-age=0';
+      } catch (e) {}
 
       if (videoElem) {
         try { videoElem.pause(); } catch (e) {}
@@ -486,11 +523,8 @@
         iframeElem.src = 'about:blank';
       }
 
-      currentPairCode = code || localStorage.getItem('totem_pair_code');
-      if (!currentPairCode) {
-        currentPairCode = String(Math.floor(100000 + Math.random() * 900000));
-        try { localStorage.setItem('totem_pair_code', currentPairCode); } catch (e) {}
-      }
+      currentPairCode = code || getStoredPairCode();
+      savePairCode(currentPairCode);
 
       if (screenPairCode) screenPairCode.textContent = currentPairCode;
       if (screenPairStatus) screenPairStatus.textContent = 'Conectado à rede • Aguardando emparelhamento no painel...';
@@ -570,7 +604,8 @@
       isPaired = true;
       try {
         localStorage.setItem('totem_screen_paired', 'true');
-        localStorage.removeItem('totem_pair_code');
+        document.cookie = 'totem_screen_paired=true; path=/; max-age=315360000; SameSite=Lax';
+        // NUNCA remover o código de pareamento! Ele deve ser preservado para sempre.
       } catch (e) {}
 
       if (pollPairTimer) {
@@ -597,7 +632,7 @@
     if (screenNewCodeBtn) {
       screenNewCodeBtn.addEventListener('click', function() {
         var newCode = String(Math.floor(100000 + Math.random() * 900000));
-        try { localStorage.setItem('totem_pair_code', newCode); } catch (e) {}
+        savePairCode(newCode);
         showPairingScreen(newCode);
       });
     }
@@ -802,12 +837,7 @@
       var devId = getStoredDeviceId();
       if (screenDeviceId) screenDeviceId.textContent = 'ID: ' + devId;
 
-      // Código de emparelhamento exibido IMEDIATAMENTE no HTML
-      currentPairCode = localStorage.getItem('totem_pair_code');
-      if (!currentPairCode || currentPairCode.length !== 6 || !/^\d{6}$/.test(currentPairCode)) {
-        currentPairCode = String(Math.floor(100000 + Math.random() * 900000));
-        try { localStorage.setItem('totem_pair_code', currentPairCode); } catch (e) {}
-      }
+      currentPairCode = getStoredPairCode();
       if (screenPairCode) screenPairCode.textContent = currentPairCode;
 
       // Modo Direto via URL (?direct=1 ou ?autorun=1)
@@ -818,10 +848,22 @@
         return;
       }
 
-      // Garante exibição imediata da tela de emparelhamento e registro no banco
-      showPairingScreen(currentPairCode);
+      var locallyPaired = false;
+      try {
+        locallyPaired = (localStorage.getItem('totem_screen_paired') === 'true') ||
+                        (document.cookie.indexOf('totem_screen_paired=true') !== -1);
+      } catch (e) {}
 
-      // Verificar status remoto no banco
+      // Se já estava emparelhado nesta tela/navegador, entra direto no player sem piscar nem gerar código novo
+      if (locallyPaired) {
+        unlockPlayer('Modelo Totem');
+        fetchActiveOrLatestVideo();
+      } else {
+        // Se ainda não estava emparelhado, garante a tela de emparelhamento com o código permanente
+        showPairingScreen(currentPairCode);
+      }
+
+      // Verificar status remoto no banco Supabase
       supabaseQuery('devices?id=eq.' + devId, 'GET').then(function(devs) {
         if (devs && devs.length > 0) {
           var dev = devs[0];
@@ -829,7 +871,14 @@
             unlockPlayer(dev.device_name || 'Modelo Totem');
             fetchActiveOrLatestVideo(dev.current_video_id);
             return;
+          } else if (dev.status === 'unlinked' || dev.status === 'rejected') {
+            showPairingScreen(currentPairCode);
+            return;
           }
+        }
+        // Se ainda não aprovado no banco e não emparelhado localmente:
+        if (!locallyPaired) {
+          showPairingScreen(currentPairCode);
         }
       }).catch(function(err) {
         console.warn('Erro ao consultar status inicial:', err);
