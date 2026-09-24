@@ -607,10 +607,10 @@
         return `
           <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl hover:border-slate-700 transition flex flex-col">
             
-            <!-- Moldura de TV com Prévia do Vídeo (Imagem 1) -->
+            <!-- Moldura de TV com Prévia do Vídeo (Preenchimento Total sem barras ou abas nos cantos) -->
             <div class="relative w-full aspect-video bg-black overflow-hidden border-b border-slate-800 flex items-center justify-center">
               ${activeVidUrl ? `
-                <video src="${activeVidUrl}" class="w-full h-full object-contain pointer-events-none opacity-85" muted preload="metadata"></video>
+                <video src="${activeVidUrl}" class="w-full h-full object-cover pointer-events-none" muted preload="metadata"></video>
               ` : `
                 <!-- Moldura de monitor vazia (preta como na Imagem 1) -->
                 <div class="w-full h-full bg-slate-950 flex flex-col items-center justify-center text-slate-600">
@@ -621,17 +621,15 @@
                   </svg>
                 </div>
               `}
-
-              <!-- Badge On-line / Off-line no Canto Inferior Direito da Prévia (Imagem 1) -->
-              <span class="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded text-[11px] font-bold tracking-wide shadow ${isOnline ? 'bg-[#43a047] text-white' : 'bg-slate-700 text-slate-300'}">
-                ${isOnline ? 'On-line' : 'Off-line'}
-              </span>
             </div>
 
             <!-- Dados da Tela -->
             <div class="p-4 flex items-start justify-between">
               <div>
-                <h3 class="font-bold text-white text-base">${screenName}</h3>
+                <h3 class="font-bold text-white text-base flex items-center space-x-2">
+                  <span class="w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-emerald-400 shadow-sm shadow-emerald-400/50' : 'bg-slate-600'}" title="${isOnline ? 'On-line' : 'Off-line'}"></span>
+                  <span>${screenName}</span>
+                </h3>
                 <p class="text-xs text-slate-400 mt-0.5">${lastSeenText}</p>
               </div>
 
