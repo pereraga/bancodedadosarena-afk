@@ -12,7 +12,7 @@ set "GRADLE_BAT=C:\Users\PC\.gradle\wrapper\dists\gradle-8.14.3-all\10utluxaxnii
 
 echo [3/3] Compilando APK nativo com site embutido...
 cd android
-call "%GRADLE_BAT%" assembleDebug
+call "%GRADLE_BAT%" assembleDebug --no-daemon
 if %ERRORLEVEL% EQU 0 (
     copy /y "app\build\outputs\apk\debug\app-debug.apk" "..\totemscreen.apk"
     echo.
@@ -21,8 +21,5 @@ if %ERRORLEVEL% EQU 0 (
     echo  Arquivo salvo em: %~dp0totemscreen.apk
     echo ========================================================
     echo.
-) else (
-    echo.
-    echo Ocorreu um erro ao compilar o APK.
 )
-pause
+if "%1" neq "--nopause" pause
