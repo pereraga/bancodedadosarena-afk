@@ -39,7 +39,9 @@
       "ipAddress": "127.0.0.1",
       "status": "approved",
       "currentVideoId": "demo-1",
-      "lastSeen": "2026-09-19T12:02:43.696Z"
+      "lastSeen": "2026-09-19T12:02:43.696Z",
+      "volume": 75,
+      "muted": false
     },
     {
       "id": "totem-mrpbp8z",
@@ -49,5 +51,7 @@
       "currentVideoId": "demo-1",
       "lastSeen": "2026-09-19T12:04:05.139Z"
     }
-  ]
+  ],
+  "currentVolume": 75,
+  "isMuted": false
 }

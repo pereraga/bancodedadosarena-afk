@@ -203,21 +203,49 @@
       video.load();
 
       video.oncanplay = () => {
+        video.muted = false;
+        video.volume = 0.8;
         video.play().then(() => {
           loadingOverlay.classList.add('opacity-0', 'pointer-events-none');
           video.classList.remove('opacity-0');
           video.classList.add('opacity-100');
+          audioMutedIcon.classList.add('hidden');
+          audioActiveIcon.classList.remove('hidden');
           requestWakeLock();
         }).catch(err => {
-          console.warn('Autoplay com áudio bloqueado. Tentando no mudo:', err);
+          console.warn('Autoplay com áudio bloqueado pelo navegador. Iniciando mudo:', err);
           video.muted = true;
           video.play().then(() => {
             loadingOverlay.classList.add('opacity-0', 'pointer-events-none');
             video.classList.remove('opacity-0');
             video.classList.add('opacity-100');
+            audioMutedIcon.classList.remove('hidden');
+            audioActiveIcon.classList.add('hidden');
           });
         });
       };
+
+      try {
+        const sse = new EventSource('/api/events');
+        sse.addEventListener('device-volume', (e) => {
+          try {
+            const data = JSON.parse(e.data);
+            if (data && typeof data.volume === 'number') {
+              video.volume = data.volume / 100;
+              video.muted = Boolean(data.muted);
+              if (video.muted) {
+                audioMutedIcon.classList.remove('hidden');
+                audioActiveIcon.classList.add('hidden');
+                showToast('Volume: Mudo 🔇');
+              } else {
+                audioMutedIcon.classList.add('hidden');
+                audioActiveIcon.classList.remove('hidden');
+                showToast(`Volume: ${data.volume}% 🔊`);
+              }
+            }
+          } catch(err){}
+        });
+      } catch(e) {}
 
       video.onerror = (e) => {
         console.error('Erro ao reproduzir mídia:', e);

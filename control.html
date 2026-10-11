@@ -504,6 +504,119 @@
     </div>
   </div>
 
+  <!-- ========================================================================= -->
+  <!-- MODAL: CONTROLE DE VOLUME DO TOTEM (FADER VERTICAL & CHAVE LIGA/DESLIGA)  -->
+  <!-- ========================================================================= -->
+  <div id="verticalVolumeModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-sm w-full p-6 space-y-5 shadow-2xl relative text-center">
+      
+      <!-- Cabeçalho -->
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div class="flex items-center space-x-2.5 text-white font-bold text-base text-left">
+          <div class="w-8 h-8 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            </svg>
+          </div>
+          <div>
+            <h3 class="leading-tight">Controle de Volume</h3>
+            <p id="vVolModalScreenName" class="text-xs text-slate-400 font-normal">Totem</p>
+          </div>
+        </div>
+        <button id="closeVerticalVolumeModalBtn" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Display Numérico e Nível -->
+      <div class="flex flex-col items-center justify-center">
+        <div id="vVolBigValue" class="text-5xl font-black font-mono tracking-tight text-white mb-1">
+          80%
+        </div>
+        <div id="vVolStatusText" class="text-xs font-semibold text-sky-400 uppercase tracking-wider">
+          Áudio Ativo
+        </div>
+      </div>
+
+      <!-- FADER VERTICAL (Para cima = Aumenta / Para baixo = Diminui) -->
+      <div class="flex items-center justify-center space-x-6 py-2">
+        <!-- Botão Subir Volume no Topo -->
+        <div class="flex flex-col items-center space-y-3">
+          <button
+            type="button"
+            id="vVolStepUpBtn"
+            class="w-12 h-10 rounded-xl bg-slate-800 hover:bg-sky-600 hover:text-white text-slate-200 border border-slate-700 flex flex-col items-center justify-center active:scale-95 transition shadow-lg shadow-black/40"
+            title="Aumentar Volume (Para Cima)"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg>
+            <span class="text-[9px] font-bold">+10%</span>
+          </button>
+
+          <!-- Slider Vertical customizado -->
+          <div class="relative h-44 w-12 bg-slate-950 rounded-2xl border border-slate-800 p-1 flex items-center justify-center shadow-inner overflow-hidden">
+            <!-- Barra de preenchimento LED / gradiente -->
+            <div class="absolute bottom-1 left-1 right-1 rounded-xl bg-slate-800/50 overflow-hidden pointer-events-none" style="top: 4px;">
+              <div id="vVolMeterFill" class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-sky-600 to-emerald-400 rounded-xl transition-all duration-150" style="height: 80%;"></div>
+            </div>
+            <!-- Range slider vertical real com orientação vertical cross-browser -->
+            <input
+              type="range"
+              id="vVolVerticalSlider"
+              min="0"
+              max="100"
+              value="80"
+              style="writing-mode: bt-lr; -webkit-appearance: slider-vertical; width: 100%; height: 100%; opacity: 0; cursor: pointer; z-index: 10;"
+            >
+          </div>
+
+          <!-- Botão Descer Volume na Base -->
+          <button
+            type="button"
+            id="vVolStepDownBtn"
+            class="w-12 h-10 rounded-xl bg-slate-800 hover:bg-sky-600 hover:text-white text-slate-200 border border-slate-700 flex flex-col items-center justify-center active:scale-95 transition shadow-lg shadow-black/40"
+            title="Diminuir Volume (Para Baixo)"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+            <span class="text-[9px] font-bold">-10%</span>
+          </button>
+        </div>
+
+        <!-- Atalhos Rápidos de Nível -->
+        <div class="flex flex-col space-y-2">
+          <button type="button" onclick="setModalVolumePreset(100)" class="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-mono font-bold text-slate-300 hover:text-white transition">100%</button>
+          <button type="button" onclick="setModalVolumePreset(75)" class="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-mono font-bold text-slate-300 hover:text-white transition">75%</button>
+          <button type="button" onclick="setModalVolumePreset(50)" class="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-mono font-bold text-slate-300 hover:text-white transition">50%</button>
+          <button type="button" onclick="setModalVolumePreset(25)" class="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-mono font-bold text-slate-300 hover:text-white transition">25%</button>
+          <button type="button" onclick="setModalVolumePreset(0)" class="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-mono font-bold text-slate-300 hover:text-white transition">0%</button>
+        </div>
+      </div>
+
+      <!-- CHAVE INTERRUPTOR LIGA / DESLIGA SOM (MUDO) -->
+      <div class="p-3 bg-slate-950/80 rounded-2xl border border-slate-800 flex items-center justify-between">
+        <div class="flex items-center space-x-2.5 text-left">
+          <div id="vVolSwitchIcon" class="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg>
+          </div>
+          <div>
+            <span class="text-xs font-bold text-white block">Interruptor de Som</span>
+            <span id="vVolSwitchLabel" class="text-[11px] text-slate-400">Ligado (Com Som)</span>
+          </div>
+        </div>
+
+        <!-- Toggle Switch -->
+        <button
+          type="button"
+          id="vVolMuteToggleBtn"
+          class="relative inline-flex h-6 w-11 items-center rounded-full bg-emerald-500 transition-colors focus:outline-none"
+        >
+          <span id="vVolToggleKnob" class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-6"></span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
   <!-- Toast Flutuante -->
   <div id="toast" class="fixed bottom-6 right-6 bg-blue-600 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center space-x-2.5 z-50 transition-all duration-300 opacity-0 translate-y-4 pointer-events-none">
     <svg class="w-5 h-5 text-sky-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
@@ -573,6 +686,16 @@
     let currentScreens = [];
     const screensGrid = document.getElementById('screensGrid');
 
+    // Estado e Memória de Volume por Tela (Persistente no LocalStorage)
+    const screenVolumes = {};
+    const screenMutes = {};
+    try {
+      const savedVols = JSON.parse(localStorage.getItem('totem_control_volumes') || '{}');
+      Object.assign(screenVolumes, savedVols);
+      const savedMutes = JSON.parse(localStorage.getItem('totem_control_mutes') || '{}');
+      Object.assign(screenMutes, savedMutes);
+    } catch(e) {}
+
     function renderScreens(devices) {
       currentScreens = (devices || []).filter(d => d.status !== 'unlinked' && d.status !== 'pending_pair');
 
@@ -603,6 +726,11 @@
         const activeVid = currentVideos.find(v => v.id === (dev.currentVideoId || dev.current_video_id));
         const activeVidUrl = activeVid ? (activeVid.url || activeVid.video_url) : null;
         const activeVidTitle = activeVid ? escapeHtml(activeVid.title) : 'Nenhum vídeo selecionado';
+
+        const devVol = typeof dev.volume === 'number' ? dev.volume : (screenVolumes[dev.id] !== undefined ? screenVolumes[dev.id] : 80);
+        const devMuted = typeof dev.muted === 'boolean' ? dev.muted : (screenMutes[dev.id] !== undefined ? screenMutes[dev.id] : false);
+        screenVolumes[dev.id] = devVol;
+        screenMutes[dev.id] = devMuted;
 
         return `
           <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl hover:border-slate-700 transition flex flex-col">
@@ -647,6 +775,10 @@
 
                 <!-- Dropdown de Ações -->
                 <div id="dropdown-${dev.id}" class="absolute right-0 bottom-full mb-1 w-48 rounded-xl bg-slate-900 border border-slate-700 shadow-2xl p-1.5 text-xs text-slate-200 z-30 hidden space-y-1">
+                  <button onclick="openVerticalVolumeModal('${dev.id}', '${screenName}', ${devVol}, ${devMuted}, event)" class="w-full px-3 py-2 text-left rounded-lg hover:bg-slate-800 flex items-center space-x-2 text-sky-400">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg>
+                    <span>Fader de Volume</span>
+                  </button>
                   <button onclick="promptChangeVideo('${dev.id}', '${screenName}')" class="w-full px-3 py-2 text-left rounded-lg hover:bg-slate-800 flex items-center space-x-2">
                     <svg class="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     <span>Alterar Vídeo</span>
@@ -667,6 +799,97 @@
               </div>
             </div>
 
+            <!-- CONTROLE DE VOLUME DO TOTEM (LIGA / DESLIGA / AUMENTA / DIMINUI) -->
+            <div class="px-4 py-3 bg-slate-950/70 border-t border-slate-800/80 flex flex-col space-y-2 mt-auto">
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-slate-400 font-medium flex items-center space-x-1.5">
+                  <svg class="w-3.5 h-3.5 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                  </svg>
+                  <span>Volume da Tela</span>
+                </span>
+                <span id="vol-badge-${dev.id}" class="px-2 py-0.5 rounded-md font-mono text-[11px] ${devMuted ? 'bg-rose-500/20 text-rose-300 font-bold border border-rose-500/30' : 'bg-slate-800 text-sky-300 font-semibold'}">
+                  ${devMuted ? 'Mudo (0%)' : devVol + '%'}
+                </span>
+              </div>
+
+              <div class="flex items-center space-x-2">
+                <!-- Botão Liga/Desliga Som (Mudo / Ativo) -->
+                <button
+                  type="button"
+                  id="mute-btn-${dev.id}"
+                  onclick="toggleScreenMute('${dev.id}', event)"
+                  class="p-2 rounded-xl border transition flex items-center justify-center shrink-0 ${devMuted ? 'bg-rose-600/20 border-rose-500/40 text-rose-400 hover:bg-rose-600/30' : 'bg-emerald-600/20 border-emerald-500/40 text-emerald-400 hover:bg-emerald-600/30'}"
+                  title="${devMuted ? 'Ligar Som' : 'Desligar Som (Mudo)'}"
+                >
+                  ${devMuted ? `
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/>
+                    </svg>
+                  ` : `
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+                    </svg>
+                  `}
+                </button>
+
+                <!-- Botão Diminuir Volume (-) -->
+                <button
+                  type="button"
+                  onclick="stepScreenVolume('${dev.id}', -5, event)"
+                  class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center text-sm font-bold transition active:scale-90 shrink-0"
+                  title="Diminuir Volume (-5%)"
+                >
+                  −
+                </button>
+
+                <!-- Slider Deslizante de Volume (Pra Cima / Baixo) -->
+                <div class="relative flex-1 flex items-center">
+                  <input
+                    type="range"
+                    id="vol-slider-${dev.id}"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value="${devMuted ? 0 : devVol}"
+                    oninput="onScreenVolumeSlider('${dev.id}', this.value)"
+                    class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-500 focus:outline-none"
+                  >
+                </div>
+
+                <!-- Botão Aumentar Volume (+) -->
+                <button
+                  type="button"
+                  onclick="stepScreenVolume('${dev.id}', 5, event)"
+                  class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center text-sm font-bold transition active:scale-90 shrink-0"
+                  title="Aumentar Volume (+5%)"
+                >
+                  +
+                </button>
+
+                <!-- Botão Fader Vertical Avançado -->
+                <button
+                  type="button"
+                  onclick="openVerticalVolumeModal('${dev.id}', '${screenName}', ${devVol}, ${devMuted}, event)"
+                  class="p-1.5 rounded-lg bg-slate-800/80 hover:bg-sky-600/30 text-slate-400 hover:text-sky-300 border border-slate-700/60 transition shrink-0"
+                  title="Abrir Controle Fader Vertical (Para Cima e Para Baixo)"
+                >
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="4" y1="21" x2="4" y2="14"></line>
+                    <line x1="4" y1="10" x2="4" y2="3"></line>
+                    <circle cx="4" cy="12" r="2"></circle>
+                    <line x1="12" y1="21" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12" y2="3"></line>
+                    <circle cx="12" cy="10" r="2"></circle>
+                    <line x1="20" y1="21" x2="20" y2="16"></line>
+                    <line x1="20" y1="12" x2="20" y2="3"></line>
+                    <circle cx="20" cy="14" r="2"></circle>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
           </div>
         `;
       }).join('');
@@ -684,6 +907,220 @@
         if (d !== drop) d.classList.add('hidden');
       });
       if (drop) drop.classList.toggle('hidden');
+    };
+
+    // Funções de Controle Remoto de Volume
+    function persistVolumeState() {
+      try {
+        localStorage.setItem('totem_control_volumes', JSON.stringify(screenVolumes));
+        localStorage.setItem('totem_control_mutes', JSON.stringify(screenMutes));
+      } catch(e) {}
+    }
+
+    const volumeDebounceTimers = {};
+    function sendVolumeDebounced(devId, vol, muted) {
+      clearTimeout(volumeDebounceTimers[devId]);
+      volumeDebounceTimers[devId] = setTimeout(async () => {
+        try {
+          if (window.totemCentral && window.totemCentral.setScreenVolume) {
+            await window.totemCentral.setScreenVolume(devId, vol, muted);
+          }
+        } catch (e) {
+          console.warn('Erro ao transmitir volume:', e);
+        }
+      }, 50);
+    }
+
+    window.toggleScreenMute = function(devId, e) {
+      if (e) e.stopPropagation();
+      const currentMute = Boolean(screenMutes[devId]);
+      const newMute = !currentMute;
+      screenMutes[devId] = newMute;
+      const vol = screenVolumes[devId] !== undefined ? screenVolumes[devId] : 80;
+      persistVolumeState();
+
+      updateVolumeUI(devId, vol, newMute);
+      sendVolumeDebounced(devId, vol, newMute);
+      notify(newMute ? '🔇 Tela silenciada (Mudo)' : `🔊 Som da tela ativado (${vol}%)`);
+    };
+
+    window.stepScreenVolume = function(devId, delta, e) {
+      if (e) e.stopPropagation();
+      let vol = screenVolumes[devId] !== undefined ? screenVolumes[devId] : 80;
+      vol = Math.max(0, Math.min(100, vol + delta));
+      screenVolumes[devId] = vol;
+      const muted = (vol === 0);
+      screenMutes[devId] = muted;
+      persistVolumeState();
+
+      updateVolumeUI(devId, vol, muted);
+      sendVolumeDebounced(devId, vol, muted);
+    };
+
+    window.onScreenVolumeSlider = function(devId, val) {
+      const vol = parseInt(val, 10);
+      screenVolumes[devId] = vol;
+      const muted = (vol === 0);
+      screenMutes[devId] = muted;
+      persistVolumeState();
+
+      updateVolumeUI(devId, vol, muted);
+      sendVolumeDebounced(devId, vol, muted);
+    };
+
+    function updateVolumeUI(devId, vol, muted) {
+      const badge = document.getElementById(`vol-badge-${devId}`);
+      if (badge) {
+        badge.textContent = muted ? 'Mudo (0%)' : vol + '%';
+        badge.className = muted
+          ? 'px-2 py-0.5 rounded-md font-mono text-[11px] bg-rose-500/20 text-rose-300 font-bold border border-rose-500/30'
+          : 'px-2 py-0.5 rounded-md font-mono text-[11px] bg-slate-800 text-sky-300 font-semibold';
+      }
+
+      const slider = document.getElementById(`vol-slider-${devId}`);
+      if (slider) {
+        slider.value = muted ? 0 : vol;
+      }
+
+      const muteBtn = document.getElementById(`mute-btn-${devId}`);
+      if (muteBtn) {
+        muteBtn.className = `p-2 rounded-xl border transition flex items-center justify-center shrink-0 ${muted ? 'bg-rose-600/20 border-rose-500/40 text-rose-400 hover:bg-rose-600/30' : 'bg-emerald-600/20 border-emerald-500/40 text-emerald-400 hover:bg-emerald-600/30'}`;
+        muteBtn.title = muted ? 'Ligar Som' : 'Desligar Som (Mudo)';
+        muteBtn.innerHTML = muted ? `
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/>
+          </svg>
+        ` : `
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+          </svg>
+        `;
+      }
+
+      if (activeModalDevId === devId) {
+        syncModalVerticalUI(vol, muted);
+      }
+    }
+
+    // Modal de Volume Vertical (Fader estilo Mesa de Som)
+    let activeModalDevId = null;
+    const verticalVolumeModal = document.getElementById('verticalVolumeModal');
+    const closeVerticalVolumeModalBtn = document.getElementById('closeVerticalVolumeModalBtn');
+    const vVolModalScreenName = document.getElementById('vVolModalScreenName');
+    const vVolBigValue = document.getElementById('vVolBigValue');
+    const vVolStatusText = document.getElementById('vVolStatusText');
+    const vVolMeterFill = document.getElementById('vVolMeterFill');
+    const vVolVerticalSlider = document.getElementById('vVolVerticalSlider');
+    const vVolStepUpBtn = document.getElementById('vVolStepUpBtn');
+    const vVolStepDownBtn = document.getElementById('vVolStepDownBtn');
+    const vVolMuteToggleBtn = document.getElementById('vVolMuteToggleBtn');
+    const vVolToggleKnob = document.getElementById('vVolToggleKnob');
+    const vVolSwitchIcon = document.getElementById('vVolSwitchIcon');
+    const vVolSwitchLabel = document.getElementById('vVolSwitchLabel');
+
+    window.openVerticalVolumeModal = function(devId, screenName, vol, muted, e) {
+      if (e) e.stopPropagation();
+      document.querySelectorAll('[id^="dropdown-"]').forEach(d => d.classList.add('hidden'));
+      activeModalDevId = devId;
+      if (vVolModalScreenName) vVolModalScreenName.textContent = screenName || 'Totem';
+
+      const currentVol = screenVolumes[devId] !== undefined ? screenVolumes[devId] : (typeof vol === 'number' ? vol : 80);
+      const currentMute = screenMutes[devId] !== undefined ? screenMutes[devId] : Boolean(muted);
+
+      syncModalVerticalUI(currentVol, currentMute);
+      if (verticalVolumeModal) verticalVolumeModal.classList.remove('hidden');
+    };
+
+    if (closeVerticalVolumeModalBtn) {
+      closeVerticalVolumeModalBtn.addEventListener('click', () => {
+        if (verticalVolumeModal) verticalVolumeModal.classList.add('hidden');
+        activeModalDevId = null;
+      });
+    }
+
+    function syncModalVerticalUI(vol, muted) {
+      if (!vVolBigValue) return;
+      vVolBigValue.textContent = muted ? '0%' : vol + '%';
+      vVolBigValue.className = muted ? 'text-5xl font-black font-mono tracking-tight text-rose-400 mb-1' : 'text-5xl font-black font-mono tracking-tight text-white mb-1';
+      
+      if (vVolStatusText) {
+        vVolStatusText.textContent = muted ? 'Áudio Silenciado (Mudo)' : 'Áudio Ativo';
+        vVolStatusText.className = muted ? 'text-xs font-semibold text-rose-400 uppercase tracking-wider' : 'text-xs font-semibold text-sky-400 uppercase tracking-wider';
+      }
+
+      if (vVolMeterFill) {
+        vVolMeterFill.style.height = (muted ? 0 : vol) + '%';
+        vVolMeterFill.className = muted
+          ? 'absolute bottom-0 left-0 right-0 bg-rose-600 rounded-xl transition-all duration-150'
+          : 'absolute bottom-0 left-0 right-0 bg-gradient-to-t from-sky-600 to-emerald-400 rounded-xl transition-all duration-150';
+      }
+
+      if (vVolVerticalSlider) {
+        vVolVerticalSlider.value = muted ? 0 : vol;
+      }
+
+      if (vVolMuteToggleBtn && vVolToggleKnob && vVolSwitchLabel && vVolSwitchIcon) {
+        if (muted) {
+          vVolMuteToggleBtn.className = 'relative inline-flex h-6 w-11 items-center rounded-full bg-slate-700 transition-colors focus:outline-none';
+          vVolToggleKnob.className = 'inline-block h-4 w-4 transform rounded-full bg-slate-300 transition-transform translate-x-1';
+          vVolSwitchLabel.textContent = 'Desligado (Mudo)';
+          vVolSwitchLabel.className = 'text-[11px] text-rose-400 font-semibold';
+          vVolSwitchIcon.className = 'w-8 h-8 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center';
+        } else {
+          vVolMuteToggleBtn.className = 'relative inline-flex h-6 w-11 items-center rounded-full bg-emerald-500 transition-colors focus:outline-none';
+          vVolToggleKnob.className = 'inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-6';
+          vVolSwitchLabel.textContent = 'Ligado (Com Som)';
+          vVolSwitchLabel.className = 'text-[11px] text-emerald-400 font-semibold';
+          vVolSwitchIcon.className = 'w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center';
+        }
+      }
+    }
+
+    if (vVolVerticalSlider) {
+      vVolVerticalSlider.addEventListener('input', (e) => {
+        if (!activeModalDevId) return;
+        const vol = parseInt(e.target.value, 10);
+        screenVolumes[activeModalDevId] = vol;
+        const muted = (vol === 0);
+        screenMutes[activeModalDevId] = muted;
+        persistVolumeState();
+
+        updateVolumeUI(activeModalDevId, vol, muted);
+        sendVolumeDebounced(activeModalDevId, vol, muted);
+      });
+    }
+
+    if (vVolStepUpBtn) {
+      vVolStepUpBtn.addEventListener('click', () => {
+        if (!activeModalDevId) return;
+        window.stepScreenVolume(activeModalDevId, 10);
+      });
+    }
+
+    if (vVolStepDownBtn) {
+      vVolStepDownBtn.addEventListener('click', () => {
+        if (!activeModalDevId) return;
+        window.stepScreenVolume(activeModalDevId, -10);
+      });
+    }
+
+    if (vVolMuteToggleBtn) {
+      vVolMuteToggleBtn.addEventListener('click', () => {
+        if (!activeModalDevId) return;
+        window.toggleScreenMute(activeModalDevId);
+      });
+    }
+
+    window.setModalVolumePreset = function(vol) {
+      if (!activeModalDevId) return;
+      screenVolumes[activeModalDevId] = vol;
+      const muted = (vol === 0);
+      screenMutes[activeModalDevId] = muted;
+      persistVolumeState();
+
+      updateVolumeUI(activeModalDevId, vol, muted);
+      sendVolumeDebounced(activeModalDevId, vol, muted);
     };
 
     document.addEventListener('click', (e) => {

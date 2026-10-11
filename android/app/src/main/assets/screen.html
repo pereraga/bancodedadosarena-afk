@@ -106,6 +106,72 @@
       pointer-events: none !important;
     }
 
+    /* Volume OSD (Indicador visual estilo TV de Volume no Totem) */
+    .volume-osd {
+      position: fixed;
+      top: 32px;
+      right: 32px;
+      z-index: 100;
+      background: rgba(10, 17, 32, 0.92);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      border-radius: 20px;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7), 0 0 25px rgba(56, 189, 248, 0.2);
+      transition: opacity 0.35s ease, transform 0.35s ease;
+      pointer-events: none;
+      min-width: 250px;
+    }
+    .volume-osd.osd-fade-out {
+      opacity: 0;
+      transform: translateY(-12px) scale(0.97);
+    }
+    .osd-icon {
+      font-size: 26px;
+      line-height: 1;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+    }
+    .osd-content {
+      flex: 1;
+    }
+    .osd-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+      color: #f8fafc;
+      text-transform: uppercase;
+    }
+    .osd-value {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      color: #38bdf8;
+      font-size: 14px;
+    }
+    .osd-bar-bg {
+      width: 100%;
+      height: 7px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .osd-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #38bdf8, #2563eb);
+      border-radius: 999px;
+      transition: width 0.15s ease-out;
+    }
+    .osd-sub {
+      font-size: 10px;
+      color: #94a3b8;
+      margin-top: 6px;
+      font-weight: 500;
+    }
+
     /* Tela de Emparelhamento Kiosk Profissional */
     #waitScreen {
       position: fixed;
@@ -345,7 +411,6 @@
       loop
       playsinline
       webkit-playsinline
-      muted
       preload="auto"
       disablepictureinpicture
       disableremoteplayback
@@ -360,6 +425,21 @@
       allow="autoplay; encrypted-media; picture-in-picture"
       allowfullscreen
     ></iframe>
+  </div>
+
+  <!-- Indicador Visual de Volume na Tela (OSD) -->
+  <div id="volumeOsd" class="volume-osd hidden">
+    <div class="osd-icon" id="osdIcon">🔊</div>
+    <div class="osd-content">
+      <div class="osd-header">
+        <span id="osdTitle">Volume</span>
+        <span class="osd-value" id="osdValue">80%</span>
+      </div>
+      <div class="osd-bar-bg">
+        <div class="osd-bar-fill" id="osdBarFill" style="width: 80%;"></div>
+      </div>
+      <div class="osd-sub" id="osdSub" style="display:none;"></div>
+    </div>
   </div>
 
   <!-- SCRIPTS COM COMPATIBILIDADE TOTAL (ES5/ES6 Promises - SEM ASYNC/AWAIT PARA TABLETS ANTIGOS) -->
@@ -392,14 +472,93 @@
     var SUPABASE_URL = 'https://qvnsahvdjhimlmtqrnif.supabase.co';
     var SUPABASE_ANON_KEY = 'sb_publishable_vvqh9vB0Dr0EqR9JGhy4kA_XnJ-9h0z';
 
-    // Estado da Tela
+    // Estado da Tela & Volume
     var currentUrl = null;
     var currentPlayingVideoId = null;
     var isPaired = false;
     var currentPairCode = null;
     var pollPairTimer = null;
     var heartbeatTimer = null;
-    var isMuted = true;
+
+    // Volume & Áudio (Restaurado do cache local com padrão 80% ativo)
+    var currentVolume = 80;
+    var isMuted = false;
+    try {
+      var savedVol = localStorage.getItem('totem_screen_volume');
+      if (savedVol !== null && !isNaN(parseInt(savedVol, 10))) {
+        currentVolume = parseInt(savedVol, 10);
+      }
+      var savedMuted = localStorage.getItem('totem_screen_muted');
+      if (savedMuted !== null) {
+        isMuted = (savedMuted === 'true');
+      }
+    } catch(e) {}
+
+    var volumeOsdTimer = null;
+    var volumeOsd = document.getElementById('volumeOsd');
+    var osdIcon = document.getElementById('osdIcon');
+    var osdTitle = document.getElementById('osdTitle');
+    var osdValue = document.getElementById('osdValue');
+    var osdBarFill = document.getElementById('osdBarFill');
+    var osdSub = document.getElementById('osdSub');
+
+    function showVolumeOsd(vol, muted, subMessage) {
+      if (!volumeOsd) return;
+      clearTimeout(volumeOsdTimer);
+
+      if (muted) {
+        if (osdIcon) osdIcon.textContent = '🔇';
+        if (osdTitle) osdTitle.textContent = 'Mudo (Desligado)';
+        if (osdValue) osdValue.textContent = '0%';
+        if (osdBarFill) osdBarFill.style.width = '0%';
+      } else {
+        if (osdIcon) osdIcon.textContent = vol > 50 ? '🔊' : (vol > 0 ? '🔉' : '🔈');
+        if (osdTitle) osdTitle.textContent = 'Volume';
+        if (osdValue) osdValue.textContent = vol + '%';
+        if (osdBarFill) osdBarFill.style.width = vol + '%';
+      }
+
+      if (subMessage && osdSub) {
+        osdSub.textContent = subMessage;
+        osdSub.style.display = 'block';
+      } else if (osdSub) {
+        osdSub.style.display = 'none';
+      }
+
+      volumeOsd.classList.remove('hidden', 'osd-fade-out');
+
+      volumeOsdTimer = setTimeout(function() {
+        volumeOsd.classList.add('osd-fade-out');
+        setTimeout(function() {
+          if (volumeOsd && volumeOsd.classList.contains('osd-fade-out')) {
+            volumeOsd.classList.add('hidden');
+          }
+        }, 350);
+      }, 2500);
+    }
+
+    function setScreenVolume(vol, muted, showBanner) {
+      if (typeof vol === 'number') {
+        currentVolume = Math.max(0, Math.min(100, Math.round(vol)));
+        try { localStorage.setItem('totem_screen_volume', String(currentVolume)); } catch(e){}
+      }
+      if (typeof muted === 'boolean') {
+        isMuted = muted;
+        try { localStorage.setItem('totem_screen_muted', String(isMuted)); } catch(e){}
+      }
+
+      if (videoElem) {
+        videoElem.muted = isMuted;
+        videoElem.volume = isMuted ? 0 : Math.max(0, Math.min(1, currentVolume / 100));
+        if (!isMuted && videoElem.paused && isPaired) {
+          videoElem.play().catch(function(){});
+        }
+      }
+
+      if (showBanner !== false) {
+        showVolumeOsd(currentVolume, isMuted);
+      }
+    }
 
     // Gerador / Recuperador de ID Persistente
     function getStoredDeviceId() {
@@ -692,7 +851,7 @@
 
       videoElem.muted = isMuted;
       videoElem.defaultMuted = isMuted;
-      videoElem.volume = 0;
+      videoElem.volume = isMuted ? 0 : Math.max(0, Math.min(1, currentVolume / 100));
       videoElem.playsInline = true;
       videoElem.setAttribute('playsinline', '');
       videoElem.setAttribute('webkit-playsinline', '');
@@ -732,9 +891,15 @@
       if (startPromise !== undefined) {
         startPromise.then(function() {
           initWakeLock();
-        }).catch(function() {
+        }).catch(function(err) {
+          console.warn('Autoplay com som restrito pelo navegador. Iniciando mudo:', err);
           videoElem.muted = true;
-          videoElem.play().catch(function() {});
+          videoElem.play().then(function() {
+            initWakeLock();
+            if (!isMuted) {
+              showVolumeOsd(currentVolume, true, 'Toque na tela ou aumente no painel para ativar áudio');
+            }
+          }).catch(function() {});
         });
       }
     }
@@ -831,8 +996,16 @@
       if (!document.fullscreenElement) {
         try { document.documentElement.requestFullscreen().catch(function() {}); } catch (e) {}
       }
-      if (videoElem && videoElem.paused && isPaired) {
-        videoElem.play().catch(function() {});
+      if (videoElem) {
+        if (videoElem.paused && isPaired) {
+          videoElem.play().catch(function() {});
+        }
+        // Se o áudio estava silenciado por política de autoplay e deve tocar:
+        if (!isMuted && videoElem.muted) {
+          videoElem.muted = false;
+          videoElem.volume = Math.max(0, Math.min(1, currentVolume / 100));
+          showVolumeOsd(currentVolume, false);
+        }
       }
     }
     if (playerBox) {
@@ -842,6 +1015,78 @@
     window.addEventListener('click', handleScreenTouch, { once: true });
     window.addEventListener('touchstart', handleScreenTouch, { once: true, passive: true });
 
+    // Conexão em tempo real Local (SSE) para resposta instantânea em localhost e Wi-Fi
+    function initLocalSSE() {
+      try {
+        var sse = new EventSource('/api/events');
+        sse.addEventListener('init', function(e) {
+          try {
+            var data = JSON.parse(e.data);
+            if (typeof data.currentVolume === 'number') {
+              setScreenVolume(data.currentVolume, data.isMuted, false);
+            }
+          } catch(err){}
+        });
+        sse.addEventListener('device-volume', function(e) {
+          try {
+            var data = JSON.parse(e.data);
+            var myDevId = getStoredDeviceId();
+            if (!data.deviceId || data.deviceId === myDevId) {
+              setScreenVolume(data.volume, data.muted, true);
+            }
+          } catch(err){}
+        });
+        sse.addEventListener('video-changed', function(e) {
+          try {
+            var video = JSON.parse(e.data);
+            var myDevId = getStoredDeviceId();
+            if (!video.targetDeviceId || video.targetDeviceId === myDevId) {
+              playVideo(video);
+            }
+          } catch(err){}
+        });
+      } catch(err) {
+        console.log('SSE local inativo.');
+      }
+    }
+
+    // Conexão em tempo real Supabase (Broadcasts)
+    function initSupabaseRealtime() {
+      if (!window.supabase) return;
+      try {
+        var client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        var myDevId = getStoredDeviceId();
+
+        // Canal Broadcast da Tela
+        var chanDev = client.channel('device-' + myDevId);
+        chanDev.on('broadcast', { event: 'SET_VOLUME' }, function(p) {
+          if (p && p.payload) {
+            setScreenVolume(p.payload.volume, p.payload.muted, true);
+          }
+        });
+        chanDev.subscribe();
+
+        // Canal Broadcast Global
+        var chanGlobal = client.channel('totem-global-channel');
+        chanGlobal.on('broadcast', { event: 'SET_VOLUME' }, function(p) {
+          if (p && p.payload && (!p.payload.deviceId || p.payload.deviceId === myDevId)) {
+            setScreenVolume(p.payload.volume, p.payload.muted, true);
+          }
+        });
+        chanGlobal.subscribe();
+
+        var chanBroad = client.channel('totem-broadcast');
+        chanBroad.on('broadcast', { event: 'SET_VOLUME' }, function(p) {
+          if (p && p.payload && (!p.payload.deviceId || p.payload.deviceId === myDevId)) {
+            setScreenVolume(p.payload.volume, p.payload.muted, true);
+          }
+        });
+        chanBroad.subscribe();
+      } catch(e) {
+        console.warn('Supabase Realtime broadcast init:', e);
+      }
+    }
+
     // Inicialização da Tela
     function initScreen() {
       var devId = getStoredDeviceId();
@@ -849,6 +1094,10 @@
 
       currentPairCode = getStoredPairCode();
       if (screenPairCode) screenPairCode.textContent = currentPairCode;
+
+      // Inicia conexões em tempo real para controle remoto de áudio e vídeo
+      initLocalSSE();
+      initSupabaseRealtime();
 
       // Modo Direto via URL (?direct=1 ou ?autorun=1)
       var directParam = getQueryParam('direct') || getQueryParam('autorun');

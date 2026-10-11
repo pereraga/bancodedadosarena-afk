@@ -19,6 +19,8 @@ function carregarBanco() {
       const data = JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'));
       if (!data.devices) data.devices = [];
       if (!data.videos) data.videos = [];
+      if (typeof data.currentVolume !== 'number') data.currentVolume = 80;
+      if (typeof data.isMuted !== 'boolean') data.isMuted = false;
       return data;
     }
   } catch (e) {
@@ -200,6 +202,46 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // 4.1 CONTROLE REMOTO DE VOLUME DO TOTEM (LIGA / DESLIGA / AUMENTA / DIMINUI)
+  if (url.pathname === '/api/devices/volume' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+      try {
+        const { deviceId, volume, muted } = JSON.parse(body);
+        let targetVolume = typeof volume === 'number' ? Math.max(0, Math.min(100, Math.round(volume))) : 80;
+        let isMuted = typeof muted === 'boolean' ? muted : false;
+
+        db.currentVolume = targetVolume;
+        db.isMuted = isMuted;
+
+        if (deviceId) {
+          const device = db.devices.find(d => d.id === deviceId);
+          if (device) {
+            device.volume = targetVolume;
+            device.muted = isMuted;
+          }
+        } else {
+          db.devices.forEach(d => {
+            d.volume = targetVolume;
+            d.muted = isMuted;
+          });
+        }
+
+        salvarBanco();
+        broadcastEvent('device-volume', { deviceId: deviceId || null, volume: targetVolume, muted: isMuted });
+        broadcastEvent('devices-list', db.devices);
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, volume: targetVolume, muted: isMuted, deviceId }));
+      } catch (e) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    });
+    return;
+  }
+
   // 5. LISTA DE DISPOSITIVOS
   if (url.pathname === '/api/devices' && req.method === 'GET') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -347,7 +389,11 @@ const server = http.createServer((req, res) => {
   }
 
   // 10. SERVIR ARQUIVOS ESTÁTICOS COM SUPORTE A RANGE (Streaming de Vídeo)
-  let filePath = path.join(PUBLIC_DIR, url.pathname === '/' ? 'index.html' : url.pathname);
+  let cleanPath = url.pathname === '/' ? '/index.html' : url.pathname;
+  let filePath = path.join(PUBLIC_DIR, cleanPath);
+  if (!fs.existsSync(filePath) && fs.existsSync(filePath + '.html')) {
+    filePath = filePath + '.html';
+  }
   const ext = path.extname(filePath).toLowerCase();
 
   fs.stat(filePath, (err, stats) => {

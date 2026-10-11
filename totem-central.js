@@ -842,6 +842,46 @@ class TotemCentralEngine {
       console.warn('Erro ao transmitir vídeo:', err);
     }
   }
+
+  // --- CONTROLE DE VOLUME REMOTO (LIGA / DESLIGA / AUMENTA / DIMINUI) ---
+  async setScreenVolume(deviceId, volume, muted = false) {
+    const targetVolume = typeof volume === 'number' ? Math.max(0, Math.min(100, Math.round(volume))) : 80;
+    const isMuted = Boolean(muted);
+
+    // 1. Enviar para API local (se estiver em localhost ou rede Wi-Fi do totem)
+    try {
+      fetch('/api/devices/volume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceId, volume: targetVolume, muted: isMuted })
+      }).catch(function() {});
+    } catch (e) {}
+
+    // 2. Transmitir via Supabase Realtime Broadcast (Nuvem e local)
+    if (this.client) {
+      try {
+        const payload = {
+          deviceId: deviceId || null,
+          volume: targetVolume,
+          muted: isMuted,
+          updatedAt: new Date().toISOString()
+        };
+
+        if (deviceId) {
+          const chanDev = this.client.channel(`device-${deviceId}`);
+          await chanDev.send({ type: 'broadcast', event: 'SET_VOLUME', payload });
+        }
+
+        const chanGlobal = this.client.channel('totem-global-channel');
+        await chanGlobal.send({ type: 'broadcast', event: 'SET_VOLUME', payload });
+
+        const chanBroad = this.client.channel('totem-broadcast');
+        await chanBroad.send({ type: 'broadcast', event: 'SET_VOLUME', payload });
+      } catch (err) {
+        console.warn('Erro ao disparar broadcast de volume:', err);
+      }
+    }
+  }
 }
 
 window.totemCentral = new TotemCentralEngine();
