@@ -4,6 +4,7 @@ echo [1/3] Sincronizando site da tela para os assets locais do APK...
 if not exist "android\app\src\main\assets" mkdir "android\app\src\main\assets"
 copy /y "screen.html" "android\app\src\main\assets\screen.html" >nul
 copy /y "screen.html" "android\app\src\main\assets\index.html" >nul
+if exist "offline_sample.mp4" copy /y "offline_sample.mp4" "android\app\src\main\assets\offline_sample.mp4" >nul
 
 echo [2/3] Configurando ambiente Java e Gradle...
 set "JAVA_HOME=C:\Users\PC\.jdks\jbr-21.0.11"

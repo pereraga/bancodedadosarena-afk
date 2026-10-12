@@ -242,6 +242,34 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // 4.2 TELEMETRIA & DIAGNÓSTICO DO TOTEM EM TEMPO REAL
+  if (url.pathname === '/api/devices/diagnostic' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+      try {
+        const { deviceId, diagnostic } = JSON.parse(body);
+        if (deviceId) {
+          const device = db.devices.find(d => d.id === deviceId);
+          if (device) {
+            device.diagnostic = diagnostic;
+            device.ip_address = JSON.stringify(diagnostic);
+            device.lastSeen = new Date().toISOString();
+            salvarBanco();
+            broadcastEvent('device-diagnostic', { deviceId, diagnostic });
+            broadcastEvent('devices-list', db.devices);
+          }
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true }));
+      } catch (e) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    });
+    return;
+  }
+
   // 5. LISTA DE DISPOSITIVOS
   if (url.pathname === '/api/devices' && req.method === 'GET') {
     res.writeHead(200, { 'Content-Type': 'application/json' });

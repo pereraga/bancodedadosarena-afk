@@ -172,6 +172,69 @@
       font-weight: 500;
     }
 
+    /* Banner de Diagnóstico Inteligente do Totem */
+    .diagnostic-banner {
+      position: fixed;
+      top: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 120;
+      background: rgba(15, 23, 42, 0.96);
+      border: 1px solid rgba(239, 68, 68, 0.6);
+      border-radius: 16px;
+      padding: 14px 22px;
+      max-width: 90%;
+      width: 580px;
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.85), 0 0 30px rgba(239, 68, 68, 0.25);
+      transition: all 0.35s ease;
+      font-size: 13px;
+      text-align: left;
+      pointer-events: auto;
+    }
+    .diag-warning {
+      border-color: rgba(245, 158, 11, 0.6) !important;
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.85), 0 0 30px rgba(245, 158, 11, 0.25) !important;
+    }
+    .diag-offline {
+      border-color: rgba(56, 189, 248, 0.6) !important;
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.85), 0 0 30px rgba(56, 189, 248, 0.25) !important;
+    }
+    .diag-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      font-size: 14px;
+      margin-bottom: 6px;
+    }
+    .diag-desc {
+      color: #cbd5e1;
+      font-size: 12px;
+      line-height: 1.4;
+      margin-bottom: 10px;
+    }
+    .diag-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .diag-btn {
+      background: #1e293b;
+      color: #f8fafc;
+      border: 1px solid #334155;
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .diag-btn:hover {
+      background: #2563eb;
+      border-color: #3b82f6;
+    }
+
     /* Tela de Emparelhamento Kiosk Profissional */
     #waitScreen {
       position: fixed;
@@ -442,6 +505,23 @@
     </div>
   </div>
 
+  <!-- Banner de Diagnóstico Inteligente na Tela -->
+  <div id="diagnosticBanner" class="diagnostic-banner hidden">
+    <div class="diag-header">
+      <span id="diagIcon">⚠️</span>
+      <span id="diagTitle">Diagnóstico do Totem</span>
+      <span id="diagStatusBadge" style="margin-left:auto; font-size:10px; padding:2px 8px; border-radius:12px; background:#ef4444; color:#fff; font-weight:bold;">ERRO</span>
+    </div>
+    <div id="diagDesc" class="diag-desc">
+      O aparelho detectou uma falha na reprodução do vídeo.
+    </div>
+    <div class="diag-actions">
+      <button type="button" class="diag-btn" id="diagOfflineBtn">▶ Tocar Vídeo Offline</button>
+      <button type="button" class="diag-btn" id="diagRetryBtn">↻ Tentar Novamente</button>
+      <button type="button" class="diag-btn" id="diagCloseBtn" style="margin-left:auto; background:transparent; border:none; color:#94a3b8;">✕ Ocultar</button>
+    </div>
+  </div>
+
   <!-- SCRIPTS COM COMPATIBILIDADE TOTAL (ES5/ES6 Promises - SEM ASYNC/AWAIT PARA TABLETS ANTIGOS) -->
   <script>
     // Elementos DOM
@@ -455,6 +535,16 @@
     var videoElem = document.getElementById('videoElem');
     var iframeElem = document.getElementById('iframeElem');
     var playerBox = document.getElementById('playerBox');
+
+    // Elementos do Banner de Diagnóstico
+    var diagnosticBanner = document.getElementById('diagnosticBanner');
+    var diagIcon = document.getElementById('diagIcon');
+    var diagTitle = document.getElementById('diagTitle');
+    var diagStatusBadge = document.getElementById('diagStatusBadge');
+    var diagDesc = document.getElementById('diagDesc');
+    var diagOfflineBtn = document.getElementById('diagOfflineBtn');
+    var diagRetryBtn = document.getElementById('diagRetryBtn');
+    var diagCloseBtn = document.getElementById('diagCloseBtn');
 
     // Função utilitária de busca de parâmetros na URL 100% segura para Android 6.0 (sem URLSearchParams)
     function getQueryParam(name) {
@@ -472,13 +562,16 @@
     var SUPABASE_URL = 'https://qvnsahvdjhimlmtqrnif.supabase.co';
     var SUPABASE_ANON_KEY = 'sb_publishable_vvqh9vB0Dr0EqR9JGhy4kA_XnJ-9h0z';
 
-    // Estado da Tela & Volume
+    // Estado da Tela, Mídia & Diagnóstico
     var currentUrl = null;
     var currentPlayingVideoId = null;
+    var currentPlayingVideoTitle = 'Aguardando vídeo';
     var isPaired = false;
     var currentPairCode = null;
     var pollPairTimer = null;
     var heartbeatTimer = null;
+    var isOfflineModeActive = false;
+    var lastReportedError = null;
 
     // Volume & Áudio (Restaurado do cache local com padrão 80% ativo)
     var currentVolume = 80;
@@ -558,6 +651,267 @@
       if (showBanner !== false) {
         showVolumeOsd(currentVolume, isMuted);
       }
+    }
+
+    // ========================================================
+    // SISTEMA DE CACHE E ARMAZENAMENTO OFFLINE (INDEXEDDB)
+    // Permite que o totem funcione 100% sem internet
+    // ========================================================
+    var TotemOffline = (function() {
+      var DB_NAME = 'totem_offline_media_db';
+      var STORE_NAME = 'videos';
+      var DB_VERSION = 1;
+      var dbPromise = null;
+
+      function openDB() {
+        if (dbPromise) return dbPromise;
+        dbPromise = new Promise(function(resolve) {
+          if (!window.indexedDB) {
+            resolve(null);
+            return;
+          }
+          try {
+            var req = indexedDB.open(DB_NAME, DB_VERSION);
+            req.onupgradeneeded = function(e) {
+              var db = e.target.result;
+              if (!db.objectStoreNames.contains(STORE_NAME)) {
+                db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+              }
+            };
+            req.onsuccess = function(e) { resolve(e.target.result); };
+            req.onerror = function() { resolve(null); };
+          } catch(err) {
+            resolve(null);
+          }
+        });
+        return dbPromise;
+      }
+
+      function saveVideoBlob(id, blob, meta) {
+        return openDB().then(function(db) {
+          if (!db) return false;
+          return new Promise(function(resolve) {
+            try {
+              var tx = db.transaction(STORE_NAME, 'readwrite');
+              var store = tx.objectStore(STORE_NAME);
+              store.put({
+                id: 'active_cached_video',
+                videoId: id,
+                blob: blob,
+                meta: meta,
+                savedAt: new Date().toISOString()
+              });
+              tx.oncomplete = function() {
+                try {
+                  localStorage.setItem('totem_has_offline_cache', 'true');
+                  localStorage.setItem('totem_offline_meta', JSON.stringify(meta));
+                } catch(e){}
+                resolve(true);
+              };
+              tx.onerror = function() { resolve(false); };
+            } catch(e) { resolve(false); }
+          });
+        });
+      }
+
+      function getLastCachedVideo() {
+        return openDB().then(function(db) {
+          if (!db) return null;
+          return new Promise(function(resolve) {
+            try {
+              var tx = db.transaction(STORE_NAME, 'readonly');
+              var store = tx.objectStore(STORE_NAME);
+              var req = store.get('active_cached_video');
+              req.onsuccess = function(e) {
+                resolve(e.target.result || null);
+              };
+              req.onerror = function() { resolve(null); };
+            } catch(e) { resolve(null); }
+          });
+        });
+      }
+
+      function cacheVideoInBackground(videoUrl, id, title) {
+        if (!videoUrl || videoUrl.indexOf('http') !== 0) return;
+        try {
+          fetch(videoUrl).then(function(res) {
+            if (!res.ok) return null;
+            return res.blob();
+          }).then(function(blob) {
+            if (blob && blob.size > 5000) {
+              saveVideoBlob(id, blob, { id: id, title: title, url: videoUrl, size: blob.size });
+              console.log('💾 Vídeo gravado em cache offline com sucesso:', title, (blob.size / (1024 * 1024)).toFixed(1) + ' MB');
+            }
+          }).catch(function(err) {
+            console.warn('Gravação em cache offline falhou:', err);
+          });
+        } catch(e){}
+      }
+
+      return {
+        saveVideoBlob: saveVideoBlob,
+        getLastCachedVideo: getLastCachedVideo,
+        cacheVideoInBackground: cacheVideoInBackground
+      };
+    })();
+
+    // ========================================================
+    // TELEMETRIA E DIAGNÓSTICO INTELIGENTE DO TOTEM
+    // ========================================================
+    var diagBannerTimer = null;
+
+    function showDiagnosticBanner(msg, code, type) {
+      if (!diagnosticBanner) return;
+      clearTimeout(diagBannerTimer);
+
+      var isWarning = (type === 'warning');
+      var isOffline = (type === 'offline');
+
+      diagnosticBanner.classList.remove('diag-warning', 'diag-offline');
+      if (isWarning) diagnosticBanner.classList.add('diag-warning');
+      if (isOffline) diagnosticBanner.classList.add('diag-offline');
+
+      if (diagIcon) {
+        diagIcon.textContent = isOffline ? '💾' : (isWarning ? '⚠️' : '🚨');
+      }
+      if (diagTitle) {
+        diagTitle.textContent = isOffline ? 'Modo Offline Ativo' : (isWarning ? 'Aviso do Totem' : 'Falha na Reprodução');
+      }
+      if (diagStatusBadge) {
+        diagStatusBadge.textContent = isOffline ? 'OFFLINE' : (isWarning ? 'ATENÇÃO' : 'ERRO CÓD ' + (code || 0));
+        diagStatusBadge.style.background = isOffline ? '#0284c7' : (isWarning ? '#d97706' : '#ef4444');
+      }
+      if (diagDesc) {
+        diagDesc.textContent = msg;
+      }
+
+      diagnosticBanner.classList.remove('hidden');
+
+      // Se for apenas aviso de offline rodando, esconde após 6s para a tela ficar limpa
+      if (isOffline) {
+        diagBannerTimer = setTimeout(function() {
+          hideDiagnosticBanner();
+        }, 6000);
+      }
+    }
+
+    function hideDiagnosticBanner() {
+      if (diagnosticBanner) {
+        diagnosticBanner.classList.add('hidden');
+      }
+    }
+
+    function reportDiagnostic(status, msg, code) {
+      var devId = getStoredDeviceId();
+      if (!devId) return;
+
+      lastReportedError = { status: status, msg: msg, code: code, time: new Date().toISOString() };
+
+      var diagPayload = {
+        status: status, // 'playing', 'error', 'offline', 'warning'
+        msg: msg || 'Status normal',
+        code: code || 0,
+        videoTitle: currentPlayingVideoTitle || 'Nenhum',
+        resolution: window.screen.width + 'x' + window.screen.height,
+        online: (navigator.onLine !== false),
+        time: new Date().toISOString()
+      };
+
+      var jsonStr = JSON.stringify(diagPayload);
+
+      // 1. Atualizar no Supabase se houver internet
+      if (navigator.onLine) {
+        supabaseQuery('devices?id=eq.' + devId, 'PATCH', {
+          ip_address: jsonStr,
+          last_seen: new Date().toISOString()
+        }).catch(function(){});
+      }
+
+      // 2. Notificar servidor local se estiver ativo
+      try {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/devices/diagnostic', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.send(JSON.stringify({ deviceId: devId, diagnostic: diagPayload }));
+      } catch(e){}
+    }
+
+    // ========================================================
+    // REPRODUÇÃO DE EMERGÊNCIA OFFLINE (SEM INTERNET)
+    // ========================================================
+    function playEmergencyOfflineVideo(reason) {
+      console.log('⚡ Ativando reprodução de emergência offline. Motivo:', reason);
+      isOfflineModeActive = true;
+
+      // Garante saída da tela de emparelhamento
+      if (waitScreen) waitScreen.classList.add('hidden');
+      if (videoElem) videoElem.classList.remove('hidden');
+      isPaired = true;
+
+      // 1. Verificar se existe vídeo salvo em cache IndexedDB
+      TotemOffline.getLastCachedVideo().then(function(cached) {
+        if (cached && cached.blob) {
+          try {
+            var blobUrl = URL.createObjectURL(cached.blob);
+            var title = (cached.meta && cached.meta.title) ? cached.meta.title : 'Vídeo Local em Cache';
+            console.log('🎬 Tocando vídeo do cache local:', title);
+            playVideo({
+              id: 'offline-cached',
+              title: title + ' (Offline)',
+              url: blobUrl,
+              isOffline: true
+            });
+            showDiagnosticBanner('Modo Offline: Reproduzindo vídeo gravado no aparelho (' + title + ')', 0, 'offline');
+            reportDiagnostic('offline', 'Modo Offline: Reproduzindo vídeo do cache local (' + title + ')', 0);
+            return;
+          } catch(err) {
+            console.warn('Erro ao criar URL do blob:', err);
+          }
+        }
+
+        // 2. Se não houver cache no IndexedDB, toca o arquivo embutido no APK / site
+        var assetUrl = 'offline_sample.mp4';
+        if (window.AndroidTotem && typeof window.AndroidTotem.getOfflineAssetPath === 'function') {
+          try {
+            assetUrl = window.AndroidTotem.getOfflineAssetPath();
+          } catch(e){}
+        }
+
+        console.log('🎬 Tocando vídeo embutido nativo:', assetUrl);
+        playVideo({
+          id: 'offline-sample',
+          title: 'Apresentação Arena (Embutido)',
+          url: assetUrl,
+          isOffline: true
+        });
+        showDiagnosticBanner('Modo Offline: Reproduzindo vídeo de apresentação embutido', 0, 'offline');
+        reportDiagnostic('offline', 'Modo Offline: Reproduzindo vídeo embutido (offline_sample.mp4)', 0);
+      });
+    }
+
+    // Eventos dos botões do Banner de Diagnóstico
+    if (diagOfflineBtn) {
+      diagOfflineBtn.addEventListener('click', function() {
+        playEmergencyOfflineVideo('Acionado manualmente pelo operador');
+      });
+    }
+    if (diagRetryBtn) {
+      diagRetryBtn.addEventListener('click', function() {
+        hideDiagnosticBanner();
+        if (currentUrl) {
+          if (videoElem) {
+            videoElem.load();
+            videoElem.play().catch(function(){});
+          }
+        } else {
+          fetchActiveOrLatestVideo();
+        }
+      });
+    }
+    if (diagCloseBtn) {
+      diagCloseBtn.addEventListener('click', function() {
+        hideDiagnosticBanner();
+      });
     }
 
     // Gerador / Recuperador de ID Persistente
@@ -819,6 +1173,7 @@
 
       var mediaRawUrl = video.url || video.video_url;
       var newVideoId = video.id || null;
+      currentPlayingVideoTitle = video.title || 'Vídeo em Exibição';
 
       if (currentUrl === mediaRawUrl && currentPlayingVideoId === newVideoId && videoElem && !videoElem.paused && !videoElem.ended) {
         return;
@@ -835,6 +1190,7 @@
         iframeElem.classList.remove('hidden');
         iframeElem.src = 'https://www.youtube-nocookie.com/embed/' + ytId + '?autoplay=1&mute=1&loop=1&playlist=' + ytId + '&controls=0&modestbranding=1&rel=0&playsinline=1&enablejsapi=1&iv_load_policy=3&disablekb=1&fs=0';
         initWakeLock();
+        reportDiagnostic('playing', 'Reproduzindo YouTube: ' + currentPlayingVideoTitle, 0);
         return;
       }
 
@@ -845,7 +1201,7 @@
       var targetMediaUrl = mediaRawUrl;
       if (targetMediaUrl.indexOf('dropbox.com') !== -1) {
         targetMediaUrl = targetMediaUrl.replace(/[?&]dl=0/, '?raw=1').replace(/[?&]dl=1/, '?raw=1');
-      } else if (targetMediaUrl.indexOf('/') === 0) {
+      } else if (targetMediaUrl.indexOf('/') === 0 && !targetMediaUrl.startsWith('//')) {
         targetMediaUrl = window.location.origin + targetMediaUrl;
       }
 
@@ -873,15 +1229,53 @@
         videoElem.play().catch(function() {});
       };
 
+      // Notificação de sucesso ao iniciar reprodução
+      videoElem.onplaying = function() {
+        if (!isOfflineModeActive) {
+          hideDiagnosticBanner();
+          reportDiagnostic('playing', 'Reproduzindo com sucesso: ' + currentPlayingVideoTitle, 0);
+        }
+        // Se for URL remota na nuvem, faz cache em background para garantir modo offline
+        if (!video.isOffline && targetMediaUrl.indexOf('http') === 0) {
+          TotemOffline.cacheVideoInBackground(targetMediaUrl, newVideoId || 'vid', currentPlayingVideoTitle);
+        }
+      };
+
+      // DIAGNÓSTICO DETALHADO DE ERROS DE REPRODUÇÃO
       videoElem.onerror = function() {
-        console.warn('Erro ao reproduzir mídia, tentando novamente em 3s...');
-        setTimeout(function() {
-          if (currentUrl === mediaRawUrl) {
-            videoElem.src = targetMediaUrl;
-            videoElem.load();
-            videoElem.play().catch(function() {});
-          }
-        }, 3000);
+        var err = videoElem.error;
+        var code = err ? err.code : 0;
+        var message = 'Erro desconhecido na mídia';
+
+        if (code === 1) { // MEDIA_ERR_ABORTED
+          message = 'Reprodução abortada pelo navegador';
+        } else if (code === 2) { // MEDIA_ERR_NETWORK
+          message = 'Falha de rede: Não foi possível baixar o vídeo (sem internet ou queda na conexão)';
+        } else if (code === 3) { // MEDIA_ERR_DECODE
+          message = 'Incompatibilidade de Codec: O processador deste aparelho não conseguiu decodificar o vídeo (Possível formato não suportado / 4K / H.265). Recomendado: MP4 H.264 1080p.';
+        } else if (code === 4) { // MEDIA_ERR_SRC_NOT_SUPPORTED
+          message = 'Formato ou link inacessível: O arquivo de vídeo não foi encontrado (Erro 404) ou o link está quebrado.';
+        }
+
+        console.error('🚨 ERRO NO PLAYER DE VÍDEO:', code, message);
+        reportDiagnostic('error', message, code);
+        showDiagnosticBanner(message, code, 'error');
+
+        // Se for erro crítico (codec, link quebrado ou sem rede), ativa vídeo offline de emergência
+        if (code === 3 || code === 4 || !navigator.onLine) {
+          setTimeout(function() {
+            if (videoElem && videoElem.error) {
+              playEmergencyOfflineVideo('Falha na reprodução (' + message + ')');
+            }
+          }, 3500);
+        } else {
+          // Se for erro temporário de rede, tenta mais 1 vez e se falhar ativa modo offline
+          setTimeout(function() {
+            if (currentUrl === mediaRawUrl && (!videoElem || videoElem.error)) {
+              playEmergencyOfflineVideo('Falha de rede persistente');
+            }
+          }, 5000);
+        }
       };
 
       videoElem.src = targetMediaUrl;
@@ -893,20 +1287,32 @@
           initWakeLock();
         }).catch(function(err) {
           console.warn('Autoplay com som restrito pelo navegador. Iniciando mudo:', err);
+          reportDiagnostic('warning', 'Autoplay de áudio restrito pelo navegador. Iniciado mudo.', 101);
           videoElem.muted = true;
           videoElem.play().then(function() {
             initWakeLock();
             if (!isMuted) {
               showVolumeOsd(currentVolume, true, 'Toque na tela ou aumente no painel para ativar áudio');
             }
-          }).catch(function() {});
+          }).catch(function(playErr) {
+            console.error('Falha ao dar play mesmo mudo:', playErr);
+            reportDiagnostic('error', 'Bloqueio do navegador: toque na tela necessário para iniciar vídeo', 102);
+            showDiagnosticBanner('O navegador bloqueou a inicialização automática do vídeo. Toque na tela para liberar.', 102, 'warning');
+          });
         });
       }
     }
 
-    // Buscar vídeo ativo ou o mais recente
+    // Buscar vídeo ativo ou o mais recente (com fallback offline automático)
     function fetchActiveOrLatestVideo(preferredVideoId, retries) {
       if (retries === undefined) retries = 8;
+
+      // Se o aparelho estiver sem internet, vai direto para o modo offline!
+      if (!navigator.onLine) {
+        console.log('⚡ Dispositivo sem internet. Carregando vídeo offline...');
+        playEmergencyOfflineVideo('Dispositivo sem conexão de internet');
+        return;
+      }
       
       if (preferredVideoId) {
         supabaseQuery('videos?id=eq.' + preferredVideoId, 'GET').then(function(videos) {
@@ -918,7 +1324,8 @@
             }
           }
           fetchLatestVideo();
-        }).catch(function() {
+        }).catch(function(err) {
+          console.warn('Falha ao buscar vídeo preferido, tentando último ou offline:', err);
           fetchLatestVideo();
         });
       } else {
@@ -929,27 +1336,38 @@
           } else {
             fetchLatestVideo();
           }
-        }).catch(function() {
-          fetchLatestVideo();
+        }).catch(function(err) {
+          console.warn('Falha na consulta do dispositivo no Supabase. Acionando fallback offline:', err);
+          playEmergencyOfflineVideo('Falha ao conectar com o banco de dados Supabase');
         });
       }
     }
 
     function fetchLatestVideo() {
+      if (!navigator.onLine) {
+        playEmergencyOfflineVideo('Dispositivo sem internet');
+        return;
+      }
+
       supabaseQuery('videos?order=created_at.desc&limit=1', 'GET').then(function(videos) {
         if (videos && videos.length > 0) {
           var v = videos[0];
           if (v.video_url || v.url) {
             playVideo({ id: v.id, title: v.title, url: v.video_url || v.url });
+            return;
           }
         }
+        // Se a lista de vídeos da nuvem estiver vazia, toca o vídeo offline
+        playEmergencyOfflineVideo('Nenhum vídeo cadastrado na nuvem');
       }).catch(function(err) {
-        console.warn('Erro ao carregar último vídeo:', err);
+        console.warn('Erro ao carregar último vídeo da nuvem:', err);
+        playEmergencyOfflineVideo('Falha na consulta de vídeos');
       });
     }
 
     // Checagem periódica contínua (Hot-Swap)
     function checkApprovalStatus() {
+      if (!navigator.onLine) return; // Se estiver offline, mantém reprodução local sem interromper
       var devId = getStoredDeviceId();
       if (!devId) return;
 
@@ -968,8 +1386,9 @@
             }
             if (data.current_video_id && data.current_video_id !== currentPlayingVideoId) {
               console.log('⚡ Hot-swap de vídeo detectado:', data.current_video_id);
+              isOfflineModeActive = false;
               fetchActiveOrLatestVideo(data.current_video_id);
-            } else if (!currentUrl) {
+            } else if (!currentUrl && !isOfflineModeActive) {
               fetchActiveOrLatestVideo(data.current_video_id);
             }
           }
@@ -1099,6 +1518,18 @@
       initLocalSSE();
       initSupabaseRealtime();
 
+      // Detecção de Modo Offline Forçado (?offline=1 ou protocolo file: ou sem rede)
+      var isOfflineRequested = (getQueryParam('offline') === '1') || 
+                               (window.location.protocol === 'file:') || 
+                               (!navigator.onLine);
+
+      if (isOfflineRequested) {
+        console.log('⚡ Modo Offline ativo no arranque.');
+        unlockPlayer('Modo Offline');
+        playEmergencyOfflineVideo('Inicialização sem internet');
+        return;
+      }
+
       // Modo Direto via URL (?direct=1 ou ?autorun=1)
       var directParam = getQueryParam('direct') || getQueryParam('autorun');
       if (directParam === '1') {
@@ -1140,7 +1571,15 @@
           showPairingScreen(currentPairCode);
         }
       }).catch(function(err) {
-        console.warn('Erro ao consultar status inicial:', err);
+        console.warn('Erro ao consultar status inicial no Supabase:', err);
+        // Se a internet falhou mas temos cache local, toca o vídeo offline em vez de tela preta!
+        TotemOffline.getLastCachedVideo().then(function(cached) {
+          if (cached) {
+            playEmergencyOfflineVideo('Sem internet no momento (recuperado do cache)');
+          } else if (!locallyPaired) {
+            showPairingScreen(currentPairCode);
+          }
+        });
       });
     }
 
@@ -1155,11 +1594,19 @@
     setInterval(checkApprovalStatus, 3000);
     setInterval(sendHeartbeat, 20000);
 
-    // Reconexão
+    // Eventos de Conexão de Rede (Online / Offline)
     window.addEventListener('online', function() {
-      console.log('⚡ Conexão restaurada.');
+      console.log('⚡ Conexão restaurada com a internet.');
+      hideDiagnosticBanner();
+      reportDiagnostic('playing', 'Conexão restabelecida', 0);
       sendHeartbeat();
       checkApprovalStatus();
+    });
+
+    window.addEventListener('offline', function() {
+      console.warn('⚠️ Conexão de rede perdida. Mantendo reprodução em cache...');
+      reportDiagnostic('offline', 'Dispositivo desconectado da internet (reproduzindo cache)', 0);
+      showDiagnosticBanner('Sem conexão com a internet. O totem está operando no modo offline com reprodução contínua.', 0, 'offline');
     });
   </script>
 </body>

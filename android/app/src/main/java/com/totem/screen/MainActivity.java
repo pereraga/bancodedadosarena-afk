@@ -178,6 +178,9 @@ public class MainActivity extends Activity {
         webView.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
 
+        // Ponte JavaScript nativa para diagnósticos e modo offline
+        webView.addJavascriptInterface(new TotemNativeBridge(), "AndroidTotem");
+
         // WebViewClient
         webView.setWebViewClient(new WebViewClient() {
             @Override
@@ -266,7 +269,7 @@ public class MainActivity extends Activity {
         if (failingUrl != null && !failingUrl.startsWith("file://")) {
             Toast.makeText(this, "Sem internet. Carregando modo offline embutido...", Toast.LENGTH_SHORT).show();
             if (webView != null) {
-                webView.loadUrl(DEFAULT_OFFLINE_URL);
+                webView.loadUrl(DEFAULT_OFFLINE_URL + "?offline=1");
             }
             scheduleRetry();
         }
@@ -411,11 +414,22 @@ public class MainActivity extends Activity {
         });
         row2.addView(btnLocal);
 
-        Button btnOffline = createSmallPresetButton("💾 Offline (Assets Internos)", v -> {
-            loadUrlWithFallback(DEFAULT_OFFLINE_URL);
+        Button btnOffline = createSmallPresetButton("💾 Offline (Vídeo Embutido)", v -> {
+            loadUrlWithFallback(DEFAULT_OFFLINE_URL + "?offline=1");
             scheduleAutoHideNavBar();
         });
         row2.addView(btnOffline);
+
+        Button btnDiag = createSmallPresetButton("🩺 Diagnóstico do Totem", v -> {
+            String net = (isOnline() ? "🟢 Internet Conectada" : "🔴 Sem Internet (Offline)");
+            String info = "STATUS DO TOTEM:\n" +
+                          "• Rede: " + net + "\n" +
+                          "• Dispositivo: " + Build.MANUFACTURER + " " + Build.MODEL + " (Android " + Build.VERSION.RELEASE + ")\n" +
+                          "• URL: " + (currentTargetUrl != null ? currentTargetUrl : "Nenhuma");
+            Toast.makeText(this, info, Toast.LENGTH_LONG).show();
+            scheduleAutoHideNavBar();
+        });
+        row2.addView(btnDiag);
 
         scrollRow.addView(row2);
         navBar.addView(scrollRow);
@@ -597,5 +611,23 @@ public class MainActivity extends Activity {
     @Override
     public void onBackPressed() {
         // Bloqueia botão voltar para manter o Totem sempre em execução
+    }
+
+    // Ponte nativa JavaScript para o site do Totem consultar hardware e modo offline
+    public class TotemNativeBridge {
+        @android.webkit.JavascriptInterface
+        public boolean isOnline() {
+            return MainActivity.this.isOnline();
+        }
+
+        @android.webkit.JavascriptInterface
+        public String getDeviceInfo() {
+            return Build.MANUFACTURER + " " + Build.MODEL + " (Android " + Build.VERSION.RELEASE + ", SDK " + Build.VERSION.SDK_INT + ")";
+        }
+
+        @android.webkit.JavascriptInterface
+        public String getOfflineAssetPath() {
+            return "offline_sample.mp4";
+        }
     }
 }

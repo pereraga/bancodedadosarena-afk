@@ -464,6 +464,96 @@
     </div>
   </div>
 
+  <!-- MODAL DE DIAGNÓSTICO E RECUPERAÇÃO DA TELA DO TOTEM -->
+  <div id="screenDiagnosticModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl relative text-left">
+      
+      <!-- Cabeçalho -->
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div class="flex items-center space-x-3">
+          <div id="diagModalIconBox" class="w-10 h-10 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center text-xl shrink-0">
+            ⚠️
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white flex items-center space-x-2">
+              <span id="diagModalScreenTitle">Diagnóstico do Totem</span>
+              <span id="diagModalStatusBadge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">ERRO</span>
+            </h3>
+            <p id="diagModalScreenId" class="text-xs text-slate-400 font-mono">ID: totem-...</p>
+          </div>
+        </div>
+        <button id="closeDiagnosticModalBtn" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Detalhes do Diagnóstico -->
+      <div class="space-y-3.5 text-xs">
+        <!-- Caixa de Alerta Principal -->
+        <div id="diagModalAlertBox" class="p-3.5 rounded-2xl bg-rose-950/40 border border-rose-500/40 space-y-1.5">
+          <div class="font-bold text-rose-200 text-sm flex items-center space-x-1.5">
+            <span>Motivo Identificado:</span>
+          </div>
+          <p id="diagModalErrorDesc" class="text-slate-300 leading-relaxed font-medium">
+            Incompatibilidade de Codec: O chip do aparelho não conseguiu decodificar o vídeo.
+          </p>
+        </div>
+
+        <!-- Grade de Especificações Técnicas -->
+        <div class="grid grid-cols-2 gap-2.5 p-3 rounded-2xl bg-slate-950/70 border border-slate-800">
+          <div>
+            <span class="text-slate-500 block text-[10px] uppercase font-bold">Vídeo Selecionado:</span>
+            <span id="diagModalVideoTitle" class="text-white font-semibold truncate block">Aguardando...</span>
+          </div>
+          <div>
+            <span class="text-slate-500 block text-[10px] uppercase font-bold">Conexão da Tela:</span>
+            <span id="diagModalOnlineStatus" class="text-emerald-400 font-semibold block">Online</span>
+          </div>
+          <div>
+            <span class="text-slate-500 block text-[10px] uppercase font-bold">Código Técnico:</span>
+            <span id="diagModalErrorCode" class="text-slate-300 font-mono block">Código 3 (MEDIA_ERR_DECODE)</span>
+          </div>
+          <div>
+            <span class="text-slate-500 block text-[10px] uppercase font-bold">Resolução da Tela:</span>
+            <span id="diagModalResolution" class="text-slate-300 font-mono block">1080 x 1920</span>
+          </div>
+        </div>
+
+        <!-- Dica de Solução -->
+        <div class="p-3 rounded-xl bg-slate-950/50 border border-slate-800/80 text-[11px] text-slate-400">
+          <strong class="text-sky-400">💡 Como Resolver:</strong>
+          <span id="diagModalSolutionTip">Envie um vídeo em MP4 codificado em H.264 (AVC) 1080p ou teste com o Vídeo Padrão Universal abaixo.</span>
+        </div>
+      </div>
+
+      <!-- Botões de Ação para Recuperar o Totem -->
+      <div class="space-y-2 pt-2 border-t border-slate-800">
+        <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Ações de Recuperação Imediata:</div>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <!-- Botão 1: Enviar Vídeo de Teste Universal H.264 -->
+          <button
+            type="button"
+            id="diagSendTestVideoBtn"
+            class="px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center space-x-2 shadow-lg shadow-emerald-600/20 transition active:scale-95"
+          >
+            <span>🧪 Enviar Vídeo Teste H.264</span>
+          </button>
+
+          <!-- Botão 2: Recarregar Totem Remotamente -->
+          <button
+            type="button"
+            id="diagReloadTotemBtn"
+            class="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center space-x-2 border border-slate-700 transition active:scale-95"
+          >
+            <span>↻ Recarregar Totem</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
   <!-- MODAL DE CONFIGURAÇÃO DO SUPABASE -->
   <div id="supabaseModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
     <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
@@ -732,8 +822,20 @@
         screenVolumes[dev.id] = devVol;
         screenMutes[dev.id] = devMuted;
 
+        // Análise de Telemetria e Diagnóstico em tempo real
+        let diag = null;
+        try {
+          const rawIp = dev.ip_address || dev.ipAddress;
+          if (rawIp && typeof rawIp === 'string' && rawIp.trim().startsWith('{')) {
+            diag = JSON.parse(rawIp.trim());
+          }
+        } catch(e) {}
+
+        const hasError = diag && (diag.status === 'error');
+        const isOffline = diag && (diag.status === 'offline');
+
         return `
-          <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl hover:border-slate-700 transition flex flex-col">
+          <div class="bg-slate-900 border ${hasError ? 'border-rose-500/60 shadow-rose-950/30' : 'border-slate-800'} rounded-2xl overflow-hidden shadow-xl hover:border-slate-700 transition flex flex-col">
             
             <!-- Moldura de TV com Prévia do Vídeo (Preenchimento Total sem barras ou abas nos cantos) -->
             <div class="relative w-full aspect-video bg-black overflow-hidden border-b border-slate-800 flex items-center justify-center">
@@ -755,7 +857,7 @@
             <div class="p-4 flex items-start justify-between">
               <div>
                 <h3 class="font-bold text-white text-base flex items-center space-x-2">
-                  <span class="w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-emerald-400 shadow-sm shadow-emerald-400/50' : 'bg-slate-600'}" title="${isOnline ? 'On-line' : 'Off-line'}"></span>
+                  <span class="w-2.5 h-2.5 rounded-full ${isOnline ? (hasError ? 'bg-rose-500 animate-pulse' : 'bg-emerald-400 shadow-sm shadow-emerald-400/50') : 'bg-slate-600'}" title="${isOnline ? (hasError ? 'Com Erro' : 'On-line') : 'Off-line'}"></span>
                   <span>${screenName}</span>
                 </h3>
                 <p class="text-xs text-slate-400 mt-0.5">${lastSeenText}</p>
@@ -774,7 +876,11 @@
                 </button>
 
                 <!-- Dropdown de Ações -->
-                <div id="dropdown-${dev.id}" class="absolute right-0 bottom-full mb-1 w-48 rounded-xl bg-slate-900 border border-slate-700 shadow-2xl p-1.5 text-xs text-slate-200 z-30 hidden space-y-1">
+                <div id="dropdown-${dev.id}" class="absolute right-0 bottom-full mb-1 w-52 rounded-xl bg-slate-900 border border-slate-700 shadow-2xl p-1.5 text-xs text-slate-200 z-30 hidden space-y-1">
+                  <button onclick="openDiagnosticModal('${dev.id}', event)" class="w-full px-3 py-2 text-left rounded-lg hover:bg-slate-800 flex items-center space-x-2 text-amber-400 font-semibold">
+                    <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <span>🩺 Diagnosticar Tela</span>
+                  </button>
                   <button onclick="openVerticalVolumeModal('${dev.id}', '${screenName}', ${devVol}, ${devMuted}, event)" class="w-full px-3 py-2 text-left rounded-lg hover:bg-slate-800 flex items-center space-x-2 text-sky-400">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg>
                     <span>Fader de Volume</span>
@@ -797,6 +903,52 @@
                   </button>
                 </div>
               </div>
+            </div>
+
+            <!-- FAIXA DE STATUS DE REPRODUÇÃO E DIAGNÓSTICO -->
+            <div class="px-4 pb-2">
+              ${hasError ? `
+                <div class="p-2.5 rounded-xl bg-rose-500/15 border border-rose-500/40 flex items-center justify-between text-xs text-rose-300">
+                  <div class="flex items-center space-x-2 truncate mr-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0 animate-ping"></span>
+                    <span class="font-bold truncate text-[11px]" title="${escapeHtml(diag.msg)}">
+                      ⚠️ ${escapeHtml(diag.msg)}
+                    </span>
+                  </div>
+                  <button
+                    onclick="openDiagnosticModal('${dev.id}', event)"
+                    class="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-[10px] shrink-0 shadow-sm transition active:scale-95"
+                  >
+                    Diagnosticar
+                  </button>
+                </div>
+              ` : isOffline ? `
+                <div class="p-2 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between text-xs text-amber-300">
+                  <div class="flex items-center space-x-2 truncate mr-2">
+                    <span class="w-2 h-2 rounded-full bg-amber-400 shrink-0"></span>
+                    <span class="font-semibold truncate text-[11px]">Modo Offline: Tocando Cache Local</span>
+                  </div>
+                  <button
+                    onclick="openDiagnosticModal('${dev.id}', event)"
+                    class="text-[10px] text-amber-300 hover:text-white underline font-bold shrink-0"
+                  >
+                    Detalhes
+                  </button>
+                </div>
+              ` : `
+                <div class="p-2 rounded-xl bg-slate-950/60 border border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+                  <div class="flex items-center space-x-2 truncate mr-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
+                    <span class="text-[11px] font-medium truncate">${diag && diag.videoTitle ? 'Reproduzindo: ' + escapeHtml(diag.videoTitle) : 'Reprodução Ativa'}</span>
+                  </div>
+                  <button
+                    onclick="openDiagnosticModal('${dev.id}', event)"
+                    class="text-[10px] text-slate-400 hover:text-slate-200 underline shrink-0"
+                  >
+                    Diagnóstico
+                  </button>
+                </div>
+              `}
             </div>
 
             <!-- CONTROLE DE VOLUME DO TOTEM (LIGA / DESLIGA / AUMENTA / DIMINUI) -->
@@ -908,6 +1060,160 @@
       });
       if (drop) drop.classList.toggle('hidden');
     };
+
+    // ========================================================
+    // MODAL DE DIAGNÓSTICO INTELIGENTE & RECUPERAÇÃO DO TOTEM
+    // ========================================================
+    let activeDiagnosticDeviceId = null;
+    const screenDiagnosticModal = document.getElementById('screenDiagnosticModal');
+    const diagModalScreenTitle = document.getElementById('diagModalScreenTitle');
+    const diagModalStatusBadge = document.getElementById('diagModalStatusBadge');
+    const diagModalScreenId = document.getElementById('diagModalScreenId');
+    const diagModalIconBox = document.getElementById('diagModalIconBox');
+    const diagModalAlertBox = document.getElementById('diagModalAlertBox');
+    const diagModalErrorDesc = document.getElementById('diagModalErrorDesc');
+    const diagModalVideoTitle = document.getElementById('diagModalVideoTitle');
+    const diagModalOnlineStatus = document.getElementById('diagModalOnlineStatus');
+    const diagModalErrorCode = document.getElementById('diagModalErrorCode');
+    const diagModalResolution = document.getElementById('diagModalResolution');
+    const diagModalSolutionTip = document.getElementById('diagModalSolutionTip');
+    const closeDiagnosticModalBtn = document.getElementById('closeDiagnosticModalBtn');
+    const diagSendTestVideoBtn = document.getElementById('diagSendTestVideoBtn');
+    const diagReloadTotemBtn = document.getElementById('diagReloadTotemBtn');
+
+    window.openDiagnosticModal = function(devId, e) {
+      if (e) e.stopPropagation();
+      activeDiagnosticDeviceId = devId;
+
+      const dev = currentScreens.find(d => d.id === devId);
+      if (!dev) return;
+
+      const screenName = dev.deviceName || dev.device_name || 'Modelo Totem';
+      const lastSeenDate = dev.lastSeen || dev.last_seen;
+      const isOnline = lastSeenDate ? (Date.now() - new Date(lastSeenDate).getTime() < 3 * 60 * 1000) : false;
+
+      let diag = null;
+      try {
+        const rawIp = dev.ip_address || dev.ipAddress;
+        if (rawIp && typeof rawIp === 'string' && rawIp.trim().startsWith('{')) {
+          diag = JSON.parse(rawIp.trim());
+        }
+      } catch(err){}
+
+      const hasError = diag && (diag.status === 'error');
+      const isOffline = diag && (diag.status === 'offline');
+
+      diagModalScreenTitle.textContent = screenName;
+      diagModalScreenId.textContent = 'ID do Dispositivo: ' + dev.id;
+
+      if (hasError) {
+        diagModalIconBox.className = 'w-10 h-10 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center text-xl shrink-0';
+        diagModalIconBox.textContent = '🚨';
+        diagModalStatusBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30';
+        diagModalStatusBadge.textContent = 'FALHA DE MÍDIA';
+
+        diagModalAlertBox.className = 'p-3.5 rounded-2xl bg-rose-950/40 border border-rose-500/40 space-y-1.5';
+        diagModalErrorDesc.textContent = diag.msg || 'Falha na reprodução de vídeo';
+
+        if (diag.code === 3) {
+          diagModalErrorCode.textContent = 'Código 3: MEDIA_ERR_DECODE (Codec)';
+          diagModalSolutionTip.textContent = 'O processador do totem não consegue decodificar o vídeo selecionado (possível 4K, 60fps ou H.265/HEVC). Converta para MP4 H.264 (AVC) 1080p ou envie o Vídeo de Teste abaixo.';
+        } else if (diag.code === 4) {
+          diagModalErrorCode.textContent = 'Código 4: MEDIA_ERR_SRC_NOT_SUPPORTED';
+          diagModalSolutionTip.textContent = 'O link do vídeo não existe ou expirou (Erro 404/CORS). Faça novo upload do vídeo no painel ou troque o link.';
+        } else if (diag.code === 2) {
+          diagModalErrorCode.textContent = 'Código 2: MEDIA_ERR_NETWORK (Rede)';
+          diagModalSolutionTip.textContent = 'O totem não conseguiu baixar o vídeo devido a oscilação ou queda na rede Wi-Fi. Verifique a internet do totem.';
+        } else {
+          diagModalErrorCode.textContent = 'Código ' + (diag.code || 'Desconhecido');
+          diagModalSolutionTip.textContent = 'Envie o vídeo de teste padrão universal abaixo para validar a tela imediatamente.';
+        }
+      } else if (isOffline) {
+        diagModalIconBox.className = 'w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-xl shrink-0';
+        diagModalIconBox.textContent = '💾';
+        diagModalStatusBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30';
+        diagModalStatusBadge.textContent = 'MODO OFFLINE';
+
+        diagModalAlertBox.className = 'p-3.5 rounded-2xl bg-amber-950/40 border border-amber-500/40 space-y-1.5';
+        diagModalErrorDesc.textContent = 'A tela está em local sem conexão de internet ativa e está reproduzindo o vídeo armazenado em cache local.';
+        diagModalErrorCode.textContent = 'Operação Offline';
+        diagModalSolutionTip.textContent = 'Tudo funcionando perfeitamente sem internet! Se quiser trocar o vídeo, conecte o totem temporariamente ao Wi-Fi para baixar o novo arquivo.';
+      } else {
+        diagModalIconBox.className = 'w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl shrink-0';
+        diagModalIconBox.textContent = '✅';
+        diagModalStatusBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+        diagModalStatusBadge.textContent = 'REPRODUZINDO OK';
+
+        diagModalAlertBox.className = 'p-3.5 rounded-2xl bg-emerald-950/40 border border-emerald-500/40 space-y-1.5';
+        diagModalErrorDesc.textContent = 'O totem está funcionando e reproduzindo o vídeo sem erros.';
+        diagModalErrorCode.textContent = 'Código 0 (Sem erros)';
+        diagModalSolutionTip.textContent = 'A tela está saudável e recebendo transmissões normalmente.';
+      }
+
+      diagModalVideoTitle.textContent = (diag && diag.videoTitle) ? diag.videoTitle : 'Vídeo Padrão';
+      diagModalOnlineStatus.textContent = isOnline ? '🟢 Conectado à Rede' : '⚪ Sem Conexão Recente';
+      diagModalOnlineStatus.className = isOnline ? 'text-emerald-400 font-semibold block' : 'text-slate-400 font-semibold block';
+      diagModalResolution.textContent = (diag && diag.resolution) ? diag.resolution : 'Automática';
+
+      screenDiagnosticModal.classList.remove('hidden');
+    };
+
+    function closeDiagnosticModal() {
+      if (screenDiagnosticModal) screenDiagnosticModal.classList.add('hidden');
+    }
+
+    if (closeDiagnosticModalBtn) {
+      closeDiagnosticModalBtn.addEventListener('click', closeDiagnosticModal);
+    }
+    if (screenDiagnosticModal) {
+      screenDiagnosticModal.addEventListener('click', (e) => {
+        if (e.target === screenDiagnosticModal) closeDiagnosticModal();
+      });
+    }
+
+    // Ação: Enviar Vídeo de Teste Universal H.264
+    if (diagSendTestVideoBtn) {
+      diagSendTestVideoBtn.addEventListener('click', async () => {
+        if (!activeDiagnosticDeviceId) return;
+        try {
+          diagSendTestVideoBtn.disabled = true;
+          diagSendTestVideoBtn.textContent = 'Transmitindo Vídeo Teste...';
+
+          // Procurar o vídeo "Arena 2" ou o primeiro vídeo compatível
+          let testVideo = currentVideos.find(v => v.title && v.title.toLowerCase().includes('arena 2'));
+          if (!testVideo && currentVideos.length > 0) {
+            testVideo = currentVideos[0];
+          }
+
+          if (!testVideo) {
+            testVideo = {
+              id: 'offline_sample',
+              title: 'Apresentação Arena (H.264)',
+              url: 'https://qvnsahvdjhimlmtqrnif.supabase.co/storage/v1/object/public/videos/uploads/1790285995796-arena-2.mp4',
+              video_url: 'https://qvnsahvdjhimlmtqrnif.supabase.co/storage/v1/object/public/videos/uploads/1790285995796-arena-2.mp4'
+            };
+          }
+
+          await window.totemCentral.transmitVideo(testVideo, activeDiagnosticDeviceId);
+          notify(`🧪 Vídeo de teste enviado com sucesso para a tela!`);
+          closeDiagnosticModal();
+        } catch(err) {
+          alert('Erro ao enviar vídeo de teste: ' + err.message);
+        } finally {
+          diagSendTestVideoBtn.disabled = false;
+          diagSendTestVideoBtn.textContent = '🧪 Enviar Vídeo Teste H.264';
+        }
+      });
+    }
+
+    // Ação: Recarregar Totem Remotamente
+    if (diagReloadTotemBtn) {
+      diagReloadTotemBtn.addEventListener('click', async () => {
+        if (!activeDiagnosticDeviceId) return;
+        reloadScreenRemotely(activeDiagnosticDeviceId);
+        closeDiagnosticModal();
+      });
+    }
 
     // Funções de Controle Remoto de Volume
     function persistVolumeState() {
