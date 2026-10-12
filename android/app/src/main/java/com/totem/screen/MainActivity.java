@@ -39,6 +39,14 @@ import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.URL;
+
 public class MainActivity extends Activity {
 
     private WebView webView;
@@ -50,8 +58,10 @@ public class MainActivity extends Activity {
     private EditText urlInput;
     private Button navBarTrigger;
 
+    private LocalHttpServer localServer;
+
     private static final String DEFAULT_CLOUD_URL = "https://totemarena.vercel.app/screen.html";
-    private static final String DEFAULT_OFFLINE_URL = "file:///android_asset/screen.html";
+    private static final String DEFAULT_OFFLINE_URL = "http://127.0.0.1:8888/screen.html";
     private static final String PREFS_NAME = "totem_browser_prefs";
     private static final String KEY_SAVED_URL = "saved_target_url";
 
@@ -95,11 +105,15 @@ public class MainActivity extends Activity {
             }
         });
 
-        // 3. Recuperar URL salva das preferências (padrão: Site oficial nuvem)
+        // 3. Inicializar Servidor HTTP Local (Loopback 127.0.0.1:8888 para vídeos offline e H.264 Range 206)
+        localServer = new LocalHttpServer(this);
+        localServer.start();
+
+        // 4. Recuperar URL salva das preferências (padrão: Site oficial nuvem)
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         currentTargetUrl = prefs.getString(KEY_SAVED_URL, DEFAULT_CLOUD_URL);
 
-        // 4. Construção da Interface do Navegador Totem
+        // 5. Construção da Interface do Navegador Totem
         FrameLayout rootLayout = new FrameLayout(this);
         rootLayout.setBackgroundColor(Color.BLACK);
         rootLayout.setLayoutParams(new ViewGroup.LayoutParams(
@@ -132,13 +146,13 @@ public class MainActivity extends Activity {
 
         setContentView(rootLayout);
 
-        // 5. Configuração Otimizada do WebView para Reprodução de Vídeos e Áudio
+        // 6. Configuração Otimizada do WebView para Reprodução de Vídeos e Áudio
         setupWebSettings();
 
-        // 6. Iniciar carregamento
-        loadUrlWithFallback(currentTargetUrl);
+        // 7. Identificar se tem internet ao abrir e carregar modo online ou offline automaticamente
+        detectInternetAndLoad();
 
-        // 7. Agendar ocultação automática da barra após 7 segundos da inicialização
+        // 8. Agendar ocultação automática da barra após 7 segundos da inicialização
         scheduleAutoHideNavBar();
         handler.postDelayed(memoryCleanerRunnable, 20 * 60 * 1000);
     }
@@ -264,12 +278,59 @@ public class MainActivity extends Activity {
         });
     }
 
+    private void detectInternetAndLoad() {
+        Toast.makeText(this, "🔍 Identificando status de internet...", Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            boolean hasInternet = checkRealInternetConnection();
+            runOnUiThread(() -> {
+                if (hasInternet) {
+                    Toast.makeText(MainActivity.this, "🟢 Internet Detectada! Modo Online ativo.", Toast.LENGTH_SHORT).show();
+                    loadUrlWithFallback(DEFAULT_CLOUD_URL);
+                } else {
+                    Toast.makeText(MainActivity.this, "🟡 Sem Internet! Ativando modo offline automático...", Toast.LENGTH_LONG).show();
+                    String offlineUrl = (localServer != null ? localServer.getBaseUrl() : "http://127.0.0.1:8888") + "/screen.html?offline=1";
+                    loadUrlWithFallback(offlineUrl);
+                }
+            });
+        }).start();
+    }
+
+    private boolean checkRealInternetConnection() {
+        try {
+            ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (cm == null) return false;
+            NetworkInfo netInfo = cm.getActiveNetworkInfo();
+            if (netInfo == null || !netInfo.isConnected()) return false;
+
+            // Teste rápido via socket com timeout curto de 2s para verificação instantânea
+            try (Socket s = new Socket()) {
+                s.connect(new InetSocketAddress("8.8.8.8", 53), 2000);
+                return true;
+            } catch (Exception ignored) {
+                try {
+                    URL u = new URL("https://totemarena.vercel.app/screen.html");
+                    HttpURLConnection conn = (HttpURLConnection) u.openConnection();
+                    conn.setConnectTimeout(2500);
+                    conn.setReadTimeout(2500);
+                    conn.setRequestMethod("HEAD");
+                    int code = conn.getResponseCode();
+                    return code >= 200 && code < 400;
+                } catch (Exception e) {
+                    return false;
+                }
+            }
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     private void handleLoadError(String failingUrl) {
         // Se falhou ao carregar a URL da nuvem por falta de internet, carrega imediatamente o pacote offline
-        if (failingUrl != null && !failingUrl.startsWith("file://")) {
+        if (failingUrl != null && !failingUrl.contains("127.0.0.1")) {
             Toast.makeText(this, "Sem internet. Carregando modo offline embutido...", Toast.LENGTH_SHORT).show();
             if (webView != null) {
-                webView.loadUrl(DEFAULT_OFFLINE_URL + "?offline=1");
+                String offlineUrl = (localServer != null ? localServer.getBaseUrl() : "http://127.0.0.1:8888") + "/screen.html?offline=1";
+                webView.loadUrl(offlineUrl);
             }
             scheduleRetry();
         }
@@ -279,15 +340,23 @@ public class MainActivity extends Activity {
         if (isRetrying) return;
         isRetrying = true;
         handler.postDelayed(() -> {
-            if (isOnline()) {
-                if (webView != null && currentTargetUrl != null && !currentTargetUrl.startsWith("file://")) {
-                    webView.loadUrl(currentTargetUrl);
+            new Thread(() -> {
+                if (checkRealInternetConnection()) {
+                    runOnUiThread(() -> {
+                        isRetrying = false;
+                        if (webView != null && currentTargetUrl != null && currentTargetUrl.contains("127.0.0.1")) {
+                            Toast.makeText(MainActivity.this, "🟢 Internet restabelecida! Retornando ao modo online...", Toast.LENGTH_SHORT).show();
+                            loadUrlWithFallback(DEFAULT_CLOUD_URL);
+                        }
+                    });
+                } else {
+                    runOnUiThread(() -> {
+                        isRetrying = false;
+                        scheduleRetry();
+                    });
                 }
-            } else {
-                isRetrying = false;
-                scheduleRetry();
-            }
-        }, 8000);
+            }).start();
+        }, 10000);
     }
 
     private void loadUrlWithFallback(String url) {
@@ -604,8 +673,44 @@ public class MainActivity extends Activity {
     protected void onDestroy() {
         handler.removeCallbacks(memoryCleanerRunnable);
         if (autoHideRunnable != null) handler.removeCallbacks(autoHideRunnable);
+        if (localServer != null) {
+            localServer.stop();
+            localServer = null;
+        }
         if (webView != null) webView.destroy();
         super.onDestroy();
+    }
+
+    public void downloadVideoToLocalCache(String videoUrl) {
+        if (videoUrl == null || !videoUrl.startsWith("http")) return;
+        new Thread(() -> {
+            try {
+                URL url = new URL(videoUrl);
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setConnectTimeout(10000);
+                conn.setReadTimeout(30000);
+                if (conn.getResponseCode() == 200) {
+                    File temp = new File(getFilesDir(), "temp_cache.mp4");
+                    try (InputStream in = conn.getInputStream();
+                         FileOutputStream fos = new FileOutputStream(temp)) {
+                        byte[] buf = new byte[64 * 1024];
+                        int r;
+                        while ((r = in.read(buf)) != -1) {
+                            fos.write(buf, 0, r);
+                        }
+                        fos.flush();
+                    }
+                    if (temp.length() > 50000) {
+                        File target = new File(getFilesDir(), "cached_video.mp4");
+                        if (target.exists()) target.delete();
+                        temp.renameTo(target);
+                        android.util.Log.i("TotemCache", "Vídeo salvo em cached_video.mp4 (" + target.length() + " bytes)");
+                    }
+                }
+            } catch (Exception e) {
+                android.util.Log.w("TotemCache", "Falha ao gravar cache nativo de vídeo", e);
+            }
+        }).start();
     }
 
     @Override
@@ -628,6 +733,21 @@ public class MainActivity extends Activity {
         @android.webkit.JavascriptInterface
         public String getOfflineAssetPath() {
             return "offline_sample.mp4";
+        }
+
+        @android.webkit.JavascriptInterface
+        public String getLocalServerUrl() {
+            return localServer != null ? localServer.getBaseUrl() : "http://127.0.0.1:8888";
+        }
+
+        @android.webkit.JavascriptInterface
+        public String getOfflineVideoUrl() {
+            return (localServer != null ? localServer.getBaseUrl() : "http://127.0.0.1:8888") + "/offline_sample.mp4";
+        }
+
+        @android.webkit.JavascriptInterface
+        public void cacheVideo(String videoUrl) {
+            MainActivity.this.downloadVideoToLocalCache(videoUrl);
         }
     }
 }

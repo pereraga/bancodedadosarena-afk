@@ -871,16 +871,24 @@
 
         // 2. Se não houver cache no IndexedDB, toca o arquivo embutido no APK / site
         var assetUrl = 'offline_sample.mp4';
-        if (window.AndroidTotem && typeof window.AndroidTotem.getOfflineAssetPath === 'function') {
+        if (window.AndroidTotem && typeof window.AndroidTotem.getOfflineVideoUrl === 'function') {
           try {
-            assetUrl = window.AndroidTotem.getOfflineAssetPath();
+            assetUrl = window.AndroidTotem.getOfflineVideoUrl();
           } catch(e){}
+        } else if (window.AndroidTotem && typeof window.AndroidTotem.getLocalServerUrl === 'function') {
+          try {
+            assetUrl = window.AndroidTotem.getLocalServerUrl() + '/offline_sample.mp4';
+          } catch(e){}
+        } else if (window.location.protocol === 'file:') {
+          assetUrl = 'http://127.0.0.1:8888/offline_sample.mp4';
+        } else if (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost') {
+          assetUrl = '/offline_sample.mp4';
         }
 
         console.log('🎬 Tocando vídeo embutido nativo:', assetUrl);
         playVideo({
           id: 'offline-sample',
-          title: 'Apresentação Arena (Embutido)',
+          title: 'Apresentação Arena (Offline)',
           url: assetUrl,
           isOffline: true
         });
@@ -1037,9 +1045,12 @@
         document.cookie = 'totem_screen_paired=; path=/; max-age=0';
       } catch (e) {}
 
+      // Mantém o vídeo de demonstração rodando em segundo plano para o totem nunca ficar em tela preta
       if (videoElem) {
-        try { videoElem.pause(); } catch (e) {}
-        videoElem.classList.add('hidden');
+        videoElem.classList.remove('hidden');
+        if (!currentUrl || videoElem.paused) {
+          playEmergencyOfflineVideo('Aguardando emparelhamento');
+        }
       }
       if (iframeElem) {
         iframeElem.classList.add('hidden');
@@ -1238,6 +1249,9 @@
         // Se for URL remota na nuvem, faz cache em background para garantir modo offline
         if (!video.isOffline && targetMediaUrl.indexOf('http') === 0) {
           TotemOffline.cacheVideoInBackground(targetMediaUrl, newVideoId || 'vid', currentPlayingVideoTitle);
+          if (window.AndroidTotem && typeof window.AndroidTotem.cacheVideo === 'function') {
+            try { window.AndroidTotem.cacheVideo(targetMediaUrl); } catch(e){}
+          }
         }
       };
 
@@ -1281,10 +1295,21 @@
       videoElem.src = targetMediaUrl;
       videoElem.load();
 
+      // Inicia sempre mudo para o WebView aceitar a reprodução sem restrições de autoplay
+      videoElem.muted = true;
       var startPromise = videoElem.play();
       if (startPromise !== undefined) {
         startPromise.then(function() {
           initWakeLock();
+          // Se o áudio estiver configurado para tocar, desmuta suavemente após iniciar
+          if (!isMuted && currentVolume > 0) {
+            setTimeout(function() {
+              if (videoElem) {
+                videoElem.muted = false;
+                videoElem.volume = Math.max(0, Math.min(1, currentVolume / 100));
+              }
+            }, 350);
+          }
         }).catch(function(err) {
           console.warn('Autoplay com som restrito pelo navegador. Iniciando mudo:', err);
           reportDiagnostic('warning', 'Autoplay de áudio restrito pelo navegador. Iniciado mudo.', 101);
@@ -1518,9 +1543,12 @@
       initLocalSSE();
       initSupabaseRealtime();
 
-      // Detecção de Modo Offline Forçado (?offline=1 ou protocolo file: ou sem rede)
+      // Detecção de Modo Offline Forçado (?offline=1 ou protocolo file: ou sem rede ou nativo offline)
+      var isNativeOffline = (window.AndroidTotem && typeof window.AndroidTotem.isOnline === 'function' && !window.AndroidTotem.isOnline());
       var isOfflineRequested = (getQueryParam('offline') === '1') || 
                                (window.location.protocol === 'file:') || 
+                               (window.location.hostname === '127.0.0.1' && getQueryParam('offline') === '1') ||
+                               isNativeOffline ||
                                (!navigator.onLine);
 
       if (isOfflineRequested) {
