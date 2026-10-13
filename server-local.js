@@ -504,6 +504,18 @@ function getLocalIpAddresses() {
   return addresses;
 }
 
+server.on('error', (err) => {
+  console.error('Erro no servidor HTTP:', err);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception capturada (servidor mantido ativo):', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection capturada (servidor mantido ativo):', reason);
+});
+
 server.listen(PORT, '0.0.0.0', () => {
   const ips = getLocalIpAddresses();
   console.log(`\n======================================================`);
