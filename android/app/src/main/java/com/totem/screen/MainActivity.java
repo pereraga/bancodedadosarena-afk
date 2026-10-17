@@ -89,8 +89,14 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // 1. Manter tela acesa 100% do tempo (Kiosk 24/7)
+        // 1. Manter tela acesa 100% do tempo (Kiosk 24/7) e com brilho máximo nativo
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        try {
+            WindowManager.LayoutParams lp = getWindow().getAttributes();
+            lp.screenBrightness = 1.0f; // 100% brilho máximo nativo no display
+            getWindow().setAttributes(lp);
+        } catch (Exception ignored) {}
+
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setFlags(
             WindowManager.LayoutParams.FLAG_FULLSCREEN,
@@ -748,6 +754,20 @@ public class MainActivity extends Activity {
         @android.webkit.JavascriptInterface
         public void cacheVideo(String videoUrl) {
             MainActivity.this.downloadVideoToLocalCache(videoUrl);
+        }
+
+        @android.webkit.JavascriptInterface
+        public void setBrightness(final float percent) {
+            runOnUiThread(() -> {
+                try {
+                    WindowManager.LayoutParams lp = getWindow().getAttributes();
+                    float b = Math.max(0.05f, Math.min(1.0f, percent / 100.0f));
+                    lp.screenBrightness = b;
+                    getWindow().setAttributes(lp);
+                } catch (Exception e) {
+                    android.util.Log.w("TotemBrightness", "Erro ao ajustar brilho de tela", e);
+                }
+            });
         }
     }
 }

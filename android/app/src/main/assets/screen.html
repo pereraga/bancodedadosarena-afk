@@ -128,6 +128,35 @@
       opacity: 0;
       transform: translateY(-12px) scale(0.97);
     }
+
+    /* Brilho OSD (Indicador visual estilo TV de Brilho no Totem) */
+    .brightness-osd {
+      position: fixed;
+      top: 32px;
+      left: 32px;
+      z-index: 100;
+      background: rgba(10, 17, 32, 0.94);
+      border: 1px solid rgba(245, 158, 11, 0.45);
+      border-radius: 20px;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7), 0 0 25px rgba(245, 158, 11, 0.25);
+      transition: opacity 0.35s ease, transform 0.35s ease;
+      pointer-events: none;
+      min-width: 250px;
+    }
+    .brightness-osd.osd-fade-out {
+      opacity: 0;
+      transform: translateY(-12px) scale(0.97);
+    }
+    .osd-bar-fill-brightness {
+      height: 100%;
+      background: linear-gradient(90deg, #f59e0b, #fbbf24);
+      border-radius: 999px;
+      transition: width 0.15s ease-out;
+    }
     .osd-icon {
       font-size: 26px;
       line-height: 1;
@@ -490,6 +519,21 @@
     ></iframe>
   </div>
 
+  <!-- Indicador Visual de Brilho na Tela (OSD) -->
+  <div id="brightnessOsd" class="brightness-osd hidden">
+    <div class="osd-icon" id="brightOsdIcon" style="color: #fbbf24;">☀️</div>
+    <div class="osd-content">
+      <div class="osd-header">
+        <span id="brightOsdTitle" style="color:#fde68a;">Brilho da Tela</span>
+        <span class="osd-value" id="brightOsdValue" style="color:#fbbf24;">100%</span>
+      </div>
+      <div class="osd-bar-bg">
+        <div class="osd-bar-fill-brightness" id="brightOsdBarFill" style="width: 100%;"></div>
+      </div>
+      <div class="osd-sub" id="brightOsdSub" style="display:none; color:#fef3c7;"></div>
+    </div>
+  </div>
+
   <!-- Indicador Visual de Volume na Tela (OSD) -->
   <div id="volumeOsd" class="volume-osd hidden">
     <div class="osd-icon" id="osdIcon">🔊</div>
@@ -650,6 +694,105 @@
 
       if (showBanner !== false) {
         showVolumeOsd(currentVolume, isMuted);
+      }
+    }
+
+    // ========================================================
+    // CONTROLE DE BRILHO DA TELA (HARDWARE NATIVO & CSS BOOST)
+    // Permite aumentar o brilho do totem até 150% - 200%
+    // ========================================================
+    var currentBrightness = 100;
+    try {
+      var savedBright = localStorage.getItem('totem_screen_brightness');
+      if (savedBright !== null && !isNaN(parseInt(savedBright, 10))) {
+        currentBrightness = parseInt(savedBright, 10);
+      }
+    } catch(e) {}
+
+    var brightnessOsdTimer = null;
+    var brightnessOsd = document.getElementById('brightnessOsd');
+    var brightOsdIcon = document.getElementById('brightOsdIcon');
+    var brightOsdTitle = document.getElementById('brightOsdTitle');
+    var brightOsdValue = document.getElementById('brightOsdValue');
+    var brightOsdBarFill = document.getElementById('brightOsdBarFill');
+    var brightOsdSub = document.getElementById('brightOsdSub');
+
+    function showBrightnessOsd(bright, subMessage) {
+      if (!brightnessOsd) return;
+      clearTimeout(brightnessOsdTimer);
+
+      if (brightOsdIcon) {
+        brightOsdIcon.textContent = bright >= 130 ? '🔥' : (bright >= 100 ? '☀️' : (bright >= 70 ? '⛅' : '🌙'));
+      }
+      if (brightOsdTitle) {
+        brightOsdTitle.textContent = bright > 100 ? 'Brilho Extra Turbo' : 'Brilho da Tela';
+      }
+      if (brightOsdValue) {
+        brightOsdValue.textContent = bright + '%';
+      }
+      if (brightOsdBarFill) {
+        var pct = Math.min(100, Math.round((bright / 150) * 100));
+        brightOsdBarFill.style.width = pct + '%';
+        if (bright > 100) {
+          brightOsdBarFill.style.background = 'linear-gradient(90deg, #f59e0b, #ef4444)';
+        } else {
+          brightOsdBarFill.style.background = 'linear-gradient(90deg, #f59e0b, #fbbf24)';
+        }
+      }
+
+      if (subMessage && brightOsdSub) {
+        brightOsdSub.textContent = subMessage;
+        brightOsdSub.style.display = 'block';
+      } else if (brightOsdSub) {
+        if (bright > 100) {
+          brightOsdSub.textContent = 'Modo Brilho Elevado Ativo (+ ' + (bright - 100) + '%)';
+          brightOsdSub.style.display = 'block';
+        } else {
+          brightOsdSub.style.display = 'none';
+        }
+      }
+
+      brightnessOsd.classList.remove('hidden', 'osd-fade-out');
+
+      brightnessOsdTimer = setTimeout(function() {
+        brightnessOsd.classList.add('osd-fade-out');
+        setTimeout(function() {
+          if (brightnessOsd && brightnessOsd.classList.contains('osd-fade-out')) {
+            brightnessOsd.classList.add('hidden');
+          }
+        }, 350);
+      }, 2500);
+    }
+
+    function setScreenBrightness(bright, showBanner) {
+      if (typeof bright === 'number') {
+        currentBrightness = Math.max(20, Math.min(200, Math.round(bright)));
+        try { localStorage.setItem('totem_screen_brightness', String(currentBrightness)); } catch(e){}
+      }
+
+      // 1. Aplicação CSS Visual no Vídeo e no Container (funciona em Web e no APK)
+      var bRatio = currentBrightness / 100;
+      var cRatio = 1 + (currentBrightness - 100) * 0.0012; // contraste proporcional para manter brancos vivos
+      var filterStr = 'brightness(' + bRatio + ') contrast(' + cRatio + ')';
+
+      if (videoElem) {
+        videoElem.style.filter = filterStr;
+        videoElem.style.webkitFilter = filterStr;
+      }
+      if (iframeElem) {
+        iframeElem.style.filter = 'brightness(' + bRatio + ')';
+        iframeElem.style.webkitFilter = 'brightness(' + bRatio + ')';
+      }
+
+      // 2. Aplicação de Brilho de Hardware no Android (se estiver rodando no APK)
+      if (window.AndroidTotem && typeof window.AndroidTotem.setBrightness === 'function') {
+        try {
+          window.AndroidTotem.setBrightness(currentBrightness);
+        } catch(e){}
+      }
+
+      if (showBanner !== false) {
+        showBrightnessOsd(currentBrightness);
       }
     }
 
@@ -1469,6 +1612,9 @@
             if (typeof data.currentVolume === 'number') {
               setScreenVolume(data.currentVolume, data.isMuted, false);
             }
+            if (typeof data.currentBrightness === 'number') {
+              setScreenBrightness(data.currentBrightness, false);
+            }
           } catch(err){}
         });
         sse.addEventListener('device-volume', function(e) {
@@ -1477,6 +1623,15 @@
             var myDevId = getStoredDeviceId();
             if (!data.deviceId || data.deviceId === myDevId) {
               setScreenVolume(data.volume, data.muted, true);
+            }
+          } catch(err){}
+        });
+        sse.addEventListener('device-brightness', function(e) {
+          try {
+            var data = JSON.parse(e.data);
+            var myDevId = getStoredDeviceId();
+            if (!data.deviceId || data.deviceId === myDevId) {
+              setScreenBrightness(data.brightness, true);
             }
           } catch(err){}
         });
@@ -1508,6 +1663,11 @@
             setScreenVolume(p.payload.volume, p.payload.muted, true);
           }
         });
+        chanDev.on('broadcast', { event: 'SET_BRIGHTNESS' }, function(p) {
+          if (p && p.payload && typeof p.payload.brightness === 'number') {
+            setScreenBrightness(p.payload.brightness, true);
+          }
+        });
         chanDev.subscribe();
 
         // Canal Broadcast Global
@@ -1517,12 +1677,22 @@
             setScreenVolume(p.payload.volume, p.payload.muted, true);
           }
         });
+        chanGlobal.on('broadcast', { event: 'SET_BRIGHTNESS' }, function(p) {
+          if (p && p.payload && (!p.payload.deviceId || p.payload.deviceId === myDevId) && typeof p.payload.brightness === 'number') {
+            setScreenBrightness(p.payload.brightness, true);
+          }
+        });
         chanGlobal.subscribe();
 
         var chanBroad = client.channel('totem-broadcast');
         chanBroad.on('broadcast', { event: 'SET_VOLUME' }, function(p) {
           if (p && p.payload && (!p.payload.deviceId || p.payload.deviceId === myDevId)) {
             setScreenVolume(p.payload.volume, p.payload.muted, true);
+          }
+        });
+        chanBroad.on('broadcast', { event: 'SET_BRIGHTNESS' }, function(p) {
+          if (p && p.payload && (!p.payload.deviceId || p.payload.deviceId === myDevId) && typeof p.payload.brightness === 'number') {
+            setScreenBrightness(p.payload.brightness, true);
           }
         });
         chanBroad.subscribe();
@@ -1538,6 +1708,13 @@
 
       currentPairCode = getStoredPairCode();
       if (screenPairCode) screenPairCode.textContent = currentPairCode;
+
+      // Inicia com o brilho configurado (ou padrão com boost se especificado na URL ?brightness=)
+      var urlBright = getQueryParam('brightness');
+      if (urlBright && !isNaN(parseInt(urlBright, 10))) {
+        currentBrightness = parseInt(urlBright, 10);
+      }
+      setScreenBrightness(currentBrightness, false);
 
       // Inicia conexões em tempo real para controle remoto de áudio e vídeo
       initLocalSSE();

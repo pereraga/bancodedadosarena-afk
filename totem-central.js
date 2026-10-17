@@ -882,6 +882,44 @@ class TotemCentralEngine {
       }
     }
   }
+
+  // --- CONTROLE DE BRILHO REMOTO (AUMENTAR / DIMINUIR / MODO MÁXIMO) ---
+  async setScreenBrightness(deviceId, brightness = 100) {
+    const targetBrightness = typeof brightness === 'number' ? Math.max(20, Math.min(200, Math.round(brightness))) : 100;
+
+    // 1. Enviar para API local (se estiver em localhost ou rede Wi-Fi do totem)
+    try {
+      fetch('/api/devices/brightness', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceId, brightness: targetBrightness })
+      }).catch(function() {});
+    } catch (e) {}
+
+    // 2. Transmitir via Supabase Realtime Broadcast (Nuvem e local)
+    if (this.client) {
+      try {
+        const payload = {
+          deviceId: deviceId || null,
+          brightness: targetBrightness,
+          updatedAt: new Date().toISOString()
+        };
+
+        if (deviceId) {
+          const chanDev = this.client.channel(`device-${deviceId}`);
+          await chanDev.send({ type: 'broadcast', event: 'SET_BRIGHTNESS', payload });
+        }
+
+        const chanGlobal = this.client.channel('totem-global-channel');
+        await chanGlobal.send({ type: 'broadcast', event: 'SET_BRIGHTNESS', payload });
+
+        const chanBroad = this.client.channel('totem-broadcast');
+        await chanBroad.send({ type: 'broadcast', event: 'SET_BRIGHTNESS', payload });
+      } catch (err) {
+        console.warn('Erro ao disparar broadcast de brilho:', err);
+      }
+    }
+  }
 }
 
 window.totemCentral = new TotemCentralEngine();

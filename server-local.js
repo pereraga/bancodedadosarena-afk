@@ -21,6 +21,7 @@ function carregarBanco() {
       if (!data.videos) data.videos = [];
       if (typeof data.currentVolume !== 'number') data.currentVolume = 80;
       if (typeof data.isMuted !== 'boolean') data.isMuted = false;
+      if (typeof data.currentBrightness !== 'number') data.currentBrightness = 100;
       return data;
     }
   } catch (e) {
@@ -234,6 +235,42 @@ const server = http.createServer((req, res) => {
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true, volume: targetVolume, muted: isMuted, deviceId }));
+      } catch (e) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    });
+    return;
+  }
+
+  // 4.15 CONTROLE REMOTO DE BRILHO DO TOTEM (AUMENTA / DIMINUI / BRILHO TURBO)
+  if (url.pathname === '/api/devices/brightness' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+      try {
+        const { deviceId, brightness } = JSON.parse(body);
+        let targetBrightness = typeof brightness === 'number' ? Math.max(20, Math.min(200, Math.round(brightness))) : 100;
+
+        db.currentBrightness = targetBrightness;
+
+        if (deviceId) {
+          const device = db.devices.find(d => d.id === deviceId);
+          if (device) {
+            device.brightness = targetBrightness;
+          }
+        } else {
+          db.devices.forEach(d => {
+            d.brightness = targetBrightness;
+          });
+        }
+
+        salvarBanco();
+        broadcastEvent('device-brightness', { deviceId: deviceId || null, brightness: targetBrightness });
+        broadcastEvent('devices-list', db.devices);
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, brightness: targetBrightness, deviceId }));
       } catch (e) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: e.message }));
