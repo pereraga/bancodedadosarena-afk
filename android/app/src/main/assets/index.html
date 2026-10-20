@@ -2111,6 +2111,15 @@
 
         // Canal Broadcast da Tela
         var chanDev = client.channel('device-' + myDevId);
+        chanDev.on('broadcast', { event: 'PLAY_VIDEO' }, function(p) {
+          if (p && p.payload) {
+            console.log('⚡ Comando PLAY_VIDEO recebido (chanDev):', p.payload);
+            playVideo(p.payload);
+          }
+        });
+        chanDev.on('broadcast', { event: 'RELOAD' }, function() {
+          window.location.reload();
+        });
         chanDev.on('broadcast', { event: 'SET_VOLUME' }, function(p) {
           if (p && p.payload) {
             setScreenVolume(p.payload.volume, p.payload.muted, true);
@@ -2121,10 +2130,27 @@
             setScreenBrightness(p.payload.brightness, true);
           }
         });
+        chanDev.on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'devices', filter: 'id=eq.' + myDevId }, function(payload) {
+          if (payload && payload.new) {
+            if (payload.new.current_video_id && payload.new.current_video_id !== currentPlayingVideoId) {
+              console.log('⚡ Supabase DB UPDATE current_video_id alterado:', payload.new.current_video_id);
+              fetchActiveOrLatestVideo(payload.new.current_video_id);
+            }
+            if (payload.new.status === 'approved' && !isPaired) {
+              unlockPlayer(payload.new.device_name || 'Modelo Totem');
+            }
+          }
+        });
         chanDev.subscribe();
 
         // Canal Broadcast Global
         var chanGlobal = client.channel('totem-global-channel');
+        chanGlobal.on('broadcast', { event: 'PLAY_VIDEO' }, function(p) {
+          if (p && p.payload && (!p.payload.targetDeviceId || p.payload.targetDeviceId === myDevId)) {
+            console.log('⚡ Comando PLAY_VIDEO recebido (chanGlobal):', p.payload);
+            playVideo(p.payload);
+          }
+        });
         chanGlobal.on('broadcast', { event: 'SET_VOLUME' }, function(p) {
           if (p && p.payload && (!p.payload.deviceId || p.payload.deviceId === myDevId)) {
             setScreenVolume(p.payload.volume, p.payload.muted, true);
@@ -2138,6 +2164,12 @@
         chanGlobal.subscribe();
 
         var chanBroad = client.channel('totem-broadcast');
+        chanBroad.on('broadcast', { event: 'PLAY_VIDEO' }, function(p) {
+          if (p && p.payload && (!p.payload.targetDeviceId || p.payload.targetDeviceId === myDevId)) {
+            console.log('⚡ Comando PLAY_VIDEO recebido (chanBroad):', p.payload);
+            playVideo(p.payload);
+          }
+        });
         chanBroad.on('broadcast', { event: 'SET_VOLUME' }, function(p) {
           if (p && p.payload && (!p.payload.deviceId || p.payload.deviceId === myDevId)) {
             setScreenVolume(p.payload.volume, p.payload.muted, true);

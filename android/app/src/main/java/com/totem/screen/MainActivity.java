@@ -12,6 +12,7 @@ import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.Uri;
 import android.net.http.SslError;
 import android.os.Build;
 import android.os.Bundle;
@@ -793,30 +794,50 @@ public class MainActivity extends Activity {
             mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
             mediaPlayer.setLooping(true);
 
-            File activeFile = localServer != null ? localServer.getActiveVideoFile() : null;
-            if (activeFile == null || !activeFile.exists()) {
-                activeFile = new File(getFilesDir(), "offline_sample.mp4");
-            }
+            String targetSource = currentVideoPath;
 
-            if (!activeFile.exists() || activeFile.length() < 1000) {
-                if (localServer != null) {
-                    localServer.prepareLocalFiles();
-                    activeFile = localServer.getActiveVideoFile();
+            // Se não houver vídeo específico definido, busca o arquivo local ou de amostra offline
+            if (targetSource == null || targetSource.trim().isEmpty()) {
+                File activeFile = localServer != null ? localServer.getActiveVideoFile() : null;
+                if (activeFile == null || !activeFile.exists()) {
+                    activeFile = new File(getFilesDir(), "offline_sample.mp4");
+                }
+                if (!activeFile.exists() || activeFile.length() < 1000) {
+                    if (localServer != null) {
+                        localServer.prepareLocalFiles();
+                        activeFile = localServer.getActiveVideoFile();
+                    }
+                }
+                if (activeFile != null && activeFile.exists()) {
+                    targetSource = activeFile.getAbsolutePath();
                 }
             }
 
-            if (activeFile != null && activeFile.exists()) {
-                currentVideoPath = activeFile.getAbsolutePath();
-                mediaPlayer.setDataSource(currentVideoPath);
+            if (targetSource != null && !targetSource.trim().isEmpty()) {
+                final String finalSource = targetSource;
+                android.util.Log.i("TotemNativePlayer", "▶ Configurando fonte de mídia: " + finalSource);
+
+                if (finalSource.startsWith("http://") || finalSource.startsWith("https://")) {
+                    mediaPlayer.setDataSource(this, Uri.parse(finalSource));
+                } else {
+                    mediaPlayer.setDataSource(finalSource);
+                }
+
                 mediaPlayer.setOnPreparedListener(mp -> {
                     adjustVideoAspectRatio();
                     updatePlayerAudio();
                     mp.start();
-                    android.util.Log.i("TotemNativePlayer", "▶ Vídeo nativo iniciado: " + currentVideoPath);
+                    android.util.Log.i("TotemNativePlayer", "▶ Vídeo nativo iniciado com sucesso: " + finalSource);
                 });
                 mediaPlayer.setOnErrorListener((mp, what, extra) -> {
-                    android.util.Log.e("TotemNativePlayer", "Erro no MediaPlayer (" + what + ", " + extra + "). Reiniciando em 2s...");
-                    handler.postDelayed(this::startOrUpdateNativePlayer, 2000);
+                    android.util.Log.e("TotemNativePlayer", "Erro no MediaPlayer (" + what + ", " + extra + ") para: " + finalSource);
+                    // Se falhar URL remota, recua para arquivo offline local
+                    if (finalSource.startsWith("http")) {
+                        currentVideoPath = null;
+                        handler.postDelayed(this::startOrUpdateNativePlayer, 1500);
+                    } else {
+                        handler.postDelayed(this::startOrUpdateNativePlayer, 3000);
+                    }
                     return true;
                 });
                 mediaPlayer.prepareAsync();
@@ -888,17 +909,27 @@ public class MainActivity extends Activity {
 
     public void playNativeVideo(String videoUrl, String videoTitle) {
         if (videoUrl == null || videoUrl.trim().isEmpty()) return;
+        final String cleanUrl = videoUrl.trim();
+        android.util.Log.i("TotemNativePlayer", "▶ Comando playNativeVideo recebido: " + cleanUrl + " (" + videoTitle + ")");
 
-        if (videoUrl.startsWith("/") || videoUrl.startsWith("file://")) {
-            currentVideoPath = videoUrl.replace("file://", "");
-            runOnUiThread(this::startOrUpdateNativePlayer);
-            return;
+        currentVideoPath = cleanUrl;
+        runOnUiThread(() -> {
+            if (videoTitle != null && !videoTitle.isEmpty()) {
+                Toast.makeText(MainActivity.this, "🎬 Trocando vídeo: " + videoTitle, Toast.LENGTH_SHORT).show();
+            }
+            startOrUpdateNativePlayer();
+        });
+
+        // Se for URL remota na nuvem, inicia download em segundo plano para persistir como cache offline
+        if (cleanUrl.startsWith("http://") || cleanUrl.startsWith("https://")) {
+            startBackgroundDownload(cleanUrl);
         }
+    }
 
+    private void startBackgroundDownload(final String urlString) {
         new Thread(() -> {
             try {
-                android.util.Log.i("TotemNativePlayer", "Baixando novo vídeo remoto: " + videoUrl);
-                URL url = new URL(videoUrl);
+                URL url = new URL(urlString);
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setConnectTimeout(10000);
                 conn.setReadTimeout(30000);
@@ -917,15 +948,11 @@ public class MainActivity extends Activity {
                         File targetFile = new File(getFilesDir(), "cached_video.mp4");
                         if (targetFile.exists()) targetFile.delete();
                         tempFile.renameTo(targetFile);
-                        currentVideoPath = targetFile.getAbsolutePath();
-                        runOnUiThread(() -> {
-                            Toast.makeText(MainActivity.this, "🎬 Reproduzindo: " + (videoTitle != null ? videoTitle : "Totem"), Toast.LENGTH_SHORT).show();
-                            startOrUpdateNativePlayer();
-                        });
+                        android.util.Log.i("TotemNativePlayer", "✔ Vídeo baixado e armazenado para cache offline.");
                     }
                 }
             } catch (Exception e) {
-                android.util.Log.w("TotemNativePlayer", "Falha ao baixar vídeo remoto", e);
+                android.util.Log.w("TotemNativePlayer", "Aviso no download em background para cache: " + e.getMessage());
             }
         }).start();
     }
