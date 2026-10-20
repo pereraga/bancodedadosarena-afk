@@ -121,8 +121,8 @@
     /* Volume OSD (Indicador visual estilo TV de Volume no Totem) */
     .volume-osd {
       position: fixed;
-      top: 32px;
-      right: 32px;
+      top: 76px;
+      right: 24px;
       z-index: 100;
       background: rgba(10, 17, 32, 0.92);
       border: 1px solid rgba(56, 189, 248, 0.35);
@@ -431,6 +431,194 @@
     .bypass-btn:hover {
       color: #ffffff;
     }
+
+    /* Engrenagem Translúcida no Canto Superior Direito */
+    .totem-gear-btn {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 180;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: rgba(15, 23, 42, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      color: rgba(255, 255, 255, 0.75);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+      transition: all 0.25s ease;
+      outline: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .totem-gear-btn:hover, .totem-gear-btn:active {
+      background: rgba(15, 23, 42, 0.88);
+      color: #38bdf8;
+      border-color: rgba(56, 189, 248, 0.6);
+      transform: rotate(45deg) scale(1.08);
+      box-shadow: 0 6px 20px rgba(56, 189, 248, 0.3);
+    }
+    .totem-gear-btn svg {
+      width: 22px;
+      height: 22px;
+      display: block;
+    }
+
+    /* Modal de Configurações & Download do APK */
+    .totem-settings-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 250;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .totem-settings-backdrop {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+    .totem-settings-dialog {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      max-width: 460px;
+      background: rgba(15, 23, 42, 0.96);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      border-radius: 24px;
+      padding: 22px;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9), 0 0 35px rgba(37, 99, 235, 0.25);
+      animation: modalScaleIn 0.25s ease-out;
+    }
+    @keyframes modalScaleIn {
+      from { opacity: 0; transform: scale(0.94); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .totem-settings-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 14px;
+      margin-bottom: 16px;
+    }
+    .totem-modal-close-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-size: 24px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 8px;
+    }
+    .totem-modal-close-btn:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.1);
+    }
+    .apk-download-card {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.9));
+      border: 1px solid rgba(34, 197, 94, 0.4);
+      border-radius: 18px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    }
+    .apk-icon-box {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: rgba(34, 197, 94, 0.15);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .apk-download-button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      margin-top: 14px;
+      padding: 14px 18px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #16a34a, #22c55e);
+      color: #ffffff;
+      font-weight: 800;
+      font-size: 13px;
+      letter-spacing: 0.5px;
+      text-decoration: none;
+      box-shadow: 0 8px 20px rgba(34, 197, 94, 0.4);
+      transition: all 0.2s ease;
+      text-transform: uppercase;
+      box-sizing: border-box;
+    }
+    .apk-download-button:hover {
+      background: linear-gradient(135deg, #15803d, #16a34a);
+      box-shadow: 0 10px 25px rgba(34, 197, 94, 0.6);
+      transform: translateY(-2px);
+    }
+    .totem-settings-info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      background: rgba(10, 17, 32, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 12px;
+      margin-bottom: 14px;
+    }
+    .totem-info-item {
+      display: flex;
+      flex-direction: column;
+    }
+    .totem-info-label {
+      font-size: 9px;
+      font-weight: 800;
+      color: #64748b;
+      letter-spacing: 0.5px;
+    }
+    .totem-info-val {
+      font-size: 12px;
+      font-weight: 700;
+      color: #f1f5f9;
+      font-family: monospace;
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .totem-secondary-btn {
+      flex: 1;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .totem-secondary-btn:hover {
+      background: #334155;
+      color: #fff;
+    }
   </style>
 </head>
 <body>
@@ -593,6 +781,103 @@
       <button type="button" class="diag-btn" id="diagOfflineBtn">▶ Tocar Vídeo Offline</button>
       <button type="button" class="diag-btn" id="diagRetryBtn">↻ Tentar Novamente</button>
       <button type="button" class="diag-btn" id="diagCloseBtn" style="margin-left:auto; background:transparent; border:none; color:#94a3b8;">✕ Ocultar</button>
+    </div>
+  </div>
+
+  <!-- Botão de Configurações e Download do APK (Engrenagem Translúcida no Canto Superior Direito) -->
+  <button
+    id="totemSettingsBtn"
+    type="button"
+    class="totem-gear-btn"
+    title="Configurações e Download do APK"
+    aria-label="Configurações"
+  >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"></circle>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+    </svg>
+  </button>
+
+  <!-- Modal de Configurações & Download do APK -->
+  <div id="totemSettingsModal" class="totem-settings-modal hidden">
+    <div class="totem-settings-backdrop" id="totemSettingsBackdrop"></div>
+    <div class="totem-settings-dialog">
+      <div class="totem-settings-header">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span style="font-size:20px;">⚙️</span>
+          <div>
+            <h3 style="font-size:15px; font-weight:800; color:#ffffff; margin:0;">Configurações do Totem</h3>
+            <span style="font-size:11px; color:#94a3b8;">Instalação do APK e informações do sistema</span>
+          </div>
+        </div>
+        <button id="closeTotemSettingsBtn" type="button" class="totem-modal-close-btn">&times;</button>
+      </div>
+
+      <!-- Card Principal: Download do APK Nativo -->
+      <div class="apk-download-card">
+        <div style="display:flex; align-items:flex-start; gap:12px;">
+          <div class="apk-icon-box">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2">
+              <rect x="5" y="2" width="14" height="20" rx="3"></rect>
+              <line x1="12" y1="18" x2="12" y2="18.01"></line>
+            </svg>
+          </div>
+          <div style="flex:1;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <strong style="color:#ffffff; font-size:13px;">Aplicativo Nativo do Totem</strong>
+              <span style="font-size:9px; font-weight:bold; padding:2px 6px; border-radius:8px; background:#16a34a; color:#fff;">v2.0 OFICIAL</span>
+            </div>
+            <p style="font-size:11px; color:#cbd5e1; margin-top:4px; line-height:1.4;">
+              Reprodutor nativo por hardware (CedarX). Suporta modo 100% offline, áudio ajustável e anti-duplicação.
+            </p>
+          </div>
+        </div>
+
+        <!-- Botão de Download Direto do Vercel -->
+        <a
+          id="downloadApkLink"
+          href="/totemscreen.apk"
+          download="totemscreen.apk"
+          class="apk-download-button"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>BAIXAR APK DO TOTEM (13 MB)</span>
+        </a>
+        <div style="font-size:10px; color:#94a3b8; text-align:center; margin-top:6px;">
+          Compatível com Android 6.0+ (Tablet Kiosk Allwinner A83T / Smart TVs / TV Box)
+        </div>
+      </div>
+
+      <!-- Dados Técnicos Rápidos -->
+      <div class="totem-settings-info-grid">
+        <div class="totem-info-item">
+          <span class="totem-info-label">ID DA TELA:</span>
+          <span class="totem-info-val" id="settingsDevId">totem-...</span>
+        </div>
+        <div class="totem-info-item">
+          <span class="totem-info-label">CÓDIGO DE EMPARELHAMENTO:</span>
+          <span class="totem-info-val" id="settingsPairCode">------</span>
+        </div>
+        <div class="totem-info-item">
+          <span class="totem-info-label">MODO DE REPRODUÇÃO:</span>
+          <span class="totem-info-val" id="settingsPlayerMode">Web / Navegador</span>
+        </div>
+        <div class="totem-info-item">
+          <span class="totem-info-label">STATUS DE REDE:</span>
+          <span class="totem-info-val" id="settingsNetworkStatus">Online</span>
+        </div>
+      </div>
+
+      <!-- Ações de Apoio -->
+      <div style="display:flex; gap:8px;">
+        <button type="button" id="settingsReloadBtn" class="totem-secondary-btn">↻ Recarregar</button>
+        <button type="button" id="settingsFullscreenBtn" class="totem-secondary-btn">⛶ Tela Cheia</button>
+        <a href="/control" target="_blank" class="totem-secondary-btn" style="text-decoration:none; text-align:center;">🎛️ Painel</a>
+      </div>
     </div>
   </div>
 
@@ -1116,6 +1401,67 @@
     if (diagCloseBtn) {
       diagCloseBtn.addEventListener('click', function() {
         hideDiagnosticBanner();
+      });
+    }
+
+    // Gerenciador do Modal de Configurações & Download do APK
+    var totemSettingsBtn = document.getElementById('totemSettingsBtn');
+    var totemSettingsModal = document.getElementById('totemSettingsModal');
+    var totemSettingsBackdrop = document.getElementById('totemSettingsBackdrop');
+    var closeTotemSettingsBtn = document.getElementById('closeTotemSettingsBtn');
+    var settingsDevId = document.getElementById('settingsDevId');
+    var settingsPairCode = document.getElementById('settingsPairCode');
+    var settingsPlayerMode = document.getElementById('settingsPlayerMode');
+    var settingsNetworkStatus = document.getElementById('settingsNetworkStatus');
+    var settingsReloadBtn = document.getElementById('settingsReloadBtn');
+    var settingsFullscreenBtn = document.getElementById('settingsFullscreenBtn');
+
+    function openTotemSettings() {
+      if (!totemSettingsModal) return;
+      if (settingsDevId) settingsDevId.textContent = getStoredDeviceId();
+      if (settingsPairCode) settingsPairCode.textContent = getStoredPairCode();
+      if (settingsPlayerMode) {
+        settingsPlayerMode.textContent = window.AndroidTotem ? 'APK Nativo (CedarX HW)' : 'Navegador Web';
+        settingsPlayerMode.style.color = window.AndroidTotem ? '#4ade80' : '#38bdf8';
+      }
+      if (settingsNetworkStatus) {
+        var online = navigator.onLine;
+        settingsNetworkStatus.textContent = online ? 'Online (Conectado)' : 'Offline (Sem Internet)';
+        settingsNetworkStatus.style.color = online ? '#4ade80' : '#f87171';
+      }
+      totemSettingsModal.classList.remove('hidden');
+    }
+
+    function closeTotemSettings() {
+      if (totemSettingsModal) totemSettingsModal.classList.add('hidden');
+    }
+
+    if (totemSettingsBtn) {
+      totemSettingsBtn.addEventListener('click', openTotemSettings);
+    }
+    if (closeTotemSettingsBtn) {
+      closeTotemSettingsBtn.addEventListener('click', closeTotemSettings);
+    }
+    if (totemSettingsBackdrop) {
+      totemSettingsBackdrop.addEventListener('click', closeTotemSettings);
+    }
+    if (settingsReloadBtn) {
+      settingsReloadBtn.addEventListener('click', function() {
+        window.location.reload();
+      });
+    }
+    if (settingsFullscreenBtn) {
+      settingsFullscreenBtn.addEventListener('click', function() {
+        if (!document.fullscreenElement) {
+          if (document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen();
+          } else if (document.documentElement.webkitRequestFullscreen) {
+            document.documentElement.webkitRequestFullscreen();
+          }
+        } else {
+          if (document.exitFullscreen) document.exitFullscreen();
+        }
+        closeTotemSettings();
       });
     }
 
