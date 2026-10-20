@@ -597,7 +597,7 @@ class TotemCentralEngine {
   }
 
   // Desvincular e Excluir Tela
-  async deleteDevice(deviceId) {
+  async deleteDevice(deviceId, hardDelete = false) {
     if (!this.client) return;
     deviceId = String(deviceId).trim();
 
@@ -617,11 +617,26 @@ class TotemCentralEngine {
         payload: { id: deviceId, status: 'unlinked' }
       });
 
-      // 2. Atualizar para status unlinked no banco
-      await this.client
-        .from('devices')
-        .update({ status: 'unlinked', pair_code: null })
-        .eq('id', deviceId);
+      // 2. Se solicitado hardDelete, tenta apagar a linha permanentemente do banco
+      if (hardDelete) {
+        const { error } = await this.client
+          .from('devices')
+          .delete()
+          .eq('id', deviceId);
+        if (error) {
+          // Fallback caso RLS bloqueie DELETE
+          await this.client
+            .from('devices')
+            .update({ status: 'unlinked', pair_code: null })
+            .eq('id', deviceId);
+        }
+      } else {
+        // Atualizar para status unlinked no banco
+        await this.client
+          .from('devices')
+          .update({ status: 'unlinked', pair_code: null })
+          .eq('id', deviceId);
+      }
     } catch (e) {
       console.warn('Erro ao desvincular device:', e);
     }

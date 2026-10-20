@@ -106,6 +106,16 @@
         <div class="flex items-center space-x-3">
           <button
             type="button"
+            onclick="cleanupDuplicateOrDeadScreens()"
+            class="px-3 py-1.5 rounded-xl border border-rose-500/40 bg-rose-500/10 hover:bg-rose-600 text-rose-300 hover:text-white font-semibold text-xs flex items-center space-x-1.5 transition shadow-sm active:scale-95"
+            title="Limpar telas duplicadas e totens antigos desconectados"
+          >
+            <span class="text-xs">🧹</span>
+            <span>Limpar Duplicatas</span>
+          </button>
+
+          <button
+            type="button"
             onclick="boostAllScreensBrightness()"
             class="px-3 py-1.5 rounded-xl border border-amber-500/50 bg-amber-500/10 hover:bg-amber-500 text-amber-300 hover:text-slate-950 font-semibold text-xs flex items-center space-x-1.5 transition shadow-sm active:scale-95"
             title="Aumentar o brilho de todas as telas em reprodução"
@@ -907,7 +917,26 @@
     } catch(e) {}
 
     function renderScreens(devices) {
-      currentScreens = (devices || []).filter(d => d.status !== 'unlinked' && d.status !== 'pending_pair');
+      // Deduplicação Inteligente por ID e por Nome
+      const uniqueMap = new Map();
+      (devices || []).forEach(d => {
+        if (!d || !d.id) return;
+        if (d.status === 'unlinked' || d.status === 'pending_pair') return;
+
+        // Se já existe uma entrada com esse ID, mantém o registro com sinal de vida mais recente
+        if (!uniqueMap.has(d.id)) {
+          uniqueMap.set(d.id, d);
+        } else {
+          const existing = uniqueMap.get(d.id);
+          const t1 = new Date(existing.last_seen || existing.lastSeen || 0).getTime();
+          const t2 = new Date(d.last_seen || d.lastSeen || 0).getTime();
+          if (t2 > t1) {
+            uniqueMap.set(d.id, d);
+          }
+        }
+      });
+
+      currentScreens = Array.from(uniqueMap.values());
 
       if (!currentScreens.length) {
         screensGrid.innerHTML = `
@@ -2016,6 +2045,71 @@
         notify('Tela desvinculada. O aparelho voltou à tela de emparelhamento.');
       } catch (e) {
         notify('Erro ao desvincular: ' + e.message);
+      }
+    };
+
+    window.cleanupDuplicateOrDeadScreens = async function() {
+      if (!window.totemCentral || !window.totemCentral.client) {
+        notify('Supabase não conectado.');
+        return;
+      }
+      if (!confirm('Deseja limpar as telas duplicadas e totens sem sinal há mais de 10 minutos?\nIsso deixará apenas os totens ativos na lista.')) {
+        return;
+      }
+
+      try {
+        notify('Analisando e limpando duplicatas...');
+        const { data: allDevs, error } = await window.totemCentral.client
+          .from('devices')
+          .select('id, device_name, status, last_seen, created_at');
+
+        if (error || !allDevs) {
+          throw error || new Error('Não foi possível carregar os totens do banco.');
+        }
+
+        const now = Date.now();
+        const tenMinutes = 10 * 60 * 1000;
+        const toDeleteIds = [];
+        const seenNames = new Map();
+
+        // Ordenar dos mais recentes para os mais antigos
+        allDevs.sort((a, b) => {
+          const ta = new Date(a.last_seen || a.created_at || 0).getTime();
+          const tb = new Date(b.last_seen || b.created_at || 0).getTime();
+          return tb - ta;
+        });
+
+        for (const dev of allDevs) {
+          const lastTime = new Date(dev.last_seen || dev.created_at || 0).getTime();
+          const isDead = (now - lastTime) > tenMinutes && dev.status !== 'approved';
+          const nameKey = (dev.device_name || 'totem').trim().toLowerCase();
+
+          if (isDead) {
+            toDeleteIds.push(dev.id);
+          } else if (seenNames.has(nameKey) && (now - lastTime) > (5 * 60 * 1000)) {
+            // Se já temos um totem com esse mesmo nome visto mais recentemente, este mais antigo é duplicata
+            toDeleteIds.push(dev.id);
+          } else {
+            seenNames.set(nameKey, dev.id);
+          }
+        }
+
+        if (toDeleteIds.length === 0) {
+          notify('Nenhuma duplicata ou tela inativa encontrada.');
+          return;
+        }
+
+        for (const id of toDeleteIds) {
+          try {
+            await window.totemCentral.deleteDevice(id, true);
+          } catch(e) {}
+        }
+
+        notify(`🧹 ${toDeleteIds.length} telas duplicadas/inativas removidas com sucesso!`);
+        await window.totemCentral.refreshDevices();
+      } catch (err) {
+        console.error('Erro ao limpar duplicatas:', err);
+        notify('Erro ao limpar duplicatas: ' + (err.message || err));
       }
     };
 

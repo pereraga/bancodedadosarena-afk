@@ -17,8 +17,11 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.Settings;
 import android.text.InputType;
 import android.view.Gravity;
+import android.view.Surface;
+import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
@@ -39,6 +42,10 @@ import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
+import android.graphics.Matrix;
+import android.media.AudioManager;
+import android.media.MediaPlayer;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
@@ -46,8 +53,18 @@ import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.URL;
+import java.util.UUID;
 
 public class MainActivity extends Activity {
+
+    // Reprodutor de Vídeo Nativo de Hardware (Allwinner CedarX)
+    private TextureView videoTextureView;
+    private Surface videoSurface;
+    private MediaPlayer mediaPlayer;
+    private String currentVideoPath;
+    private float currentVolume = 0.8f;
+    private boolean isMuted = false;
+    private String permanentDeviceId;
 
     private WebView webView;
     private FrameLayout customViewContainer;
@@ -115,11 +132,10 @@ public class MainActivity extends Activity {
         localServer = new LocalHttpServer(this);
         localServer.start();
 
-        // 4. Recuperar URL salva das preferências (padrão: Site oficial nuvem)
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        currentTargetUrl = prefs.getString(KEY_SAVED_URL, DEFAULT_CLOUD_URL);
+        // 4. Identificador Permanente e Fixo do Totem (evita duplicação no painel)
+        permanentDeviceId = getPermanentDeviceId();
 
-        // 5. Construção da Interface do Navegador Totem
+        // 5. Construção da Interface do Totem (Reprodutor de Vídeo Nativo + Overlay de Controle)
         FrameLayout rootLayout = new FrameLayout(this);
         rootLayout.setBackgroundColor(Color.BLACK);
         rootLayout.setLayoutParams(new ViewGroup.LayoutParams(
@@ -127,8 +143,44 @@ public class MainActivity extends Activity {
             ViewGroup.LayoutParams.MATCH_PARENT
         ));
 
-        // WebView Principal
+        // Camada 0: Reprodutor de Vídeo Nativo por Hardware (TextureView + MediaPlayer)
+        videoTextureView = new TextureView(this);
+        FrameLayout.LayoutParams tvParams = new FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            Gravity.CENTER
+        );
+        videoTextureView.setLayoutParams(tvParams);
+        videoTextureView.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
+            @Override
+            public void onSurfaceTextureAvailable(android.graphics.SurfaceTexture surface, int width, int height) {
+                videoSurface = new Surface(surface);
+                startOrUpdateNativePlayer();
+            }
+
+            @Override
+            public void onSurfaceTextureSizeChanged(android.graphics.SurfaceTexture surface, int width, int height) {
+                adjustVideoAspectRatio();
+            }
+
+            @Override
+            public boolean onSurfaceTextureDestroyed(android.graphics.SurfaceTexture surface) {
+                if (videoSurface != null) {
+                    videoSurface.release();
+                    videoSurface = null;
+                }
+                releaseMediaPlayer();
+                return true;
+            }
+
+            @Override
+            public void onSurfaceTextureUpdated(android.graphics.SurfaceTexture surface) {}
+        });
+        rootLayout.addView(videoTextureView);
+
+        // Camada 1: WebView Sobreposta Transparente (Interface Kiosk, Emparelhamento, OSD)
         webView = new WebView(this);
+        webView.setBackgroundColor(Color.TRANSPARENT);
         webView.setLayoutParams(new FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
@@ -193,7 +245,8 @@ public class MainActivity extends Activity {
         }
         CookieManager.getInstance().setAcceptCookie(true);
 
-        // Aceleração por Hardware para reprodução fluida de vídeo
+        // Aceleração por Hardware e Fundo Transparente para deixar o vídeo nativo visível atrás
+        webView.setBackgroundColor(Color.TRANSPARENT);
         webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         webView.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
@@ -667,18 +720,29 @@ public class MainActivity extends Activity {
         super.onResume();
         hideSystemUI();
         if (webView != null) webView.onResume();
+        if (mediaPlayer != null && !mediaPlayer.isPlaying()) {
+            try { mediaPlayer.start(); } catch (Exception ignored) {}
+        }
     }
 
     @Override
     protected void onPause() {
         super.onPause();
         if (webView != null) webView.onPause();
+        if (mediaPlayer != null && mediaPlayer.isPlaying()) {
+            try { mediaPlayer.pause(); } catch (Exception ignored) {}
+        }
     }
 
     @Override
     protected void onDestroy() {
         handler.removeCallbacks(memoryCleanerRunnable);
         if (autoHideRunnable != null) handler.removeCallbacks(autoHideRunnable);
+        releaseMediaPlayer();
+        if (videoSurface != null) {
+            videoSurface.release();
+            videoSurface = null;
+        }
         if (localServer != null) {
             localServer.stop();
             localServer = null;
@@ -687,36 +751,194 @@ public class MainActivity extends Activity {
         super.onDestroy();
     }
 
-    public void downloadVideoToLocalCache(String videoUrl) {
-        if (videoUrl == null || !videoUrl.startsWith("http")) return;
+    // ========================================================
+    // REPRODUTOR DE VÍDEO NATIVO POR HARDWARE (ALLWINNER A83T)
+    // ========================================================
+    public String getPermanentDeviceId() {
+        if (permanentDeviceId != null && !permanentDeviceId.isEmpty()) {
+            return permanentDeviceId;
+        }
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        String id = prefs.getString("fixed_totem_id", null);
+        if (id != null && !id.trim().isEmpty()) {
+            permanentDeviceId = id.trim();
+            return permanentDeviceId;
+        }
+
+        String androidId = null;
+        try {
+            androidId = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
+        } catch (Exception ignored) {}
+
+        if (androidId != null && !androidId.isEmpty() && !"9774d56d682e549c".equals(androidId)) {
+            id = "totem-" + androidId.substring(0, Math.min(8, androidId.length())).toLowerCase();
+        } else {
+            id = "totem-" + UUID.randomUUID().toString().substring(0, 8);
+        }
+
+        prefs.edit().putString("fixed_totem_id", id).apply();
+        permanentDeviceId = id;
+        return permanentDeviceId;
+    }
+
+    private synchronized void startOrUpdateNativePlayer() {
+        if (videoSurface == null || !videoSurface.isValid()) return;
+        try {
+            if (mediaPlayer == null) {
+                mediaPlayer = new MediaPlayer();
+            } else {
+                mediaPlayer.reset();
+            }
+            mediaPlayer.setSurface(videoSurface);
+            mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+            mediaPlayer.setLooping(true);
+
+            File activeFile = localServer != null ? localServer.getActiveVideoFile() : null;
+            if (activeFile == null || !activeFile.exists()) {
+                activeFile = new File(getFilesDir(), "offline_sample.mp4");
+            }
+
+            if (!activeFile.exists() || activeFile.length() < 1000) {
+                if (localServer != null) {
+                    localServer.prepareLocalFiles();
+                    activeFile = localServer.getActiveVideoFile();
+                }
+            }
+
+            if (activeFile != null && activeFile.exists()) {
+                currentVideoPath = activeFile.getAbsolutePath();
+                mediaPlayer.setDataSource(currentVideoPath);
+                mediaPlayer.setOnPreparedListener(mp -> {
+                    adjustVideoAspectRatio();
+                    updatePlayerAudio();
+                    mp.start();
+                    android.util.Log.i("TotemNativePlayer", "▶ Vídeo nativo iniciado: " + currentVideoPath);
+                });
+                mediaPlayer.setOnErrorListener((mp, what, extra) -> {
+                    android.util.Log.e("TotemNativePlayer", "Erro no MediaPlayer (" + what + ", " + extra + "). Reiniciando em 2s...");
+                    handler.postDelayed(this::startOrUpdateNativePlayer, 2000);
+                    return true;
+                });
+                mediaPlayer.prepareAsync();
+            }
+        } catch (Exception e) {
+            android.util.Log.e("TotemNativePlayer", "Falha ao iniciar player nativo", e);
+        }
+    }
+
+    private void adjustVideoAspectRatio() {
+        if (mediaPlayer == null || videoTextureView == null) return;
+        try {
+            int videoWidth = mediaPlayer.getVideoWidth();
+            int videoHeight = mediaPlayer.getVideoHeight();
+            int viewWidth = videoTextureView.getWidth();
+            int viewHeight = videoTextureView.getHeight();
+
+            if (videoWidth <= 0 || videoHeight <= 0 || viewWidth <= 0 || viewHeight <= 0) return;
+
+            float sx = (float) viewWidth / (float) videoWidth;
+            float sy = (float) viewHeight / (float) videoHeight;
+            float maxScale = Math.max(sx, sy) * 1.04f; // 4% zoom para eliminar qualquer borda verde
+
+            Matrix matrix = new Matrix();
+            matrix.setScale(maxScale / sx, maxScale / sy, viewWidth / 2f, viewHeight / 2f);
+            videoTextureView.setTransform(matrix);
+        } catch (Exception ignored) {}
+    }
+
+    private void updatePlayerAudio() {
+        if (mediaPlayer == null) return;
+        try {
+            if (isMuted) {
+                mediaPlayer.setVolume(0f, 0f);
+            } else {
+                mediaPlayer.setVolume(currentVolume, currentVolume);
+            }
+        } catch (Exception ignored) {}
+    }
+
+    public void setNativeVolume(int volume, boolean muted) {
+        currentVolume = Math.max(0, Math.min(100, volume)) / 100f;
+        isMuted = muted;
+        runOnUiThread(() -> {
+            updatePlayerAudio();
+            try {
+                AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+                if (am != null) {
+                    int max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+                    int target = muted ? 0 : Math.round((volume / 100f) * max);
+                    am.setStreamVolume(AudioManager.STREAM_MUSIC, target, 0);
+                }
+            } catch (Exception ignored) {}
+        });
+    }
+
+    public void setNativeBrightness(final float percent) {
+        runOnUiThread(() -> {
+            try {
+                WindowManager.LayoutParams lp = getWindow().getAttributes();
+                float b = Math.max(0.05f, Math.min(1.0f, percent / 100.0f));
+                lp.screenBrightness = b;
+                getWindow().setAttributes(lp);
+            } catch (Exception e) {
+                android.util.Log.w("TotemBrightness", "Erro ao ajustar brilho de tela", e);
+            }
+        });
+    }
+
+    public void playNativeVideo(String videoUrl, String videoTitle) {
+        if (videoUrl == null || videoUrl.trim().isEmpty()) return;
+
+        if (videoUrl.startsWith("/") || videoUrl.startsWith("file://")) {
+            currentVideoPath = videoUrl.replace("file://", "");
+            runOnUiThread(this::startOrUpdateNativePlayer);
+            return;
+        }
+
         new Thread(() -> {
             try {
+                android.util.Log.i("TotemNativePlayer", "Baixando novo vídeo remoto: " + videoUrl);
                 URL url = new URL(videoUrl);
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setConnectTimeout(10000);
                 conn.setReadTimeout(30000);
                 if (conn.getResponseCode() == 200) {
-                    File temp = new File(getFilesDir(), "temp_cache.mp4");
+                    File tempFile = new File(getFilesDir(), "temp_download.mp4");
                     try (InputStream in = conn.getInputStream();
-                         FileOutputStream fos = new FileOutputStream(temp)) {
-                        byte[] buf = new byte[64 * 1024];
+                         FileOutputStream fos = new FileOutputStream(tempFile)) {
+                        byte[] buffer = new byte[64 * 1024];
                         int r;
-                        while ((r = in.read(buf)) != -1) {
-                            fos.write(buf, 0, r);
+                        while ((r = in.read(buffer)) != -1) {
+                            fos.write(buffer, 0, r);
                         }
                         fos.flush();
                     }
-                    if (temp.length() > 50000) {
-                        File target = new File(getFilesDir(), "cached_video.mp4");
-                        if (target.exists()) target.delete();
-                        temp.renameTo(target);
-                        android.util.Log.i("TotemCache", "Vídeo salvo em cached_video.mp4 (" + target.length() + " bytes)");
+                    if (tempFile.length() > 50000) {
+                        File targetFile = new File(getFilesDir(), "cached_video.mp4");
+                        if (targetFile.exists()) targetFile.delete();
+                        tempFile.renameTo(targetFile);
+                        currentVideoPath = targetFile.getAbsolutePath();
+                        runOnUiThread(() -> {
+                            Toast.makeText(MainActivity.this, "🎬 Reproduzindo: " + (videoTitle != null ? videoTitle : "Totem"), Toast.LENGTH_SHORT).show();
+                            startOrUpdateNativePlayer();
+                        });
                     }
                 }
             } catch (Exception e) {
-                android.util.Log.w("TotemCache", "Falha ao gravar cache nativo de vídeo", e);
+                android.util.Log.w("TotemNativePlayer", "Falha ao baixar vídeo remoto", e);
             }
         }).start();
+    }
+
+    private synchronized void releaseMediaPlayer() {
+        if (mediaPlayer != null) {
+            try {
+                mediaPlayer.stop();
+                mediaPlayer.reset();
+                mediaPlayer.release();
+            } catch (Exception ignored) {}
+            mediaPlayer = null;
+        }
     }
 
     @Override
@@ -724,8 +946,13 @@ public class MainActivity extends Activity {
         // Bloqueia botão voltar para manter o Totem sempre em execução
     }
 
-    // Ponte nativa JavaScript para o site do Totem consultar hardware e modo offline
+    // Ponte nativa JavaScript para a interface Kiosk controlar hardware e reprodução
     public class TotemNativeBridge {
+        @android.webkit.JavascriptInterface
+        public String getPermanentDeviceId() {
+            return MainActivity.this.getPermanentDeviceId();
+        }
+
         @android.webkit.JavascriptInterface
         public boolean isOnline() {
             return MainActivity.this.isOnline();
@@ -752,22 +979,23 @@ public class MainActivity extends Activity {
         }
 
         @android.webkit.JavascriptInterface
+        public void playVideo(String url, String title) {
+            MainActivity.this.playNativeVideo(url, title);
+        }
+
+        @android.webkit.JavascriptInterface
         public void cacheVideo(String videoUrl) {
-            MainActivity.this.downloadVideoToLocalCache(videoUrl);
+            MainActivity.this.playNativeVideo(videoUrl, null);
+        }
+
+        @android.webkit.JavascriptInterface
+        public void setVolume(int volume, boolean muted) {
+            MainActivity.this.setNativeVolume(volume, muted);
         }
 
         @android.webkit.JavascriptInterface
         public void setBrightness(final float percent) {
-            runOnUiThread(() -> {
-                try {
-                    WindowManager.LayoutParams lp = getWindow().getAttributes();
-                    float b = Math.max(0.05f, Math.min(1.0f, percent / 100.0f));
-                    lp.screenBrightness = b;
-                    getWindow().setAttributes(lp);
-                } catch (Exception e) {
-                    android.util.Log.w("TotemBrightness", "Erro ao ajustar brilho de tela", e);
-                }
-            });
+            MainActivity.this.setNativeBrightness(percent);
         }
     }
 }
