@@ -292,9 +292,7 @@
       justify-content: center;
       padding: 20px;
       text-align: center;
-      background: rgba(10, 17, 32, 0.72);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
+      background: linear-gradient(135deg, #090e17 0%, #0f172a 50%, #0a1120 100%) !important;
     }
     .wait-box {
       max-width: 520px;
@@ -1617,16 +1615,19 @@
         document.cookie = 'totem_screen_paired=; path=/; max-age=0';
       } catch (e) {}
 
-      // Mantém o vídeo de demonstração rodando em segundo plano para o totem nunca ficar em tela preta
+      // Parar qualquer vídeo enquanto aguarda cadastro do totem
       if (videoElem) {
-        videoElem.classList.remove('hidden');
-        if (!currentUrl || videoElem.paused) {
-          playEmergencyOfflineVideo('Aguardando emparelhamento');
-        }
+        try { videoElem.pause(); } catch(e){}
+        videoElem.classList.add('hidden');
       }
       if (iframeElem) {
         iframeElem.classList.add('hidden');
         iframeElem.src = 'about:blank';
+      }
+
+      // Parar reprodutor nativo Android se estiver rodando no APK
+      if (window.AndroidTotem && typeof window.AndroidTotem.stopVideo === 'function') {
+        try { window.AndroidTotem.stopVideo(); } catch(e){}
       }
 
       currentPairCode = code || getStoredPairCode();
@@ -2205,30 +2206,7 @@
       initLocalSSE();
       initSupabaseRealtime();
 
-      // Detecção de Modo Offline Forçado (?offline=1 ou protocolo file: ou sem rede ou nativo offline)
-      var isNativeOffline = (window.AndroidTotem && typeof window.AndroidTotem.isOnline === 'function' && !window.AndroidTotem.isOnline());
-      var netParam = getQueryParam('net');
-      var isOfflineRequested = (getQueryParam('offline') === '1') || 
-                               (netParam === 'offline') ||
-                               (window.location.protocol === 'file:') || 
-                               (window.location.hostname === '127.0.0.1' && getQueryParam('offline') === '1') ||
-                               isNativeOffline ||
-                               (!navigator.onLine);
-
-      if (isOfflineRequested) {
-        console.log('⚡ Modo Offline ativo no arranque.');
-        showDiagnosticBanner('Modo Offline: Sem internet. Reproduzindo vídeo local contínuo.', 0, 'offline');
-        setTimeout(function() { hideDiagnosticBanner(); }, 4000);
-        unlockPlayer('Modo Offline');
-        playEmergencyOfflineVideo('Inicialização sem internet');
-        return;
-      } else {
-        console.log('⚡ Modo Online ativo no arranque.');
-        showDiagnosticBanner('Modo Online: Internet detectada. Sincronizando com a nuvem...', 0, 'warning');
-        setTimeout(function() { hideDiagnosticBanner(); }, 3500);
-      }
-
-      // Modo Direto via URL (?direct=1 ou ?autorun=1)
+      // Modo Direto via URL (?direct=1 ou ?autorun=1) apenas se explicitamente solicitado
       var directParam = getQueryParam('direct') || getQueryParam('autorun');
       if (directParam === '1') {
         unlockPlayer('Modo Direto');
@@ -2242,12 +2220,12 @@
                         (document.cookie.indexOf('totem_screen_paired=true') !== -1);
       } catch (e) {}
 
-      // Se já estava emparelhado nesta tela/navegador, entra direto no player sem piscar nem gerar código novo
+      // Se já estava emparelhado anteriormente, retoma o player
       if (locallyPaired) {
         unlockPlayer('Modelo Totem');
         fetchActiveOrLatestVideo();
       } else {
-        // Se ainda não estava emparelhado, garante a tela de emparelhamento com o código permanente
+        // Se ainda NÃO foi cadastrado/emparelhado, OBRIGATÓRIO exibir a tela com o código de 6 dígitos!
         showPairingScreen(currentPairCode);
       }
 
@@ -2256,6 +2234,7 @@
         if (devs && devs.length > 0) {
           var dev = devs[0];
           if (dev.status === 'approved') {
+            console.log('✔ Totem cadastrado e aprovado no Supabase. Liberando reprodução!');
             unlockPlayer(dev.device_name || 'Modelo Totem');
             fetchActiveOrLatestVideo(dev.current_video_id);
             return;
@@ -2264,19 +2243,16 @@
             return;
           }
         }
-        // Se ainda não aprovado no banco e não emparelhado localmente:
+        // Se ainda não foi aprovado no banco:
         if (!locallyPaired) {
           showPairingScreen(currentPairCode);
         }
       }).catch(function(err) {
-        console.warn('Erro ao consultar status inicial no Supabase:', err);
-        // Se a internet falhou mas temos cache local, toca o vídeo offline em vez de tela preta!
-        TotemOffline.getLastCachedVideo().then(function(cached) {
-          if (cached) {
-            playEmergencyOfflineVideo('Sem internet no momento (recuperado do cache)');
-          } else if (!locallyPaired) {
-            showPairingScreen(currentPairCode);
-          }
+        console.warn('Status Supabase:', err);
+        if (!locallyPaired) {
+          showPairingScreen(currentPairCode);
+        }
+      });
         });
       });
     }

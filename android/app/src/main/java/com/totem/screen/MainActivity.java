@@ -156,7 +156,7 @@ public class MainActivity extends Activity {
             @Override
             public void onSurfaceTextureAvailable(android.graphics.SurfaceTexture surface, int width, int height) {
                 videoSurface = new Surface(surface);
-                startOrUpdateNativePlayer();
+                // Não inicia reprodução automática. O player aguarda comando da tela/emparelhamento.
             }
 
             @Override
@@ -345,11 +345,11 @@ public class MainActivity extends Activity {
             runOnUiThread(() -> {
                 String baseUrl = (localServer != null ? localServer.getBaseUrl() : "http://127.0.0.1:8888");
                 if (hasInternet) {
-                    Toast.makeText(MainActivity.this, "🟢 Internet Detectada! Sincronizando e reproduzindo vídeo...", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, "🟢 Conectado! Aguardando cadastro ou sincronizando...", Toast.LENGTH_SHORT).show();
                     loadUrlWithFallback(baseUrl + "/screen.html?net=online");
                 } else {
-                    Toast.makeText(MainActivity.this, "🟡 Sem Internet! Modo Offline em reprodução local contínua...", Toast.LENGTH_LONG).show();
-                    loadUrlWithFallback(baseUrl + "/screen.html?offline=1&net=offline");
+                    Toast.makeText(MainActivity.this, "🟡 Inicializando TotemScreen...", Toast.LENGTH_SHORT).show();
+                    loadUrlWithFallback(baseUrl + "/screen.html");
                 }
             });
         }).start();
@@ -957,6 +957,13 @@ public class MainActivity extends Activity {
         }).start();
     }
 
+    public void stopNativeVideo() {
+        runOnUiThread(() -> {
+            releaseMediaPlayer();
+            currentVideoPath = null;
+        });
+    }
+
     private synchronized void releaseMediaPlayer() {
         if (mediaPlayer != null) {
             try {
@@ -1008,6 +1015,11 @@ public class MainActivity extends Activity {
         @android.webkit.JavascriptInterface
         public void playVideo(String url, String title) {
             MainActivity.this.playNativeVideo(url, title);
+        }
+
+        @android.webkit.JavascriptInterface
+        public void stopVideo() {
+            MainActivity.this.stopNativeVideo();
         }
 
         @android.webkit.JavascriptInterface
