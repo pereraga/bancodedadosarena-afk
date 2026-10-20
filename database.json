@@ -53,5 +53,6 @@
     }
   ],
   "currentVolume": 75,
-  "isMuted": false
+  "isMuted": false,
+  "currentBrightness": 120
 }

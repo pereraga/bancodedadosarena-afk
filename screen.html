@@ -278,18 +278,24 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 24px;
+      padding: 20px;
       text-align: center;
-      background: #0a1120;
-      background: radial-gradient(ellipse at center, #172a4d 0%, #0a1120 100%);
+      background: rgba(10, 17, 32, 0.72);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
     }
     .wait-box {
-      max-width: 640px;
-      width: 100%;
+      max-width: 520px;
+      width: 92%;
+      background: rgba(15, 23, 42, 0.94);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      border-radius: 24px;
+      padding: 24px 20px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85), 0 0 35px rgba(37, 99, 235, 0.25);
     }
     .logo-container {
       display: flex;
@@ -481,6 +487,18 @@
       <div class="status-pill">
         <span class="status-dot"></span>
         <span id="screenPairStatus">Conectado à rede • Aguardando emparelhamento no painel...</span>
+      </div>
+
+      <!-- Botão Direto de Reprodução Imediata -->
+      <div style="margin-top: 18px; width: 100%;">
+        <button
+          id="screenWatchVideoBtn"
+          type="button"
+          style="width: 100%; padding: 12px 18px; border-radius: 14px; background: linear-gradient(135deg, #2563eb, #0284c7); border: none; color: #ffffff; font-weight: 800; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4); text-transform: uppercase; letter-spacing: 0.5px;"
+        >
+          <span>▶</span>
+          <span>Ver Vídeo em Tela Cheia</span>
+        </button>
       </div>
     </div>
 
@@ -1305,6 +1323,16 @@
       });
     }
 
+    var screenWatchVideoBtn = document.getElementById('screenWatchVideoBtn');
+    if (screenWatchVideoBtn) {
+      screenWatchVideoBtn.addEventListener('click', function() {
+        unlockPlayer('Visualização Direta');
+        if (!currentUrl) {
+          playEmergencyOfflineVideo('Visualização Direta do Usuário');
+        }
+      });
+    }
+
     // Botão para gerar novo código imediatamente
     if (screenNewCodeBtn) {
       screenNewCodeBtn.addEventListener('click', function() {
@@ -1722,7 +1750,9 @@
 
       // Detecção de Modo Offline Forçado (?offline=1 ou protocolo file: ou sem rede ou nativo offline)
       var isNativeOffline = (window.AndroidTotem && typeof window.AndroidTotem.isOnline === 'function' && !window.AndroidTotem.isOnline());
+      var netParam = getQueryParam('net');
       var isOfflineRequested = (getQueryParam('offline') === '1') || 
+                               (netParam === 'offline') ||
                                (window.location.protocol === 'file:') || 
                                (window.location.hostname === '127.0.0.1' && getQueryParam('offline') === '1') ||
                                isNativeOffline ||
@@ -1730,9 +1760,15 @@
 
       if (isOfflineRequested) {
         console.log('⚡ Modo Offline ativo no arranque.');
+        showDiagnosticBanner('Modo Offline: Sem internet. Reproduzindo vídeo local contínuo.', 0, 'offline');
+        setTimeout(function() { hideDiagnosticBanner(); }, 4000);
         unlockPlayer('Modo Offline');
         playEmergencyOfflineVideo('Inicialização sem internet');
         return;
+      } else {
+        console.log('⚡ Modo Online ativo no arranque.');
+        showDiagnosticBanner('Modo Online: Internet detectada. Sincronizando com a nuvem...', 0, 'warning');
+        setTimeout(function() { hideDiagnosticBanner(); }, 3500);
       }
 
       // Modo Direto via URL (?direct=1 ou ?autorun=1)
@@ -1807,6 +1843,14 @@
       sendHeartbeat();
       checkApprovalStatus();
     });
+
+    window.onInternetRestored = function() {
+      console.log('⚡ Notificação nativa: Internet restabelecida!');
+      showDiagnosticBanner('Internet restabelecida! Sincronizando com a nuvem...', 0, 'warning');
+      setTimeout(function() { hideDiagnosticBanner(); }, 3500);
+      sendHeartbeat();
+      checkApprovalStatus();
+    };
 
     window.addEventListener('offline', function() {
       console.warn('⚠️ Conexão de rede perdida. Mantendo reprodução em cache...');

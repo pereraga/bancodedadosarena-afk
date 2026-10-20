@@ -285,17 +285,17 @@ public class MainActivity extends Activity {
     }
 
     private void detectInternetAndLoad() {
-        Toast.makeText(this, "🔍 Identificando status de internet...", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "🔍 Verificando conexão de rede...", Toast.LENGTH_SHORT).show();
         new Thread(() -> {
             boolean hasInternet = checkRealInternetConnection();
             runOnUiThread(() -> {
+                String baseUrl = (localServer != null ? localServer.getBaseUrl() : "http://127.0.0.1:8888");
                 if (hasInternet) {
-                    Toast.makeText(MainActivity.this, "🟢 Internet Detectada! Modo Online ativo.", Toast.LENGTH_SHORT).show();
-                    loadUrlWithFallback(DEFAULT_CLOUD_URL);
+                    Toast.makeText(MainActivity.this, "🟢 Internet Detectada! Sincronizando e reproduzindo vídeo...", Toast.LENGTH_SHORT).show();
+                    loadUrlWithFallback(baseUrl + "/screen.html?net=online");
                 } else {
-                    Toast.makeText(MainActivity.this, "🟡 Sem Internet! Ativando modo offline automático...", Toast.LENGTH_LONG).show();
-                    String offlineUrl = (localServer != null ? localServer.getBaseUrl() : "http://127.0.0.1:8888") + "/screen.html?offline=1";
-                    loadUrlWithFallback(offlineUrl);
+                    Toast.makeText(MainActivity.this, "🟡 Sem Internet! Modo Offline em reprodução local contínua...", Toast.LENGTH_LONG).show();
+                    loadUrlWithFallback(baseUrl + "/screen.html?offline=1&net=offline");
                 }
             });
         }).start();
@@ -331,11 +331,11 @@ public class MainActivity extends Activity {
     }
 
     private void handleLoadError(String failingUrl) {
-        // Se falhou ao carregar a URL da nuvem por falta de internet, carrega imediatamente o pacote offline
+        // Se falhou ao carregar a URL por falta de rede, carrega imediatamente o pacote offline local
         if (failingUrl != null && !failingUrl.contains("127.0.0.1")) {
-            Toast.makeText(this, "Sem internet. Carregando modo offline embutido...", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Rede instável. Carregando modo offline embutido...", Toast.LENGTH_SHORT).show();
             if (webView != null) {
-                String offlineUrl = (localServer != null ? localServer.getBaseUrl() : "http://127.0.0.1:8888") + "/screen.html?offline=1";
+                String offlineUrl = (localServer != null ? localServer.getBaseUrl() : "http://127.0.0.1:8888") + "/screen.html?offline=1&net=offline";
                 webView.loadUrl(offlineUrl);
             }
             scheduleRetry();
@@ -350,9 +350,9 @@ public class MainActivity extends Activity {
                 if (checkRealInternetConnection()) {
                     runOnUiThread(() -> {
                         isRetrying = false;
-                        if (webView != null && currentTargetUrl != null && currentTargetUrl.contains("127.0.0.1")) {
-                            Toast.makeText(MainActivity.this, "🟢 Internet restabelecida! Retornando ao modo online...", Toast.LENGTH_SHORT).show();
-                            loadUrlWithFallback(DEFAULT_CLOUD_URL);
+                        if (webView != null) {
+                            Toast.makeText(MainActivity.this, "🟢 Conexão restabelecida! Sincronizando com a nuvem...", Toast.LENGTH_SHORT).show();
+                            webView.loadUrl("javascript:if(window.onInternetRestored){window.onInternetRestored();}");
                         }
                     });
                 } else {
@@ -362,16 +362,16 @@ public class MainActivity extends Activity {
                     });
                 }
             }).start();
-        }, 10000);
+        }, 8000);
     }
 
     private void loadUrlWithFallback(String url) {
         if (url == null || url.trim().isEmpty()) {
-            url = DEFAULT_CLOUD_URL;
+            url = (localServer != null ? localServer.getBaseUrl() : "http://127.0.0.1:8888") + "/screen.html";
         }
         url = url.trim();
         if (!url.startsWith("http://") && !url.startsWith("https://") && !url.startsWith("file://")) {
-            url = "https://" + url;
+            url = "http://" + url;
         }
 
         currentTargetUrl = url;

@@ -62,22 +62,27 @@ public class LocalHttpServer {
     public synchronized void start() {
         if (isRunning) return;
         isRunning = true;
+
+        // Prepara os arquivos locais (extrai vídeo offline se necessário)
+        prepareLocalFiles();
+
+        // Vincula o socket imediatamente para garantir que requisições não sofram conexão recusada
+        try {
+            serverSocket = new ServerSocket(port, 50, InetAddress.getByName("127.0.0.1"));
+        } catch (IOException e) {
+            Log.w(TAG, "Porta " + port + " ocupada, buscando porta livre...");
+            try {
+                serverSocket = new ServerSocket(0, 50, InetAddress.getByName("127.0.0.1"));
+                port = serverSocket.getLocalPort();
+            } catch (IOException ex) {
+                Log.e(TAG, "Falha crítica ao criar server socket local", ex);
+            }
+        }
+        Log.i(TAG, "Servidor HTTP local do Totem rodando em " + getBaseUrl());
+
         threadPool = Executors.newCachedThreadPool();
-
-        // Extrai o vídeo offline para o armazenamento interno em background
-        threadPool.execute(this::prepareLocalFiles);
-
         threadPool.execute(() -> {
             try {
-                try {
-                    serverSocket = new ServerSocket(port, 50, InetAddress.getByName("127.0.0.1"));
-                } catch (IOException e) {
-                    Log.w(TAG, "Porta " + port + " ocupada, buscando porta livre...");
-                    serverSocket = new ServerSocket(0, 50, InetAddress.getByName("127.0.0.1"));
-                    port = serverSocket.getLocalPort();
-                }
-                Log.i(TAG, "Servidor HTTP local do Totem rodando em " + getBaseUrl());
-
                 while (isRunning && serverSocket != null && !serverSocket.isClosed()) {
                     try {
                         Socket clientSocket = serverSocket.accept();
