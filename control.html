@@ -996,7 +996,7 @@
               title="Clique para trocar o vídeo desta tela"
             >
               ${activeVidUrl ? `
-                <video src="${activeVidUrl}" class="w-full h-full object-cover pointer-events-none" muted preload="metadata"></video>
+                <video src="${activeVidUrl}" class="w-full h-full object-contain bg-black pointer-events-none" muted preload="metadata"></video>
                 <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
                   <span class="px-3 py-1.5 rounded-xl bg-blue-600 text-white font-bold text-xs shadow-lg flex items-center space-x-1">
                     <span>🎬</span>
@@ -2075,12 +2075,12 @@
         notify('Supabase não conectado.');
         return;
       }
-      if (!confirm('Deseja limpar as telas duplicadas e totens sem sinal há mais de 10 minutos?\nIsso deixará apenas os totens ativos na lista.')) {
+      if (!confirm('Deseja limpar as telas duplicadas e totens sem sinal?\nIsso removerá do painel os registros antigos/duplicados para você poder vincular novamente ou manter só o totem ativo.')) {
         return;
       }
 
       try {
-        notify('Analisando e limpando duplicatas...');
+        notify('Analisando e limpando totens duplicados ou inativos...');
         const { data: allDevs, error } = await window.totemCentral.client
           .from('devices')
           .select('id, device_name, status, last_seen, created_at');
@@ -2090,7 +2090,7 @@
         }
 
         const now = Date.now();
-        const tenMinutes = 10 * 60 * 1000;
+        const oneHour = 60 * 60 * 1000;
         const toDeleteIds = [];
         const seenNames = new Map();
 
@@ -2103,13 +2103,13 @@
 
         for (const dev of allDevs) {
           const lastTime = new Date(dev.last_seen || dev.created_at || 0).getTime();
-          const isDead = (now - lastTime) > tenMinutes && dev.status !== 'approved';
+          const diffMs = now - lastTime;
           const nameKey = (dev.device_name || 'totem').trim().toLowerCase();
 
-          if (isDead) {
+          // Se tiver sem sinal há mais de 24 horas, ou se já existe outro mais recente com o mesmo nome
+          if (diffMs > (24 * 60 * 60 * 1000)) {
             toDeleteIds.push(dev.id);
-          } else if (seenNames.has(nameKey) && (now - lastTime) > (5 * 60 * 1000)) {
-            // Se já temos um totem com esse mesmo nome visto mais recentemente, este mais antigo é duplicata
+          } else if (seenNames.has(nameKey)) {
             toDeleteIds.push(dev.id);
           } else {
             seenNames.set(nameKey, dev.id);
@@ -2117,7 +2117,7 @@
         }
 
         if (toDeleteIds.length === 0) {
-          notify('Nenhuma duplicata ou tela inativa encontrada.');
+          notify('Nenhuma duplicata encontrada. Para remover uma tela específica, use os 3 pontinhos > Desvincular.');
           return;
         }
 
@@ -2127,7 +2127,7 @@
           } catch(e) {}
         }
 
-        notify(`🧹 ${toDeleteIds.length} telas duplicadas/inativas removidas com sucesso!`);
+        notify(`🧹 ${toDeleteIds.length} telas antigas/duplicadas limpas com sucesso!`);
         await window.totemCentral.refreshDevices();
       } catch (err) {
         console.error('Erro ao limpar duplicatas:', err);
