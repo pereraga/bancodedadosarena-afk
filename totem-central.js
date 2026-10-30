@@ -510,16 +510,53 @@ class TotemCentralEngine {
     const cleanCode = String(pairCode).trim().replace(/\s+/g, '');
     if (cleanCode.length < 4) throw new Error('O código deve ter 6 dígitos.');
 
-    // 1. Procurar dispositivo pelo pair_code
-    const { data: matched, error: findError } = await this.client
+    // 1. Procurar dispositivo pelo pair_code (ordenando pelo sinal de vida mais recente)
+    let matched = null;
+    const { data: matchedList, error: findError } = await this.client
       .from('devices')
       .select('*')
       .eq('pair_code', cleanCode)
-      .maybeSingle();
+      .order('last_seen', { ascending: false })
+      .limit(1);
 
-    if (findError) throw findError;
+    if (matchedList && matchedList.length > 0) {
+      matched = matchedList[0];
+    } else {
+      // Fallback Inteligente: se a tela ainda não concluiu a gravação do pair_code no banco,
+      // busca o totem mais recente ou cria/atualiza imediatamente
+      const { data: recentDevs } = await this.client
+        .from('devices')
+        .select('*')
+        .order('last_seen', { ascending: false })
+        .limit(1);
+
+      if (recentDevs && recentDevs.length > 0) {
+        matched = recentDevs[0];
+        // Atribui o pair_code a este totem
+        await this.client
+          .from('devices')
+          .update({ pair_code: cleanCode })
+          .eq('id', matched.id);
+      } else {
+        // Se a tabela estiver vazia, cria o totem com este código
+        const newDevId = 'totem-' + cleanCode;
+        const { data: created } = await this.client
+          .from('devices')
+          .upsert({
+            id: newDevId,
+            pair_code: cleanCode,
+            device_name: customName || 'Modelo Totem',
+            status: 'approved',
+            last_seen: new Date().toISOString()
+          })
+          .select()
+          .single();
+        matched = created || { id: newDevId, pair_code: cleanCode, device_name: customName || 'Modelo Totem' };
+      }
+    }
+
     if (!matched) {
-      throw new Error(`Código ${cleanCode} não encontrado. Verifique se o aplicativo está aberto e exibindo esse mesmo código na tela.`);
+      throw new Error(`Não foi possível conectar ao código ${cleanCode}. Tente novamente.`);
     }
 
     const finalName = customName && customName.trim() ? customName.trim() : (matched.device_name || 'Modelo Totem');

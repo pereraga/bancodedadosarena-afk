@@ -1568,7 +1568,7 @@
           xhr.setRequestHeader('Authorization', 'Bearer ' + SUPABASE_ANON_KEY);
           xhr.setRequestHeader('Content-Type', 'application/json');
           if (method === 'PATCH' || method === 'POST') {
-            xhr.setRequestHeader('Prefer', 'return=representation');
+            xhr.setRequestHeader('Prefer', 'resolution=merge-duplicates,return=representation');
           }
           xhr.onload = function() {
             if (xhr.status >= 200 && xhr.status < 300) {
@@ -1639,30 +1639,21 @@
 
       if (waitScreen) waitScreen.classList.remove('hidden');
 
-      // Registrar dispositivo no Supabase via REST
+      // Registrar / atualizar dispositivo no Supabase via REST imediato com UPSERT
       var devId = getStoredDeviceId();
-      supabaseQuery('devices?id=eq.' + devId, 'GET').then(function(devs) {
-        if (!devs || devs.length === 0) {
-          return supabaseQuery('devices', 'POST', {
-            id: devId,
-            pair_code: currentPairCode,
-            device_name: 'Modelo Totem',
-            status: 'pending_pair',
-            last_seen: new Date().toISOString()
-          });
-        } else {
-          var currentStatus = devs[0].status;
-          var updateData = {
-            pair_code: currentPairCode,
-            last_seen: new Date().toISOString()
-          };
-          if (currentStatus !== 'approved') {
-            updateData.status = 'pending_pair';
-          }
-          return supabaseQuery('devices?id=eq.' + devId, 'PATCH', updateData);
-        }
+      supabaseQuery('devices', 'POST', {
+        id: devId,
+        pair_code: currentPairCode,
+        device_name: 'Modelo Totem',
+        status: 'pending_pair',
+        last_seen: new Date().toISOString()
       }).catch(function(err) {
-        console.warn('Registro REST:', err);
+        console.warn('Registro REST POST, tentando PATCH:', err);
+        supabaseQuery('devices?id=eq.' + devId, 'PATCH', {
+          pair_code: currentPairCode,
+          status: 'pending_pair',
+          last_seen: new Date().toISOString()
+        }).catch(function(){});
       });
 
       // Polling a cada 3s para ver se foi aprovado
@@ -1683,20 +1674,23 @@
       }).catch(function() {});
     }
 
-    // Checar se foi aprovado
+    // Checar se foi aprovado (busca por ID ou por Código de Emparelhamento)
     function checkIfApprovedRemotely() {
       if (isPaired) return;
       var devId = getStoredDeviceId();
-      supabaseQuery('devices?id=eq.' + devId, 'GET').then(function(devs) {
+      supabaseQuery('devices?or=(id.eq.' + devId + ',pair_code.eq.' + currentPairCode + ')', 'GET').then(function(devs) {
         if (devs && devs.length > 0) {
-          var dev = devs[0];
-          if (dev.status === 'approved') {
-            console.log('⚡ Tela aprovada no painel!');
-            unlockPlayer(dev.device_name || 'Modelo Totem');
-            if (dev.current_video_id) {
-              fetchActiveOrLatestVideo(dev.current_video_id);
-            } else if (!currentUrl) {
-              fetchActiveOrLatestVideo();
+          for (var i = 0; i < devs.length; i++) {
+            var dev = devs[i];
+            if (dev.status === 'approved') {
+              console.log('⚡ Tela aprovada no painel!');
+              unlockPlayer(dev.device_name || 'Modelo Totem');
+              if (dev.current_video_id) {
+                fetchActiveOrLatestVideo(dev.current_video_id);
+              } else if (!currentUrl) {
+                fetchActiveOrLatestVideo();
+              }
+              return;
             }
           }
         }
@@ -2112,6 +2106,13 @@
 
         // Canal Broadcast da Tela
         var chanDev = client.channel('device-' + myDevId);
+        chanDev.on('broadcast', { event: 'AUTHORIZATION' }, function(p) {
+          if (p && p.payload && p.payload.status === 'approved') {
+            console.log('⚡ Autorização imediata recebida via Broadcast!');
+            unlockPlayer(p.payload.deviceName || 'Modelo Totem');
+            fetchActiveOrLatestVideo();
+          }
+        });
         chanDev.on('broadcast', { event: 'PLAY_VIDEO' }, function(p) {
           if (p && p.payload) {
             console.log('⚡ Comando PLAY_VIDEO recebido (chanDev):', p.payload);
@@ -2146,6 +2147,13 @@
 
         // Canal Broadcast Global
         var chanGlobal = client.channel('totem-global-channel');
+        chanGlobal.on('broadcast', { event: 'AUTHORIZATION' }, function(p) {
+          if (p && p.payload && (p.payload.id === myDevId || p.payload.pair_code === currentPairCode || p.payload.pairCode === currentPairCode) && p.payload.status === 'approved') {
+            console.log('⚡ Autorização recebida via canal global!');
+            unlockPlayer(p.payload.deviceName || 'Modelo Totem');
+            fetchActiveOrLatestVideo();
+          }
+        });
         chanGlobal.on('broadcast', { event: 'PLAY_VIDEO' }, function(p) {
           if (p && p.payload && (!p.payload.targetDeviceId || p.payload.targetDeviceId === myDevId)) {
             console.log('⚡ Comando PLAY_VIDEO recebido (chanGlobal):', p.payload);
