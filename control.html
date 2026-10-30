@@ -903,11 +903,12 @@
     let currentScreens = [];
     const screensGrid = document.getElementById('screensGrid');
 
-    // Estado e Memória de Volume e Brilho por Tela (Persistente no LocalStorage)
+    // Estado e Memória de Volume, Brilho, Ajuste de Imagem e Orientação por Tela (Persistente no LocalStorage)
     const screenVolumes = {};
     const screenMutes = {};
     const screenBrightnesses = {};
     const screenFitModes = {};
+    const screenOrientations = {};
     try {
       const savedVols = JSON.parse(localStorage.getItem('totem_control_volumes') || '{}');
       Object.assign(screenVolumes, savedVols);
@@ -917,6 +918,8 @@
       Object.assign(screenBrightnesses, savedBrights);
       const savedFits = JSON.parse(localStorage.getItem('totem_control_fitmodes') || '{}');
       Object.assign(screenFitModes, savedFits);
+      const savedOris = JSON.parse(localStorage.getItem('totem_control_orientations') || '{}');
+      Object.assign(screenOrientations, savedOris);
     } catch(e) {}
 
     function renderScreens(devices) {
@@ -977,6 +980,9 @@
         const devBright = typeof dev.brightness === 'number' ? dev.brightness : (screenBrightnesses[dev.id] !== undefined ? screenBrightnesses[dev.id] : 100);
         screenBrightnesses[dev.id] = devBright;
 
+        const devFit = screenFitModes[dev.id] || 'contain';
+        const devOri = screenOrientations[dev.id] || 'portrait';
+
         // Análise de Telemetria e Diagnóstico em tempo real
         let diag = null;
         try {
@@ -992,14 +998,15 @@
         return `
           <div class="bg-slate-900 border ${hasError ? 'border-rose-500/60 shadow-rose-950/30' : 'border-slate-800'} rounded-2xl overflow-hidden shadow-xl hover:border-slate-700 transition flex flex-col">
             
-            <!-- Moldura de TV com Prévia do Vídeo (Clique para Trocar Vídeo) -->
+            <!-- Moldura da Tela com Prévia do Vídeo (Clique para Trocar Vídeo) -->
             <div
               onclick="promptChangeVideo('${dev.id}', '${screenName}')"
-              class="relative w-full aspect-video bg-black overflow-hidden border-b border-slate-800 flex items-center justify-center cursor-pointer group"
+              id="preview-frame-${dev.id}"
+              class="relative w-full ${devOri === 'portrait' ? 'h-72 sm:h-80' : 'aspect-video'} bg-black overflow-hidden border-b border-slate-800 flex items-center justify-center cursor-pointer group"
               title="Clique para trocar o vídeo desta tela"
             >
               ${activeVidUrl ? `
-                <video src="${activeVidUrl}" class="w-full h-full object-contain bg-black pointer-events-none" muted preload="metadata"></video>
+                <video id="preview-video-${dev.id}" src="${activeVidUrl}" class="w-full h-full object-${devFit} bg-black pointer-events-none" muted preload="metadata"></video>
                 <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
                   <span class="px-3 py-1.5 rounded-xl bg-blue-600 text-white font-bold text-xs shadow-lg flex items-center space-x-1">
                     <span>🎬</span>
@@ -1007,7 +1014,7 @@
                   </span>
                 </div>
               ` : `
-                <!-- Moldura de monitor vazia (preta como na Imagem 1) -->
+                <!-- Moldura de monitor vazia -->
                 <div class="w-full h-full bg-slate-950 flex flex-col items-center justify-center text-slate-600 group-hover:text-slate-400 transition">
                   <svg class="w-12 h-12 opacity-30 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                     <rect x="2" y="3" width="20" height="14" rx="2"></rect>
@@ -1017,6 +1024,59 @@
                   <span class="text-[11px] font-semibold text-slate-500">Clique para selecionar vídeo</span>
                 </div>
               `}
+
+              <!-- Alternador de Orientação (Totem em Pé vs TV Deitada) -->
+              <button
+                type="button"
+                onclick="toggleScreenOrientation('${dev.id}', event)"
+                class="absolute top-2.5 right-2.5 z-20 px-2 py-1 rounded-lg bg-slate-900/85 hover:bg-slate-800 text-slate-200 border border-slate-700/80 text-[10px] font-bold backdrop-blur shadow-md flex items-center space-x-1 transition active:scale-95"
+                title="Alternar formato da prévia entre Totem Vertical e TV Horizontal"
+              >
+                <span>${devOri === 'portrait' ? '📱 Totem Vertical' : '📺 TV Horizontal'}</span>
+              </button>
+            </div>
+
+            <!-- BARRA DE CONTROLE DE AJUSTE DE IMAGEM (COM TELA PRETA OU SEM TELA PRETA) -->
+            <div class="px-3.5 py-2.5 bg-slate-950 border-b border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
+              <span class="text-xs font-bold text-purple-300 flex items-center space-x-1.5">
+                <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+                <span>Ajuste da Tela:</span>
+              </span>
+              <div class="flex items-center space-x-1">
+                <!-- Opção 1: Com Barra Preta (Proporcional) -->
+                <button
+                  type="button"
+                  id="fit-btn-contain-${dev.id}"
+                  onclick="setImageFitForScreen('${dev.id}', 'contain', event)"
+                  class="px-2 py-1 rounded-lg text-[11px] font-bold border transition active:scale-95 flex items-center space-x-1 ${devFit === 'contain' ? 'bg-purple-600 border-purple-500 text-white shadow-sm' : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:text-white'}"
+                  title="Mantém a imagem original completa, com barras pretas nas laterais (sem cortar nada)"
+                >
+                  <span>⬛</span>
+                  <span>Com Tela Preta</span>
+                </button>
+                <!-- Opção 2: Sem Barra Preta (Preencher Tela sem Esticar) -->
+                <button
+                  type="button"
+                  id="fit-btn-cover-${dev.id}"
+                  onclick="setImageFitForScreen('${dev.id}', 'cover', event)"
+                  class="px-2 py-1 rounded-lg text-[11px] font-bold border transition active:scale-95 flex items-center space-x-1 ${devFit === 'cover' ? 'bg-purple-600 border-purple-500 text-white shadow-sm' : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:text-white'}"
+                  title="Preenche a tela inteira sem esticar e sem barras pretas"
+                >
+                  <span>🖼️</span>
+                  <span>Sem Tela Preta</span>
+                </button>
+                <!-- Opção 3: Esticado -->
+                <button
+                  type="button"
+                  id="fit-btn-fill-${dev.id}"
+                  onclick="setImageFitForScreen('${dev.id}', 'fill', event)"
+                  class="px-2 py-1 rounded-lg text-[11px] font-bold border transition active:scale-95 flex items-center space-x-1 ${devFit === 'fill' ? 'bg-purple-600 border-purple-500 text-white shadow-sm' : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:text-white'}"
+                  title="Estica o vídeo para ocupar 100% da tela"
+                >
+                  <span>↔️</span>
+                  <span>Esticado</span>
+                </button>
+              </div>
             </div>
 
             <!-- Dados da Tela -->
@@ -1301,32 +1361,6 @@
               </div>
             </div>
 
-            <!-- CONTROLE DE AJUSTE DE IMAGEM (PROPORCIONAL / TELA CHEIA) -->
-            <div class="px-4 py-2.5 bg-slate-950/40 border-t border-slate-800/50 flex items-center justify-between">
-              <span class="text-slate-400 font-medium text-xs flex items-center space-x-1.5">
-                <svg class="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
-                <span>Ajuste de Imagem</span>
-              </span>
-              <div class="flex items-center space-x-1.5">
-                <button
-                  type="button"
-                  id="fit-btn-contain-${dev.id}"
-                  onclick="setImageFitForScreen('${dev.id}', 'contain', event)"
-                  class="px-2.5 py-1 rounded-lg text-[10px] font-bold border transition active:scale-95 ${(screenFitModes[dev.id] || 'contain') === 'contain' ? 'bg-purple-600/30 border-purple-500/60 text-purple-300' : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:bg-purple-600/20 hover:text-purple-300'}"
-                  title="Proporcional com barras pretas"
-                >
-                  Proporcional
-                </button>
-                <button
-                  type="button"
-                  id="fit-btn-cover-${dev.id}"
-                  onclick="setImageFitForScreen('${dev.id}', 'cover', event)"
-                  class="px-2.5 py-1 rounded-lg text-[10px] font-bold border transition active:scale-95 ${(screenFitModes[dev.id] || 'contain') === 'cover' ? 'bg-purple-600/30 border-purple-500/60 text-purple-300' : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:bg-purple-600/20 hover:text-purple-300'}"
-                  title="Preenche a tela toda (sem barras pretas)"
-                >
-                  Tela Cheia
-                </button>
-              </div>
             </div>
 
           </div>
@@ -1349,33 +1383,49 @@
     };
 
     // ========================================================
-    // CONTROLE DE AJUSTE DE IMAGEM (PROPORCIONAL / TELA CHEIA)
+    // CONTROLE DE AJUSTE DE IMAGEM E ORIENTAÇÃO DA TELA
     // ========================================================
     function persistFitModeState() {
       try { localStorage.setItem('totem_control_fitmodes', JSON.stringify(screenFitModes)); } catch(e) {}
     }
+    function persistOrientationState() {
+      try { localStorage.setItem('totem_control_orientations', JSON.stringify(screenOrientations)); } catch(e) {}
+    }
+
+    window.toggleScreenOrientation = function(devId, e) {
+      if (e) e.stopPropagation();
+      const current = screenOrientations[devId] || 'portrait';
+      const next = (current === 'portrait') ? 'landscape' : 'portrait';
+      screenOrientations[devId] = next;
+      persistOrientationState();
+      renderScreens(currentScreens);
+      notify(next === 'portrait' ? '📱 Formato Totem em Pé (Vertical)' : '📺 Formato TV (Horizontal)');
+    };
 
     window.setImageFitForScreen = async function(devId, fitMode, e) {
       if (e) e.stopPropagation();
-      if (fitMode !== 'cover' && fitMode !== 'contain') fitMode = 'contain';
+      if (fitMode !== 'cover' && fitMode !== 'contain' && fitMode !== 'fill') fitMode = 'contain';
       screenFitModes[devId] = fitMode;
       persistFitModeState();
 
-      // Atualizar UI dos botões
-      const btnContain = document.getElementById(`fit-btn-contain-${devId}`);
-      const btnCover = document.getElementById(`fit-btn-cover-${devId}`);
-      if (btnContain) {
-        btnContain.className = fitMode === 'contain'
-          ? 'px-2.5 py-1 rounded-lg text-[10px] font-bold border transition active:scale-95 bg-purple-600/30 border-purple-500/60 text-purple-300'
-          : 'px-2.5 py-1 rounded-lg text-[10px] font-bold border transition active:scale-95 bg-slate-800/80 border-slate-700 text-slate-400 hover:bg-purple-600/20 hover:text-purple-300';
-      }
-      if (btnCover) {
-        btnCover.className = fitMode === 'cover'
-          ? 'px-2.5 py-1 rounded-lg text-[10px] font-bold border transition active:scale-95 bg-purple-600/30 border-purple-500/60 text-purple-300'
-          : 'px-2.5 py-1 rounded-lg text-[10px] font-bold border transition active:scale-95 bg-slate-800/80 border-slate-700 text-slate-400 hover:bg-purple-600/20 hover:text-purple-300';
+      // 1. Atualizar visualmente de imediato o vídeo na prévia do card
+      const prevVid = document.getElementById(`preview-video-${devId}`);
+      if (prevVid) {
+        prevVid.className = `w-full h-full object-${fitMode} bg-black pointer-events-none`;
       }
 
-      // Enviar broadcast para a tela via totemCentral
+      // 2. Atualizar botões
+      const btnContain = document.getElementById(`fit-btn-contain-${devId}`);
+      const btnCover = document.getElementById(`fit-btn-cover-${devId}`);
+      const btnFill = document.getElementById(`fit-btn-fill-${devId}`);
+      const activeClass = 'px-2 py-1 rounded-lg text-[11px] font-bold border transition active:scale-95 flex items-center space-x-1 bg-purple-600 border-purple-500 text-white shadow-sm';
+      const inactiveClass = 'px-2 py-1 rounded-lg text-[11px] font-bold border transition active:scale-95 flex items-center space-x-1 bg-slate-800/80 border-slate-700 text-slate-400 hover:text-white';
+
+      if (btnContain) btnContain.className = (fitMode === 'contain') ? activeClass : inactiveClass;
+      if (btnCover) btnCover.className = (fitMode === 'cover') ? activeClass : inactiveClass;
+      if (btnFill) btnFill.className = (fitMode === 'fill') ? activeClass : inactiveClass;
+
+      // 3. Enviar broadcast para a tela via totemCentral
       try {
         if (window.totemCentral && window.totemCentral.setImageFit) {
           await window.totemCentral.setImageFit(devId, fitMode);
@@ -1384,14 +1434,23 @@
         console.warn('Erro ao transmitir ajuste de imagem:', err);
       }
 
-      notify(fitMode === 'cover' ? '🖼️ Imagem: Tela Cheia (sem barras)' : '🖼️ Imagem: Proporcional (com barras pretas)');
+      if (fitMode === 'cover') {
+        notify('🖼️ Sem Tela Preta: Imagem preenchendo a tela inteira');
+      } else if (fitMode === 'fill') {
+        notify('↔️ Esticado: Imagem esticada cobrindo 100%');
+      } else {
+        notify('⬛ Com Tela Preta: Imagem original proporcional');
+      }
     };
 
     window.toggleImageFit = function(devId, e) {
       if (e) e.stopPropagation();
       const currentFit = screenFitModes[devId] || 'contain';
-      const newFit = currentFit === 'contain' ? 'cover' : 'contain';
-      window.setImageFitForScreen(devId, newFit);
+      let nextFit = 'contain';
+      if (currentFit === 'contain') nextFit = 'cover';
+      else if (currentFit === 'cover') nextFit = 'fill';
+      else nextFit = 'contain';
+      window.setImageFitForScreen(devId, nextFit);
     };
 
     // ========================================================

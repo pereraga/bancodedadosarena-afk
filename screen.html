@@ -107,17 +107,24 @@
       -webkit-user-select: none !important;
       outline: none !important;
     }
-    /* Ajuste de imagem: cover = preenche a tela toda (corta bordas) */
+    /* Ajuste de imagem: cover = preenche a tela toda sem esticar */
     #videoElem.fit-cover {
-      object-fit: cover;
-      transform: none;
-      -webkit-transform: none;
+      object-fit: cover !important;
+      transform: none !important;
+      -webkit-transform: none !important;
     }
-    /* Ajuste de imagem: contain = proporcional com barras pretas */
+    /* Ajuste de imagem: contain = proporcional com barras pretas (sem cortar nada) */
     #videoElem.fit-contain {
-      object-fit: contain;
-      transform: none;
-      -webkit-transform: none;
+      object-fit: contain !important;
+      transform: none !important;
+      -webkit-transform: none !important;
+      background-color: #000000 !important;
+    }
+    /* Ajuste de imagem: fill = esticado 100% da tela */
+    #videoElem.fit-fill {
+      object-fit: fill !important;
+      transform: none !important;
+      -webkit-transform: none !important;
     }
     #iframeElem {
       width: 100%;
@@ -1146,23 +1153,23 @@
     }
 
     // ========================================================
-    // AJUSTE DE IMAGEM DO TOTEM (CONTAIN = PROPORCIONAL / COVER = TELA CHEIA)
+    // AJUSTE DE IMAGEM DO TOTEM (CONTAIN / COVER / FILL)
     // ========================================================
     var currentImageFit = 'contain';
     try {
       var savedFit = localStorage.getItem('totem_image_fit');
-      if (savedFit === 'cover' || savedFit === 'contain') {
+      if (savedFit === 'cover' || savedFit === 'contain' || savedFit === 'fill') {
         currentImageFit = savedFit;
       }
     } catch(e) {}
 
     function setScreenImageFit(fitMode) {
-      if (fitMode !== 'cover' && fitMode !== 'contain') fitMode = 'contain';
+      if (fitMode !== 'cover' && fitMode !== 'contain' && fitMode !== 'fill') fitMode = 'contain';
       currentImageFit = fitMode;
       try { localStorage.setItem('totem_image_fit', fitMode); } catch(e) {}
 
       if (videoElem) {
-        videoElem.classList.remove('fit-cover', 'fit-contain');
+        videoElem.classList.remove('fit-cover', 'fit-contain', 'fit-fill');
         videoElem.classList.add('fit-' + fitMode);
         videoElem.style.objectFit = fitMode;
       }
@@ -1173,7 +1180,7 @@
     // Aplicar modo salvo ao iniciar
     (function applyInitialImageFit() {
       if (videoElem) {
-        videoElem.classList.remove('fit-cover', 'fit-contain');
+        videoElem.classList.remove('fit-cover', 'fit-contain', 'fit-fill');
         videoElem.classList.add('fit-' + currentImageFit);
         videoElem.style.objectFit = currentImageFit;
       }

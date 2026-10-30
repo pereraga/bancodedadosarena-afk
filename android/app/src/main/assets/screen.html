@@ -97,15 +97,34 @@
     #videoElem {
       width: 100%;
       height: 100%;
-      object-fit: cover;
-      transform: scale(1.05);
-      -webkit-transform: scale(1.05);
+      object-fit: contain;
+      transform: none;
+      -webkit-transform: none;
       transform-origin: center center;
       -webkit-transform-origin: center center;
       pointer-events: none !important;
       user-select: none !important;
       -webkit-user-select: none !important;
       outline: none !important;
+    }
+    /* Ajuste de imagem: cover = preenche a tela toda sem esticar */
+    #videoElem.fit-cover {
+      object-fit: cover !important;
+      transform: none !important;
+      -webkit-transform: none !important;
+    }
+    /* Ajuste de imagem: contain = proporcional com barras pretas (sem cortar nada) */
+    #videoElem.fit-contain {
+      object-fit: contain !important;
+      transform: none !important;
+      -webkit-transform: none !important;
+      background-color: #000000 !important;
+    }
+    /* Ajuste de imagem: fill = esticado 100% da tela */
+    #videoElem.fit-fill {
+      object-fit: fill !important;
+      transform: none !important;
+      -webkit-transform: none !important;
     }
     #iframeElem {
       width: 100%;
@@ -1134,6 +1153,40 @@
     }
 
     // ========================================================
+    // AJUSTE DE IMAGEM DO TOTEM (CONTAIN / COVER / FILL)
+    // ========================================================
+    var currentImageFit = 'contain';
+    try {
+      var savedFit = localStorage.getItem('totem_image_fit');
+      if (savedFit === 'cover' || savedFit === 'contain' || savedFit === 'fill') {
+        currentImageFit = savedFit;
+      }
+    } catch(e) {}
+
+    function setScreenImageFit(fitMode) {
+      if (fitMode !== 'cover' && fitMode !== 'contain' && fitMode !== 'fill') fitMode = 'contain';
+      currentImageFit = fitMode;
+      try { localStorage.setItem('totem_image_fit', fitMode); } catch(e) {}
+
+      if (videoElem) {
+        videoElem.classList.remove('fit-cover', 'fit-contain', 'fit-fill');
+        videoElem.classList.add('fit-' + fitMode);
+        videoElem.style.objectFit = fitMode;
+      }
+
+      console.log('🖼️ Ajuste de imagem alterado para:', fitMode);
+    }
+
+    // Aplicar modo salvo ao iniciar
+    (function applyInitialImageFit() {
+      if (videoElem) {
+        videoElem.classList.remove('fit-cover', 'fit-contain', 'fit-fill');
+        videoElem.classList.add('fit-' + currentImageFit);
+        videoElem.style.objectFit = currentImageFit;
+      }
+    })();
+
+    // ========================================================
     // SISTEMA DE CACHE E ARMAZENAMENTO OFFLINE (INDEXEDDB)
     // Permite que o totem funcione 100% sem internet
     // ========================================================
@@ -2132,6 +2185,11 @@
             setScreenBrightness(p.payload.brightness, true);
           }
         });
+        chanDev.on('broadcast', { event: 'SET_IMAGE_FIT' }, function(p) {
+          if (p && p.payload && p.payload.fitMode) {
+            setScreenImageFit(p.payload.fitMode);
+          }
+        });
         chanDev.on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'devices', filter: 'id=eq.' + myDevId }, function(payload) {
           if (payload && payload.new) {
             if (payload.new.current_video_id && payload.new.current_video_id !== currentPlayingVideoId) {
@@ -2170,6 +2228,11 @@
             setScreenBrightness(p.payload.brightness, true);
           }
         });
+        chanGlobal.on('broadcast', { event: 'SET_IMAGE_FIT' }, function(p) {
+          if (p && p.payload && (!p.payload.deviceId || p.payload.deviceId === myDevId) && p.payload.fitMode) {
+            setScreenImageFit(p.payload.fitMode);
+          }
+        });
         chanGlobal.subscribe();
 
         var chanBroad = client.channel('totem-broadcast');
@@ -2187,6 +2250,11 @@
         chanBroad.on('broadcast', { event: 'SET_BRIGHTNESS' }, function(p) {
           if (p && p.payload && (!p.payload.deviceId || p.payload.deviceId === myDevId) && typeof p.payload.brightness === 'number') {
             setScreenBrightness(p.payload.brightness, true);
+          }
+        });
+        chanBroad.on('broadcast', { event: 'SET_IMAGE_FIT' }, function(p) {
+          if (p && p.payload && (!p.payload.deviceId || p.payload.deviceId === myDevId) && p.payload.fitMode) {
+            setScreenImageFit(p.payload.fitMode);
           }
         });
         chanBroad.subscribe();

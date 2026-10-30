@@ -935,9 +935,9 @@ class TotemCentralEngine {
     }
   }
 
-  // --- CONTROLE DE AJUSTE DE IMAGEM REMOTO (CONTAIN / COVER) ---
+  // --- CONTROLE DE AJUSTE DE IMAGEM REMOTO (CONTAIN / COVER / FILL) ---
   async setImageFit(deviceId, fitMode = 'contain') {
-    const validModes = ['contain', 'cover'];
+    const validModes = ['contain', 'cover', 'fill', 'auto'];
     const targetFit = validModes.includes(fitMode) ? fitMode : 'contain';
 
     // 1. Enviar para API local (se estiver em localhost ou rede Wi-Fi do totem)
