@@ -935,6 +935,45 @@ class TotemCentralEngine {
     }
   }
 
+  // --- CONTROLE DE AJUSTE DE IMAGEM REMOTO (CONTAIN / COVER) ---
+  async setImageFit(deviceId, fitMode = 'contain') {
+    const validModes = ['contain', 'cover'];
+    const targetFit = validModes.includes(fitMode) ? fitMode : 'contain';
+
+    // 1. Enviar para API local (se estiver em localhost ou rede Wi-Fi do totem)
+    try {
+      fetch('/api/devices/imagefit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceId, fitMode: targetFit })
+      }).catch(function() {});
+    } catch (e) {}
+
+    // 2. Transmitir via Supabase Realtime Broadcast (Nuvem e local)
+    if (this.client) {
+      try {
+        const payload = {
+          deviceId: deviceId || null,
+          fitMode: targetFit,
+          updatedAt: new Date().toISOString()
+        };
+
+        if (deviceId) {
+          const chanDev = this.client.channel(`device-${deviceId}`);
+          await chanDev.send({ type: 'broadcast', event: 'SET_IMAGE_FIT', payload });
+        }
+
+        const chanGlobal = this.client.channel('totem-global-channel');
+        await chanGlobal.send({ type: 'broadcast', event: 'SET_IMAGE_FIT', payload });
+
+        const chanBroad = this.client.channel('totem-broadcast');
+        await chanBroad.send({ type: 'broadcast', event: 'SET_IMAGE_FIT', payload });
+      } catch (err) {
+        console.warn('Erro ao disparar broadcast de ajuste de imagem:', err);
+      }
+    }
+  }
+
   // --- CONTROLE DE BRILHO REMOTO (AUMENTAR / DIMINUIR / MODO MÁXIMO) ---
   async setScreenBrightness(deviceId, brightness = 100) {
     const targetBrightness = typeof brightness === 'number' ? Math.max(20, Math.min(200, Math.round(brightness))) : 100;
