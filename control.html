@@ -1040,18 +1040,18 @@
             </div>
 
             <!-- BARRA DE CONTROLE DE AJUSTE DE IMAGEM (COM TELA PRETA OU SEM TELA PRETA) -->
-            <div class="px-3.5 py-2.5 bg-slate-950 border-b border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
-              <span class="text-xs font-bold text-purple-300 flex items-center space-x-1.5">
-                <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+            <div class="px-3.5 py-2.5 bg-slate-950/80 border-b border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
+              <span class="text-xs font-bold text-purple-300 flex items-center space-x-1.5 shrink-0">
+                <svg class="w-4 h-4 text-purple-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
                 <span>Ajuste da Tela:</span>
               </span>
-              <div class="flex items-center space-x-1">
+              <div class="flex items-center flex-wrap gap-1.5">
                 <!-- Opção 1: Com Barra Preta (Proporcional) -->
                 <button
                   type="button"
                   id="fit-btn-contain-${dev.id}"
                   onclick="setImageFitForScreen('${dev.id}', 'contain', event)"
-                  class="px-2 py-1 rounded-lg text-[11px] font-bold border transition active:scale-95 flex items-center space-x-1 ${devFit === 'contain' ? 'bg-purple-600 border-purple-500 text-white shadow-sm' : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:text-white'}"
+                  class="px-2.5 py-1 rounded-lg text-[11px] font-bold border transition active:scale-95 flex items-center space-x-1 shrink-0 ${devFit === 'contain' ? 'bg-purple-600 border-purple-500 text-white shadow-sm' : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:text-white'}"
                   title="Mantém a imagem original completa, com barras pretas nas laterais (sem cortar nada)"
                 >
                   <span>⬛</span>
@@ -1062,7 +1062,7 @@
                   type="button"
                   id="fit-btn-cover-${dev.id}"
                   onclick="setImageFitForScreen('${dev.id}', 'cover', event)"
-                  class="px-2 py-1 rounded-lg text-[11px] font-bold border transition active:scale-95 flex items-center space-x-1 ${devFit === 'cover' ? 'bg-purple-600 border-purple-500 text-white shadow-sm' : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:text-white'}"
+                  class="px-2.5 py-1 rounded-lg text-[11px] font-bold border transition active:scale-95 flex items-center space-x-1 shrink-0 ${devFit === 'cover' ? 'bg-purple-600 border-purple-500 text-white shadow-sm' : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:text-white'}"
                   title="Preenche a tela inteira sem esticar e sem barras pretas"
                 >
                   <span>🖼️</span>
@@ -1073,7 +1073,7 @@
                   type="button"
                   id="fit-btn-fill-${dev.id}"
                   onclick="setImageFitForScreen('${dev.id}', 'fill', event)"
-                  class="px-2 py-1 rounded-lg text-[11px] font-bold border transition active:scale-95 flex items-center space-x-1 ${devFit === 'fill' ? 'bg-purple-600 border-purple-500 text-white shadow-sm' : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:text-white'}"
+                  class="px-2.5 py-1 rounded-lg text-[11px] font-bold border transition active:scale-95 flex items-center space-x-1 shrink-0 ${devFit === 'fill' ? 'bg-purple-600 border-purple-500 text-white shadow-sm' : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:text-white'}"
                   title="Estica o vídeo para ocupar 100% da tela"
                 >
                   <span>↔️</span>
@@ -1082,82 +1082,86 @@
               </div>
             </div>
 
-            <!-- Dados da Tela -->
-            <div class="p-4 flex items-start justify-between">
-              <div>
-                <h3 class="font-bold text-white text-base flex items-center space-x-2">
-                  <span class="w-2.5 h-2.5 rounded-full ${isOnline ? (hasError ? 'bg-rose-500 animate-pulse' : 'bg-emerald-400 shadow-sm shadow-emerald-400/50') : 'bg-slate-600'}" title="${isOnline ? (hasError ? 'Com Erro' : 'On-line') : 'Off-line'}"></span>
-                  <span>${screenName}</span>
+            <!-- Dados da Tela (Nome e Ações Principais) -->
+            <div class="p-4 pb-3 flex items-start justify-between gap-3">
+              <div class="min-w-0 flex-1">
+                <h3 class="font-bold text-white text-base flex items-center space-x-2 truncate">
+                  <span class="w-2.5 h-2.5 rounded-full shrink-0 ${isOnline ? (hasError ? 'bg-rose-500 animate-pulse' : 'bg-emerald-400 shadow-sm shadow-emerald-400/50') : 'bg-slate-600'}" title="${isOnline ? (hasError ? 'Com Erro' : 'On-line') : 'Off-line'}"></span>
+                  <span class="truncate" title="${screenName}">${screenName}</span>
                 </h3>
-                <p class="text-xs text-slate-400 mt-0.5">${lastSeenText}</p>
+                <p class="text-xs text-slate-400 mt-1 flex items-center space-x-1.5 truncate">
+                  <span class="text-slate-500">•</span>
+                  <span class="truncate">${lastSeenText}</span>
+                </p>
               </div>
 
               <!-- Ações Rápidas & Menu 3 Pontinhos -->
-              <div class="flex items-center space-x-2">
+              <div class="flex items-center space-x-2 shrink-0">
                 <button
                   type="button"
                   onclick="promptChangeVideo('${dev.id}', '${screenName}')"
-                  class="px-2.5 py-1.5 rounded-xl bg-blue-600/20 hover:bg-blue-600 text-blue-300 hover:text-white border border-blue-500/40 text-xs font-semibold flex items-center space-x-1.5 transition active:scale-95 shadow-sm"
+                  class="px-3 py-1.5 rounded-xl bg-blue-600/20 hover:bg-blue-600 text-blue-300 hover:text-white border border-blue-500/40 text-xs font-semibold flex items-center space-x-1.5 transition active:scale-95 shadow-sm shrink-0"
                   title="Alterar o vídeo reproduzido nesta tela"
                 >
                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                   <span>Trocar Vídeo</span>
                 </button>
 
-                <div class="relative">
+                <div class="relative shrink-0">
                   <button
                     onclick="toggleScreenDropdown('${dev.id}', event)"
                     class="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition"
                     title="Opções da Tela"
                   >
                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
-                  </svg>
-                </button>
+                      <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                    </svg>
+                  </button>
 
-                <!-- Dropdown de Ações -->
-                <div id="dropdown-${dev.id}" class="absolute right-0 bottom-full mb-1 w-52 rounded-xl bg-slate-900 border border-slate-700 shadow-2xl p-1.5 text-xs text-slate-200 z-30 hidden space-y-1">
-                  <button onclick="openDiagnosticModal('${dev.id}', event)" class="w-full px-3 py-2 text-left rounded-lg hover:bg-slate-800 flex items-center space-x-2 text-amber-400 font-semibold">
-                    <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    <span>🩺 Diagnosticar Tela</span>
-                  </button>
-                  <button onclick="openVerticalVolumeModal('${dev.id}', '${screenName}', ${devVol}, ${devMuted}, event)" class="w-full px-3 py-2 text-left rounded-lg hover:bg-slate-800 flex items-center space-x-2 text-sky-400">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg>
-                    <span>Fader de Volume</span>
-                  </button>
-                  <button onclick="openVerticalBrightnessModal('${dev.id}', '${screenName}', ${devBright}, event)" class="w-full px-3 py-2 text-left rounded-lg hover:bg-slate-800 flex items-center space-x-2 text-amber-400">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-                    <span>☀️ Brilho da Tela</span>
-                  </button>
-                  <button onclick="toggleImageFit('${dev.id}', event)" class="w-full px-3 py-2 text-left rounded-lg hover:bg-slate-800 flex items-center space-x-2 text-purple-400">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
-                    <span>🖼️ Ajuste de Imagem</span>
-                  </button>
-                  <button onclick="promptChangeVideo('${dev.id}', '${screenName}')" class="w-full px-3 py-2 text-left rounded-lg hover:bg-slate-800 flex items-center space-x-2">
-                    <svg class="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    <span>Alterar Vídeo</span>
-                  </button>
-                  <button onclick="promptRenameScreen('${dev.id}', '${screenName}')" class="w-full px-3 py-2 text-left rounded-lg hover:bg-slate-800 flex items-center space-x-2">
-                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                    <span>Renomear Tela</span>
-                  </button>
-                  <button onclick="reloadScreenRemotely('${dev.id}')" class="w-full px-3 py-2 text-left rounded-lg hover:bg-slate-800 flex items-center space-x-2">
-                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                    <span>Recarregar Tela</span>
-                  </button>
-                  <button onclick="unlinkScreen('${dev.id}', '${screenName}')" class="w-full px-3 py-2 text-left rounded-lg hover:bg-rose-500/20 text-rose-400 flex items-center space-x-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                    <span>Desvincular Tela</span>
-                  </button>
+                  <!-- Dropdown de Ações -->
+                  <div id="dropdown-${dev.id}" class="absolute right-0 bottom-full mb-1 w-52 rounded-xl bg-slate-900 border border-slate-700 shadow-2xl p-1.5 text-xs text-slate-200 z-30 hidden space-y-1">
+                    <button onclick="openDiagnosticModal('${dev.id}', event)" class="w-full px-3 py-2 text-left rounded-lg hover:bg-slate-800 flex items-center space-x-2 text-amber-400 font-semibold">
+                      <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                      <span>🩺 Diagnosticar Tela</span>
+                    </button>
+                    <button onclick="openVerticalVolumeModal('${dev.id}', '${screenName}', ${devVol}, ${devMuted}, event)" class="w-full px-3 py-2 text-left rounded-lg hover:bg-slate-800 flex items-center space-x-2 text-sky-400">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg>
+                      <span>Fader de Volume</span>
+                    </button>
+                    <button onclick="openVerticalBrightnessModal('${dev.id}', '${screenName}', ${devBright}, event)" class="w-full px-3 py-2 text-left rounded-lg hover:bg-slate-800 flex items-center space-x-2 text-amber-400">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                      <span>☀️ Brilho da Tela</span>
+                    </button>
+                    <button onclick="toggleImageFit('${dev.id}', event)" class="w-full px-3 py-2 text-left rounded-lg hover:bg-slate-800 flex items-center space-x-2 text-purple-400">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+                      <span>🖼️ Ajuste de Imagem</span>
+                    </button>
+                    <button onclick="promptChangeVideo('${dev.id}', '${screenName}')" class="w-full px-3 py-2 text-left rounded-lg hover:bg-slate-800 flex items-center space-x-2">
+                      <svg class="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                      <span>Alterar Vídeo</span>
+                    </button>
+                    <button onclick="promptRenameScreen('${dev.id}', '${screenName}')" class="w-full px-3 py-2 text-left rounded-lg hover:bg-slate-800 flex items-center space-x-2">
+                      <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                      <span>Renomear Tela</span>
+                    </button>
+                    <button onclick="reloadScreenRemotely('${dev.id}')" class="w-full px-3 py-2 text-left rounded-lg hover:bg-slate-800 flex items-center space-x-2">
+                      <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                      <span>Recarregar Tela</span>
+                    </button>
+                    <button onclick="unlinkScreen('${dev.id}', '${screenName}')" class="w-full px-3 py-2 text-left rounded-lg hover:bg-rose-500/20 text-rose-400 flex items-center space-x-2">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                      <span>Desvincular Tela</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <!-- FAIXA DE STATUS DE REPRODUÇÃO E DIAGNÓSTICO -->
-            <div class="px-4 pb-2">
+            <!-- FAIXA DE STATUS DE REPRODUÇÃO E DIAGNÓSTICO (LARGURA TOTAL DO CARD) -->
+            <div class="px-4 pb-3">
               ${hasError ? `
-                <div class="p-2.5 rounded-xl bg-rose-500/15 border border-rose-500/40 flex items-center justify-between text-xs text-rose-300">
-                  <div class="flex items-center space-x-2 truncate mr-2">
+                <div class="p-2.5 rounded-xl bg-rose-500/15 border border-rose-500/40 flex items-center justify-between text-xs text-rose-300 w-full gap-2">
+                  <div class="flex items-center space-x-2 truncate min-w-0 mr-2">
                     <span class="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0 animate-ping"></span>
                     <span class="font-bold truncate text-[11px]" title="${escapeHtml(diag.msg)}">
                       ⚠️ ${escapeHtml(diag.msg)}
@@ -1171,8 +1175,8 @@
                   </button>
                 </div>
               ` : isOffline ? `
-                <div class="p-2 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between text-xs text-amber-300">
-                  <div class="flex items-center space-x-2 truncate mr-2">
+                <div class="p-2 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between text-xs text-amber-300 w-full gap-2">
+                  <div class="flex items-center space-x-2 truncate min-w-0 mr-2">
                     <span class="w-2 h-2 rounded-full bg-amber-400 shrink-0"></span>
                     <span class="font-semibold truncate text-[11px]">Modo Offline: Tocando Cache Local</span>
                   </div>
@@ -1184,14 +1188,16 @@
                   </button>
                 </div>
               ` : `
-                <div class="p-2 rounded-xl bg-slate-950/60 border border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
-                  <div class="flex items-center space-x-2 truncate mr-2">
+                <div class="p-2.5 rounded-xl bg-slate-950/70 border border-slate-800/80 flex items-center justify-between text-xs text-slate-400 w-full gap-2">
+                  <div class="flex items-center space-x-2 truncate min-w-0 mr-2">
                     <span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
-                    <span class="text-[11px] font-medium truncate">${diag && diag.videoTitle ? 'Reproduzindo: ' + escapeHtml(diag.videoTitle) : 'Reprodução Ativa'}</span>
+                    <span class="text-[11px] font-medium truncate" title="${activeVidTitle}">
+                      Reproduzindo: <strong class="text-slate-200 font-semibold">${diag && diag.videoTitle ? escapeHtml(diag.videoTitle) : activeVidTitle}</strong>
+                    </span>
                   </div>
                   <button
                     onclick="openDiagnosticModal('${dev.id}', event)"
-                    class="text-[10px] text-slate-400 hover:text-slate-200 underline shrink-0"
+                    class="px-2 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white text-[10px] font-bold shrink-0 transition"
                   >
                     Diagnóstico
                   </button>
@@ -1362,8 +1368,6 @@
                   </svg>
                 </button>
               </div>
-            </div>
-
             </div>
 
           </div>
@@ -2487,34 +2491,6 @@
                     <span>Excluir Vídeo</span>
                   </button>
                 </div>
-              </div>
-            </div>
-
-            <!-- CONTROLE DE AJUSTE DE IMAGEM (PROPORCIONAL / TELA CHEIA) -->
-            <div class="px-4 py-2.5 bg-slate-950/40 border-t border-slate-800/50 flex items-center justify-between">
-              <span class="text-slate-400 font-medium text-xs flex items-center space-x-1.5">
-                <svg class="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
-                <span>Ajuste de Imagem</span>
-              </span>
-              <div class="flex items-center space-x-1.5">
-                <button
-                  type="button"
-                  id="fit-btn-contain-${dev.id}"
-                  onclick="setImageFitForScreen('${dev.id}', 'contain', event)"
-                  class="px-2.5 py-1 rounded-lg text-[10px] font-bold border transition active:scale-95 ${(screenFitModes[dev.id] || 'contain') === 'contain' ? 'bg-purple-600/30 border-purple-500/60 text-purple-300' : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:bg-purple-600/20 hover:text-purple-300'}"
-                  title="Proporcional com barras pretas"
-                >
-                  Proporcional
-                </button>
-                <button
-                  type="button"
-                  id="fit-btn-cover-${dev.id}"
-                  onclick="setImageFitForScreen('${dev.id}', 'cover', event)"
-                  class="px-2.5 py-1 rounded-lg text-[10px] font-bold border transition active:scale-95 ${(screenFitModes[dev.id] || 'contain') === 'cover' ? 'bg-purple-600/30 border-purple-500/60 text-purple-300' : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:bg-purple-600/20 hover:text-purple-300'}"
-                  title="Preenche a tela toda (sem barras pretas)"
-                >
-                  Tela Cheia
-                </button>
               </div>
             </div>
 
