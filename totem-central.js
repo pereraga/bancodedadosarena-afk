@@ -634,7 +634,7 @@ class TotemCentralEngine {
   }
 
   // Desvincular e Excluir Tela
-  async deleteDevice(deviceId, hardDelete = false) {
+  async deleteDevice(deviceId, hardDelete = true) {
     if (!this.client) return;
     deviceId = String(deviceId).trim();
 

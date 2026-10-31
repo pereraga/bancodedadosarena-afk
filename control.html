@@ -931,22 +931,33 @@
     }
 
     function renderScreens(devices) {
-      // Deduplicação Inteligente por ID e por Nome
-      const uniqueMap = new Map();
-      (devices || []).forEach(d => {
-        if (!d || !d.id) return;
-        if (d.status === 'unlinked' || d.status === 'pending_pair') return;
+      // 1. Filtrar dispositivos válidos aprovados (ignora unlinked e pending_pair)
+      const valid = (devices || []).filter(d => d && d.id && d.status !== 'unlinked' && d.status !== 'pending_pair');
 
-        // Se já existe uma entrada com esse ID, mantém o registro com sinal de vida mais recente
+      // 2. Ordenar por sinal de vida mais recente primeiro (last_seen decrescente)
+      valid.sort((a, b) => {
+        const ta = new Date(a.last_seen || a.lastSeen || a.created_at || 0).getTime();
+        const tb = new Date(b.last_seen || b.lastSeen || b.created_at || 0).getTime();
+        return tb - ta;
+      });
+
+      // 3. Deduplicação Inteligente:
+      // - Elimina duplicatas de ID
+      // - Se existirem múltiplos totens com o mesmo nome padrão ("Modelo Totem", "Totem"), mantém APENAS o mais recente/ativo!
+      const uniqueMap = new Map();
+      const seenDefaultNames = new Set();
+
+      valid.forEach(d => {
+        const rawName = (d.deviceName || d.device_name || '').trim().toLowerCase();
+        const isGenericName = !rawName || rawName === 'modelo totem' || rawName === 'totem' || rawName === 'modelo totem apk';
+
+        if (isGenericName) {
+          if (seenDefaultNames.has('default_totem')) return; // Descarta totem fantasma antigo com nome duplicado
+          seenDefaultNames.add('default_totem');
+        }
+
         if (!uniqueMap.has(d.id)) {
           uniqueMap.set(d.id, d);
-        } else {
-          const existing = uniqueMap.get(d.id);
-          const t1 = new Date(existing.last_seen || existing.lastSeen || 0).getTime();
-          const t2 = new Date(d.last_seen || d.lastSeen || 0).getTime();
-          if (t2 > t1) {
-            uniqueMap.set(d.id, d);
-          }
         }
       });
 
@@ -1169,7 +1180,7 @@
                     </button>
                     <button onclick="unlinkScreen('${dev.id}', '${screenName}')" class="w-full px-3 py-2 text-left rounded-lg hover:bg-rose-500/20 text-rose-400 flex items-center space-x-2">
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                      <span>Desvincular Tela</span>
+                      <span>Excluir / Desvincular Tela</span>
                     </button>
                   </div>
                 </div>
@@ -2240,10 +2251,11 @@
     };
 
     window.unlinkScreen = async function(id, name) {
-      if (!confirm(`Deseja realmente desvincular a tela "${name}"?\nEla voltará a exibir o código de emparelhamento.`)) return;
+      if (!confirm(`Deseja realmente remover e excluir a tela "${name}" do painel?`)) return;
       try {
-        await window.totemCentral.deleteDevice(id);
-        notify('Tela desvinculada. O aparelho voltou à tela de emparelhamento.');
+        await window.totemCentral.deleteDevice(id, true);
+        notify(`Tela "${name}" removida com sucesso.`);
+        await window.totemCentral.refreshDevices();
       } catch (e) {
         notify('Erro ao desvincular: ' + e.message);
       }
@@ -2269,9 +2281,8 @@
         }
 
         const now = Date.now();
-        const oneHour = 60 * 60 * 1000;
         const toDeleteIds = [];
-        const seenNames = new Map();
+        const seenGeneric = new Set();
 
         // Ordenar dos mais recentes para os mais antigos
         allDevs.sort((a, b) => {
@@ -2283,20 +2294,23 @@
         for (const dev of allDevs) {
           const lastTime = new Date(dev.last_seen || dev.created_at || 0).getTime();
           const diffMs = now - lastTime;
-          const nameKey = (dev.device_name || 'totem').trim().toLowerCase();
+          const rawName = (dev.device_name || '').trim().toLowerCase();
+          const isGeneric = !rawName || rawName === 'modelo totem' || rawName === 'totem' || rawName === 'modelo totem apk';
 
-          // Se tiver sem sinal há mais de 24 horas, ou se já existe outro mais recente com o mesmo nome
-          if (diffMs > (24 * 60 * 60 * 1000)) {
+          // Se tiver sem sinal há mais de 4 horas, ou se já existe outro mais recente com nome genérico
+          if (diffMs > (4 * 60 * 60 * 1000)) {
             toDeleteIds.push(dev.id);
-          } else if (seenNames.has(nameKey)) {
-            toDeleteIds.push(dev.id);
-          } else {
-            seenNames.set(nameKey, dev.id);
+          } else if (isGeneric) {
+            if (seenGeneric.has('default')) {
+              toDeleteIds.push(dev.id);
+            } else {
+              seenGeneric.add('default');
+            }
           }
         }
 
         if (toDeleteIds.length === 0) {
-          notify('Nenhuma duplicata encontrada. Para remover uma tela específica, use os 3 pontinhos > Desvincular.');
+          notify('Nenhuma duplicata encontrada. Para remover uma tela específica, use os 3 pontinhos > Excluir.');
           return;
         }
 
