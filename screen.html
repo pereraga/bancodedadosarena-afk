@@ -94,7 +94,7 @@
       background: #000;
       z-index: 10;
     }
-    #videoElem {
+    #videoElem, #imageElem {
       width: 100%;
       height: 100%;
       object-fit: contain;
@@ -108,20 +108,20 @@
       outline: none !important;
     }
     /* Ajuste de imagem: cover = preenche a tela toda sem esticar */
-    #videoElem.fit-cover {
+    #videoElem.fit-cover, #imageElem.fit-cover {
       object-fit: cover !important;
       transform: none !important;
       -webkit-transform: none !important;
     }
     /* Ajuste de imagem: contain = proporcional com barras pretas (sem cortar nada) */
-    #videoElem.fit-contain {
+    #videoElem.fit-contain, #imageElem.fit-contain {
       object-fit: contain !important;
       transform: none !important;
       -webkit-transform: none !important;
       background-color: #000000 !important;
     }
     /* Ajuste de imagem: fill = esticado 100% da tela */
-    #videoElem.fit-fill {
+    #videoElem.fit-fill, #imageElem.fit-fill {
       object-fit: fill !important;
       transform: none !important;
       -webkit-transform: none !important;
@@ -746,6 +746,14 @@
       oncontextmenu="return false;"
     ></video>
 
+    <img
+      id="imageElem"
+      class="video-fade hidden"
+      alt="Mídia da Tela"
+      tabindex="-1"
+      oncontextmenu="return false;"
+    />
+
     <iframe
       id="iframeElem"
       class="video-fade hidden"
@@ -909,6 +917,7 @@
     var screenNewCodeBtn = document.getElementById('screenNewCodeBtn');
 
     var videoElem = document.getElementById('videoElem');
+    var imageElem = document.getElementById('imageElem');
     var iframeElem = document.getElementById('iframeElem');
     var playerBox = document.getElementById('playerBox');
 
@@ -1135,6 +1144,10 @@
         videoElem.style.filter = filterStr;
         videoElem.style.webkitFilter = filterStr;
       }
+      if (imageElem) {
+        imageElem.style.filter = filterStr;
+        imageElem.style.webkitFilter = filterStr;
+      }
       if (iframeElem) {
         iframeElem.style.filter = 'brightness(' + bRatio + ')';
         iframeElem.style.webkitFilter = 'brightness(' + bRatio + ')';
@@ -1173,8 +1186,13 @@
         videoElem.classList.add('fit-' + fitMode);
         videoElem.style.objectFit = fitMode;
       }
+      if (imageElem) {
+        imageElem.classList.remove('fit-cover', 'fit-contain', 'fit-fill');
+        imageElem.classList.add('fit-' + fitMode);
+        imageElem.style.objectFit = fitMode;
+      }
 
-      console.log('🖼️ Ajuste de imagem alterado para:', fitMode);
+      console.log('🖼️ Ajuste de mídia alterado para:', fitMode);
     }
 
     // Aplicar modo salvo ao iniciar
@@ -1183,6 +1201,11 @@
         videoElem.classList.remove('fit-cover', 'fit-contain', 'fit-fill');
         videoElem.classList.add('fit-' + currentImageFit);
         videoElem.style.objectFit = currentImageFit;
+      }
+      if (imageElem) {
+        imageElem.classList.remove('fit-cover', 'fit-contain', 'fit-fill');
+        imageElem.classList.add('fit-' + currentImageFit);
+        imageElem.style.objectFit = currentImageFit;
       }
     })();
 
@@ -1374,24 +1397,24 @@
 
       // Garante saída da tela de emparelhamento
       if (waitScreen) waitScreen.classList.add('hidden');
-      if (videoElem) videoElem.classList.remove('hidden');
       isPaired = true;
 
-      // 1. Verificar se existe vídeo salvo em cache IndexedDB
+      // 1. Verificar se existe mídia salva em cache IndexedDB
       TotemOffline.getLastCachedVideo().then(function(cached) {
         if (cached && cached.blob) {
           try {
             var blobUrl = URL.createObjectURL(cached.blob);
-            var title = (cached.meta && cached.meta.title) ? cached.meta.title : 'Vídeo Local em Cache';
-            console.log('🎬 Tocando vídeo do cache local:', title);
+            var title = (cached.meta && cached.meta.title) ? cached.meta.title : 'Mídia Local em Cache';
+            console.log('🎬 Tocando mídia do cache local:', title);
             playVideo({
               id: 'offline-cached',
               title: title + ' (Offline)',
               url: blobUrl,
+              blob: cached.blob,
               isOffline: true
             });
-            showDiagnosticBanner('Modo Offline: Reproduzindo vídeo gravado no aparelho (' + title + ')', 0, 'offline');
-            reportDiagnostic('offline', 'Modo Offline: Reproduzindo vídeo do cache local (' + title + ')', 0);
+            showDiagnosticBanner('Modo Offline: Exibindo mídia gravada no aparelho (' + title + ')', 0, 'offline');
+            reportDiagnostic('offline', 'Modo Offline: Exibindo mídia do cache local (' + title + ')', 0);
             return;
           } catch(err) {
             console.warn('Erro ao criar URL do blob:', err);
@@ -1797,6 +1820,15 @@
       });
     }
 
+    // Detector de Arquivos de Imagem / Foto
+    function isImageMedia(mediaUrl, mediaObj) {
+      if (mediaObj && (mediaObj.media_type === 'image' || mediaObj.type === 'image')) return true;
+      if (mediaObj && mediaObj.blob && mediaObj.blob.type && mediaObj.blob.type.indexOf('image/') === 0) return true;
+      if (!mediaUrl || typeof mediaUrl !== 'string') return false;
+      var clean = mediaUrl.split('?')[0].split('#')[0].toLowerCase();
+      return /\.(jpg|jpeg|png|webp|gif|svg|bmp|avif|ico)$/i.test(clean) || mediaUrl.indexOf('data:image/') === 0;
+    }
+
     // Extrair ID do YouTube
     function getYouTubeId(url) {
       if (!url) return null;
@@ -1804,20 +1836,70 @@
       return match ? match[1] : null;
     }
 
-    // Reproduzir Vídeo
+    // Reproduzir Vídeo ou Exibir Foto
     function playVideo(video) {
       if (!video || (!video.url && !video.video_url)) return;
 
       var mediaRawUrl = video.url || video.video_url;
       var newVideoId = video.id || null;
-      currentPlayingVideoTitle = video.title || 'Vídeo em Exibição';
+      currentPlayingVideoTitle = video.title || 'Mídia em Exibição';
 
-      if (currentUrl === mediaRawUrl && currentPlayingVideoId === newVideoId && videoElem && !videoElem.paused && !videoElem.ended) {
-        return;
+      var isImg = isImageMedia(mediaRawUrl, video);
+
+      if (currentUrl === mediaRawUrl && currentPlayingVideoId === newVideoId) {
+        if (isImg && imageElem && !imageElem.classList.contains('hidden')) return;
+        if (!isImg && videoElem && !videoElem.paused && !videoElem.ended) return;
       }
 
       currentUrl = mediaRawUrl;
       currentPlayingVideoId = newVideoId;
+
+      var targetMediaUrl = mediaRawUrl;
+      if (targetMediaUrl.indexOf('dropbox.com') !== -1) {
+        targetMediaUrl = targetMediaUrl.replace(/[?&]dl=0/, '?raw=1').replace(/[?&]dl=1/, '?raw=1');
+      } else if (targetMediaUrl.indexOf('/') === 0 && !targetMediaUrl.startsWith('//')) {
+        targetMediaUrl = window.location.origin + targetMediaUrl;
+      }
+
+      // 1. SE FOR FOTO / IMAGEM (JPG, PNG, WEBP, GIF, ETC.)
+      if (isImg) {
+        // Se estiver no APK nativo Android, para o player nativo para liberar a tela para o WebView
+        if (window.AndroidTotem && typeof window.AndroidTotem.stopVideo === 'function') {
+          try { window.AndroidTotem.stopVideo(); } catch(e){}
+        }
+
+        try { videoElem.pause(); } catch (e) {}
+        videoElem.classList.add('hidden');
+        videoElem.src = '';
+
+        iframeElem.classList.add('hidden');
+        iframeElem.src = 'about:blank';
+
+        if (imageElem) {
+          imageElem.classList.remove('hidden');
+          imageElem.src = targetMediaUrl;
+          imageElem.onload = function() {
+            hideDiagnosticBanner();
+            reportDiagnostic('playing', 'Exibindo foto: ' + currentPlayingVideoTitle, 0);
+            if (!video.isOffline && targetMediaUrl.indexOf('http') === 0) {
+              TotemOffline.cacheVideoInBackground(targetMediaUrl, newVideoId || 'img', currentPlayingVideoTitle);
+            }
+          };
+          imageElem.onerror = function() {
+            console.error('🚨 Erro ao carregar foto/imagem:', targetMediaUrl);
+            reportDiagnostic('error', 'Falha ao carregar imagem', 4);
+            showDiagnosticBanner('Não foi possível exibir a imagem. Verifique a URL ou conexão.', 4, 'error');
+          };
+        }
+        initWakeLock();
+        return;
+      }
+
+      // 2. SE FOR VÍDEO, ESCONDE A IMAGEM
+      if (imageElem) {
+        imageElem.classList.add('hidden');
+        imageElem.src = '';
+      }
 
       var ytId = getYouTubeId(mediaRawUrl);
 
@@ -1834,13 +1916,6 @@
       iframeElem.classList.add('hidden');
       iframeElem.src = 'about:blank';
       videoElem.classList.remove('hidden');
-
-      var targetMediaUrl = mediaRawUrl;
-      if (targetMediaUrl.indexOf('dropbox.com') !== -1) {
-        targetMediaUrl = targetMediaUrl.replace(/[?&]dl=0/, '?raw=1').replace(/[?&]dl=1/, '?raw=1');
-      } else if (targetMediaUrl.indexOf('/') === 0 && !targetMediaUrl.startsWith('//')) {
-        targetMediaUrl = window.location.origin + targetMediaUrl;
-      }
 
       // Se estiver rodando dentro do APK nativo Android, delega a reprodução ao Hardware CedarX nativo
       if (window.AndroidTotem && typeof window.AndroidTotem.playVideo === 'function') {

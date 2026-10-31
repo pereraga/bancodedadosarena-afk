@@ -687,26 +687,28 @@ class TotemCentralEngine {
     if (!this.isConfigured || !this.client) {
       throw new Error('Configure as credenciais do Supabase na aba Configurações antes de fazer upload.');
     }
-    if (!file) throw new Error('Selecione um arquivo de vídeo.');
-    if (!videoTitle) throw new Error('Informe um nome para o vídeo.');
+    if (!file) throw new Error('Selecione um arquivo de vídeo ou foto.');
+    if (!videoTitle) throw new Error('Informe um nome para o vídeo ou foto.');
 
+    const isImg = file.type ? file.type.startsWith('image/') : false;
     const fileSizeMb = (file.size / (1024 * 1024)).toFixed(2);
     const formattedSize = file.size >= 1024 * 1024 * 1024 
       ? (file.size / (1024 * 1024 * 1024)).toFixed(2) + ' GB'
       : fileSizeMb + ' MB';
 
     onProgress(10);
-    const ext = file.name.split('.').pop() || 'mp4';
+    const ext = file.name.split('.').pop() || (isImg ? 'jpg' : 'mp4');
     const cleanTitle = videoTitle.toLowerCase().replace(/[^a-z0-9]/g, '-');
     const storagePath = `uploads/${Date.now()}-${cleanTitle}.${ext}`;
 
     onProgress(25);
-    // 1. Upload do Arquivo para o Bucket 'videos' (Suporta até 200 MB)
+    // 1. Upload do Arquivo para o Bucket 'videos' (Suporta vídeos e fotos de até 200 MB)
     const { error: uploadError } = await this.client.storage
       .from('videos')
       .upload(storagePath, file, {
         cacheControl: '3600',
-        upsert: false
+        upsert: false,
+        contentType: file.type || undefined
       });
 
     if (uploadError) {
@@ -714,7 +716,7 @@ class TotemCentralEngine {
         throw new Error('O bucket "videos" ainda não foi criado no Supabase. Abra o SQL Editor no painel do Supabase e execute o script para criar o bucket "videos" público com limite de 200 MB.');
       }
       if (uploadError.message && (uploadError.message.includes('exceeded the maximum allowed size') || uploadError.message.includes('Payload too large'))) {
-        throw new Error(`O arquivo possui ${formattedSize}.\n\nO plano gratuito do Supabase possui um limite rígido de 50 MB por arquivo no Storage.\n\nPara usar vídeos maiores que 50 MB (como este de ${formattedSize}), use a "Opção 2: Inserir Link Direto do Vídeo" logo abaixo — aceita links do Google Drive, Dropbox ou links diretos .mp4 sem limite!`);
+        throw new Error(`O arquivo possui ${formattedSize}.\n\nO plano gratuito do Supabase possui um limite rígido de 50 MB por arquivo no Storage.\n\nPara usar mídias maiores que 50 MB (como este de ${formattedSize}), use a "Opção 2: Inserir Link Direto do Vídeo ou Foto" logo abaixo — aceita links do Google Drive, Dropbox ou links diretos sem limite!`);
       }
       throw new Error('Falha no upload para o Supabase Storage: ' + uploadError.message);
     }
@@ -752,14 +754,15 @@ class TotemCentralEngine {
       id: dbData ? dbData.id : 'vid-' + Date.now(),
       title: videoTitle,
       url: videoUrl,
-      fileSizeMb: formattedSize
+      fileSizeMb: formattedSize,
+      isImage: isImg
     };
   }
 
-  // 4. INSERIR VÍDEO DIRETAMENTE POR LINK/URL (Sem Limite de Tamanho)
+  // 4. INSERIR VÍDEO OU FOTO DIRETAMENTE POR LINK/URL (Sem Limite de Tamanho)
   async addVideoByUrl(videoTitle, videoUrl) {
-    if (!videoTitle) throw new Error('Informe o nome do vídeo');
-    if (!videoUrl) throw new Error('Informe o link direto do vídeo');
+    if (!videoTitle) throw new Error('Informe o nome da mídia (vídeo ou foto)');
+    if (!videoUrl) throw new Error('Informe o link direto do vídeo ou foto');
     if (!this.client) throw new Error('Supabase não inicializado');
 
     let cleanUrl = videoUrl.trim();
