@@ -1344,6 +1344,10 @@
         status: status, // 'playing', 'error', 'offline', 'warning'
         msg: msg || 'Status normal',
         code: code || 0,
+        fitMode: currentImageFit,
+        volume: currentVolume,
+        muted: isMuted,
+        brightness: currentBrightness,
         videoTitle: currentPlayingVideoTitle || 'Nenhum',
         resolution: window.screen.width + 'x' + window.screen.height,
         online: (navigator.onLine !== false),
@@ -1352,21 +1356,13 @@
 
       var jsonStr = JSON.stringify(diagPayload);
 
-      // 1. Atualizar no Supabase se houver internet
+      // 1. Atualizar diretamente no Banco de Dados Supabase (100% Nuvem)
       if (navigator.onLine) {
         supabaseQuery('devices?id=eq.' + devId, 'PATCH', {
           ip_address: jsonStr,
           last_seen: new Date().toISOString()
         }).catch(function(){});
       }
-
-      // 2. Notificar servidor local se estiver ativo
-      try {
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', '/api/devices/diagnostic', true);
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.send(JSON.stringify({ deviceId: devId, diagnostic: diagPayload }));
-      } catch(e){}
     }
 
     // ========================================================
@@ -2000,11 +1996,25 @@
       } else {
         var myDevId = getStoredDeviceId();
         supabaseQuery('devices?id=eq.' + myDevId, 'GET').then(function(devs) {
-          if (devs && devs.length > 0 && devs[0].current_video_id) {
-            fetchActiveOrLatestVideo(devs[0].current_video_id);
-          } else {
-            fetchLatestVideo();
+          if (devs && devs.length > 0) {
+            var dev = devs[0];
+            // 1. Restaurar configurações gravadas no Banco de Dados Supabase (Nuvem)
+            if (dev.ip_address) {
+              try {
+                var meta = JSON.parse(dev.ip_address);
+                if (meta.fitMode) setScreenImageFit(meta.fitMode);
+                if (typeof meta.volume === 'number') setScreenVolume(meta.volume, meta.muted, false);
+                if (typeof meta.brightness === 'number') setScreenBrightness(meta.brightness, false);
+              } catch(e) {}
+            }
+
+            // 2. Tocar vídeo atribuído no banco de dados
+            if (dev.current_video_id) {
+              fetchActiveOrLatestVideo(dev.current_video_id);
+              return;
+            }
           }
+          fetchLatestVideo();
         }).catch(function(err) {
           console.warn('Falha na consulta do dispositivo no Supabase. Acionando fallback offline:', err);
           playEmergencyOfflineVideo('Falha ao conectar com o banco de dados Supabase');
@@ -2103,8 +2113,12 @@
     window.addEventListener('click', handleScreenTouch, { once: true });
     window.addEventListener('touchstart', handleScreenTouch, { once: true, passive: true });
 
-    // Conexão em tempo real Local (SSE) para resposta instantânea em localhost e Wi-Fi
+    // Conexão em tempo real 100% Nuvem (Supabase Realtime)
     function initLocalSSE() {
+      // Sistema roda 100% na Nuvem Supabase
+      if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        return;
+      }
       try {
         var sse = new EventSource('/api/events');
         sse.addEventListener('init', function(e) {

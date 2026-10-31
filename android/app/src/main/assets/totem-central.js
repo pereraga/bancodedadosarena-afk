@@ -895,21 +895,50 @@ class TotemCentralEngine {
     }
   }
 
+  // --- PERSISTÊNCIA DIRETA NO BANCO DE DADOS SUPABASE (100% NUVEM / ZERO LOCALHOST) ---
+  async persistDeviceConfigInDB(deviceId, patchData) {
+    if (!this.client || !deviceId) return;
+    try {
+      // 1. Obter registro atual para mesclar metadados com segurança
+      const { data: currentDev } = await this.client
+        .from('devices')
+        .select('ip_address')
+        .eq('id', deviceId)
+        .maybeSingle();
+
+      let currentMeta = {};
+      try {
+        if (currentDev && currentDev.ip_address && currentDev.ip_address.startsWith('{')) {
+          currentMeta = JSON.parse(currentDev.ip_address);
+        }
+      } catch(e) {}
+
+      const updatedMeta = Object.assign({}, currentMeta, patchData, { updatedAt: new Date().toISOString() });
+
+      // 2. Gravar no banco de dados na nuvem (Supabase)
+      await this.client
+        .from('devices')
+        .update({
+          ip_address: JSON.stringify(updatedMeta),
+          last_seen: new Date().toISOString()
+        })
+        .eq('id', deviceId);
+    } catch(err) {
+      console.warn('Erro ao persistir configurações no Supabase:', err);
+    }
+  }
+
   // --- CONTROLE DE VOLUME REMOTO (LIGA / DESLIGA / AUMENTA / DIMINUI) ---
   async setScreenVolume(deviceId, volume, muted = false) {
     const targetVolume = typeof volume === 'number' ? Math.max(0, Math.min(100, Math.round(volume))) : 80;
     const isMuted = Boolean(muted);
 
-    // 1. Enviar para API local (se estiver em localhost ou rede Wi-Fi do totem)
-    try {
-      fetch('/api/devices/volume', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deviceId, volume: targetVolume, muted: isMuted })
-      }).catch(function() {});
-    } catch (e) {}
+    // 1. Gravar no Banco de Dados Supabase (100% Nuvem)
+    if (deviceId) {
+      await this.persistDeviceConfigInDB(deviceId, { volume: targetVolume, muted: isMuted });
+    }
 
-    // 2. Transmitir via Supabase Realtime Broadcast (Nuvem e local)
+    // 2. Transmitir via Supabase Realtime Broadcast (Nuvem em tempo real)
     if (this.client) {
       try {
         const payload = {
@@ -940,16 +969,12 @@ class TotemCentralEngine {
     const validModes = ['contain', 'cover', 'fill', 'auto'];
     const targetFit = validModes.includes(fitMode) ? fitMode : 'contain';
 
-    // 1. Enviar para API local (se estiver em localhost ou rede Wi-Fi do totem)
-    try {
-      fetch('/api/devices/imagefit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deviceId, fitMode: targetFit })
-      }).catch(function() {});
-    } catch (e) {}
+    // 1. Gravar no Banco de Dados Supabase (100% Nuvem)
+    if (deviceId) {
+      await this.persistDeviceConfigInDB(deviceId, { fitMode: targetFit });
+    }
 
-    // 2. Transmitir via Supabase Realtime Broadcast (Nuvem e local)
+    // 2. Transmitir via Supabase Realtime Broadcast (Nuvem em tempo real)
     if (this.client) {
       try {
         const payload = {
@@ -978,16 +1003,12 @@ class TotemCentralEngine {
   async setScreenBrightness(deviceId, brightness = 100) {
     const targetBrightness = typeof brightness === 'number' ? Math.max(20, Math.min(200, Math.round(brightness))) : 100;
 
-    // 1. Enviar para API local (se estiver em localhost ou rede Wi-Fi do totem)
-    try {
-      fetch('/api/devices/brightness', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deviceId, brightness: targetBrightness })
-      }).catch(function() {});
-    } catch (e) {}
+    // 1. Gravar no Banco de Dados Supabase (100% Nuvem)
+    if (deviceId) {
+      await this.persistDeviceConfigInDB(deviceId, { brightness: targetBrightness });
+    }
 
-    // 2. Transmitir via Supabase Realtime Broadcast (Nuvem e local)
+    // 2. Transmitir via Supabase Realtime Broadcast (Nuvem em tempo real)
     if (this.client) {
       try {
         const payload = {

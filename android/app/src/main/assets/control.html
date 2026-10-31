@@ -972,18 +972,7 @@
         const activeVidUrl = activeVid ? (activeVid.url || activeVid.video_url) : null;
         const activeVidTitle = activeVid ? escapeHtml(activeVid.title) : 'Nenhum vídeo selecionado';
 
-        const devVol = typeof dev.volume === 'number' ? dev.volume : (screenVolumes[dev.id] !== undefined ? screenVolumes[dev.id] : 80);
-        const devMuted = typeof dev.muted === 'boolean' ? dev.muted : (screenMutes[dev.id] !== undefined ? screenMutes[dev.id] : false);
-        screenVolumes[dev.id] = devVol;
-        screenMutes[dev.id] = devMuted;
-
-        const devBright = typeof dev.brightness === 'number' ? dev.brightness : (screenBrightnesses[dev.id] !== undefined ? screenBrightnesses[dev.id] : 100);
-        screenBrightnesses[dev.id] = devBright;
-
-        const devFit = screenFitModes[dev.id] || 'contain';
-        const devOri = screenOrientations[dev.id] || 'portrait';
-
-        // Análise de Telemetria e Diagnóstico em tempo real
+        // Análise de Telemetria e Configurações salvas no Banco de Dados Supabase (100% Nuvem)
         let diag = null;
         try {
           const rawIp = dev.ip_address || dev.ipAddress;
@@ -991,6 +980,20 @@
             diag = JSON.parse(rawIp.trim());
           }
         } catch(e) {}
+
+        const devVol = (diag && typeof diag.volume === 'number') ? diag.volume : (typeof dev.volume === 'number' ? dev.volume : (screenVolumes[dev.id] !== undefined ? screenVolumes[dev.id] : 80));
+        const devMuted = (diag && typeof diag.muted === 'boolean') ? diag.muted : (typeof dev.muted === 'boolean' ? dev.muted : (screenMutes[dev.id] !== undefined ? screenMutes[dev.id] : false));
+        screenVolumes[dev.id] = devVol;
+        screenMutes[dev.id] = devMuted;
+
+        const devBright = (diag && typeof diag.brightness === 'number') ? diag.brightness : (typeof dev.brightness === 'number' ? dev.brightness : (screenBrightnesses[dev.id] !== undefined ? screenBrightnesses[dev.id] : 100));
+        screenBrightnesses[dev.id] = devBright;
+
+        const devFit = (diag && diag.fitMode) ? diag.fitMode : (screenFitModes[dev.id] || 'contain');
+        screenFitModes[dev.id] = devFit;
+
+        const devOri = (diag && diag.orientation) ? diag.orientation : (screenOrientations[dev.id] || 'portrait');
+        screenOrientations[dev.id] = devOri;
 
         const hasError = diag && (diag.status === 'error');
         const isOffline = diag && (diag.status === 'offline');
@@ -1392,12 +1395,20 @@
       try { localStorage.setItem('totem_control_orientations', JSON.stringify(screenOrientations)); } catch(e) {}
     }
 
-    window.toggleScreenOrientation = function(devId, e) {
+    window.toggleScreenOrientation = async function(devId, e) {
       if (e) e.stopPropagation();
       const current = screenOrientations[devId] || 'portrait';
       const next = (current === 'portrait') ? 'landscape' : 'portrait';
       screenOrientations[devId] = next;
       persistOrientationState();
+
+      // Gravar no Banco de Dados Supabase (100% Nuvem)
+      try {
+        if (window.totemCentral && window.totemCentral.persistDeviceConfigInDB) {
+          await window.totemCentral.persistDeviceConfigInDB(devId, { orientation: next });
+        }
+      } catch(err) {}
+
       renderScreens(currentScreens);
       notify(next === 'portrait' ? '📱 Formato Totem em Pé (Vertical)' : '📺 Formato TV (Horizontal)');
     };
